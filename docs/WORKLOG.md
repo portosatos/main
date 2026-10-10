@@ -600,3 +600,13 @@
   `integration/test_rebuild.py`, strict xfail) → миграция 0005 (`steps_minute`, `sleep_minute`, `coverage_minute`)
   → пересчёт затронутых минут каждой пачки в той же транзакции → `htadmin rebuild --user` → замер файла за 90 дней.
 - Прочитано: CLAUDE.md, шаг 3.3 в docs/plan.md, SPEC F3, F4.3, §4 (производительность, `htadmin rebuild`), §7.1.
+
+## 2026-10-11T00:44:27+06:00 — Шаг 3.3: тесты до кода, 9 xfailed
+- Коммиты: 1f7fa80 refactor(minutes): заглушки `DirtyMinutes`, `recompute`, `rebuild_user`, `cli.run` (NotImplementedError);
+  dae3f7d test(minutes) (red): `integration/test_minutes.py` (5 тестов по плану, первый — в двух вариантах
+  `batch_size` 1 и 5000), `integration/test_rebuild.py` (2 по плану + сверх плана `test_cli_rebuild_by_email`);
+  в backend dev-зависимости добавлен `hypothesis`.
+- Красный прогон: backend `100 passed, 9 xfailed`. С `--runxfail` все 9 падают с `UndefinedTableError: relation
+  "steps_minute" / "sleep_minute" / "coverage_minute" does not exist` — минутных таблиц ещё нет (это часть шага),
+  ошибок импорта в тестах нет.
+- Ждёт подтверждения пользователя («ок»).
