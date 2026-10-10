@@ -106,8 +106,8 @@
   Mailpit UI 8025 и SMTP 1025, postgres **5433** (ADR-020).
 - Smoke запущенного стека: `scripts/smoke.ps1` / `scripts/smoke.sh` (`/api/health`, Mailpit, frontend `:5173/`
   и `:5173/api/health` через proxy → 200, вход демо-пользователя и `:5173/api/auth/me` → 200).
-- Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend
-  и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
+- Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend,
+  генератора и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
   `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
 - Миграции (Alembic, `backend/alembic/`): применяются сами при старте api; текущая ревизия —
   `docker compose exec api alembic current` → `(head)`. Локально: `cd backend; uv run alembic upgrade head`
@@ -129,6 +129,8 @@
 - CI: `.github/workflows/ci.yml` на каждый push в `main` и PR; последний прогон —
   `gh run list --branch main --limit 1`, логи упавшего — `gh run view <id> --log-failed`.
 - Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
-- Генератор (появится на шаге 2.1): `uv run --project generator htgen --help`
+- Генератор (`generator/`, формат — `docs/DATA_FORMAT.md`, ADR-028): `uv run --project generator htgen --help`;
+  пример — `uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson` (`*.ndjson` в `.gitignore`,
+  без `--out` пишет в stdout). Тесты: `cd generator; uv run pytest` (входят в `scripts/test.*` и CI).
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`

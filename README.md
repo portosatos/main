@@ -1,7 +1,8 @@
 # Трекер здоровья (Health Tracker)
 
-> **Статус: в разработке.** Готовы скелет стека, миграции, служебное время (`Clock`) и авторизация на backend
-> (шаги 0.1–1.2 из [`docs/plan.md`](docs/plan.md)). Интерфейса входа пока нет: он появится на шаге 1.3.
+> **Статус: в разработке.** Готовы скелет стека, миграции, служебное время (`Clock`), авторизация, страницы
+> входа и dev-панель (шаги 0.1–1.3 из [`docs/plan.md`](docs/plan.md)) и основа генератора тестовых данных
+> (шаг 2.1). Загрузки данных пока нет: она появится на этапе 3.
 > Подробный ход работы — в [`docs/WORKLOG.md`](docs/WORKLOG.md).
 
 Веб-приложение собирает данные с часов и телефона (шаги, сон, пульс), объединяет их без двойного счёта,
@@ -50,8 +51,17 @@ docker compose up --build
 scripts/test.sh
 ```
 
-На Windows — `scripts/test.ps1`. Скрипт поднимает PostgreSQL из compose и запускает тесты backend и утилит
-`scripts/`. Frontend: `npm ci --prefix frontend` (один раз), затем `npm --prefix frontend run check`.
+На Windows — `scripts/test.ps1`. Скрипт поднимает PostgreSQL из compose и запускает тесты backend, генератора
+и утилит `scripts/`. Frontend: `npm ci --prefix frontend` (один раз), затем `npm --prefix frontend run check`.
+
+## Тестовые данные
+
+```bash
+uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson
+```
+
+Генератор `htgen` пишет NDJSON с часов и телефона: шаги, сон, пульс. Одинаковый seed даёт одинаковый файл.
+Опции — `htgen --help`, формат и модели устройств — [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md).
 
 ## Документация
 
@@ -60,6 +70,7 @@ scripts/test.sh
 - [`docs/WORKLOG.md`](docs/WORKLOG.md) — журнал работы с временными метками.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — принятые решения (ADR).
 - [`docs/PROMPTS.md`](docs/PROMPTS.md) — указания заказчика дословно.
+- [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md) — формат входных данных и генератор `htgen`.
 - [`CLAUDE.md`](CLAUDE.md) — правила работы агента и команды.
 
-Демо-сценарий, отчёт о статусе требований и описание форматов появятся на этапах 2 и 13.
+Демо-сценарий и отчёт о статусе требований появятся на этапе 13.
