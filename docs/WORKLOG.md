@@ -170,3 +170,20 @@
   `GET/POST /api/dev/clock` (роутер подключается только в dev); воркер получает «сейчас» через тот же Clock.
 - Порядок: каркас (заглушки) → тесты до кода (strict xfail) → стоп до «ок» → миграция → Clock → dev API.
 - Примечание: в промпте сессии написано «шаг 0.2 в docs/plan.md» — прочитаны и шаг 0.2, и шаг 1.1.
+
+## 2026-10-10T20:21:13+06:00 — Тесты до кода: 12 тестов, 13 xfailed, 5 passed
+- Каркас до тестов (интерфейсы, чтобы тесты падали на поведении, а не на импорте):
+  6e76caa build(backend) — Alembic 1.20 с async env.py, миграций нет; 5bdc90e refactor(backend) — фабрика
+  сессий `create_sessionmaker`, `create_app(sessionmaker=...)`, заглушки `Clock`/`create_clock` и
+  `worker_context` (NotImplementedError), воркер перенесён в `app/worker/main.py`.
+- Красные тесты: 83c757b test(core). `uv run pytest -q` → 5 passed, 13 xfailed (12 тестов;
+  у `test_worker_and_api_see_same_offset` вторым xfail считается teardown очистки: таблицы `dev_clock` ещё нет).
+- Причины (`--runxfail`): Clock — `NotImplementedError: step 1.1`; dev API — 404 вместо 200/422 (роутера
+  нет); миграции — `'dev_clock' in set()` (миграций нет); инвариант — `app/clock.py must read the system time`.
+- Сверх плана: `test_now_is_utc_even_if_system_now_is_not`, `test_offset_is_cached_until_invalidated`,
+  `test_post_rejects_out_of_range_offset`, `test_forbidden_pattern_matches_known_calls` (проверка самого
+  регэкспа, зелёный сразу — не поведение шага).
+- Допущение: `test_no_direct_now_calls_outside_clock` сегодня прошёл бы и без кода (прямых вызовов нет),
+  поэтому он ещё требует, чтобы системное время читал именно `app/clock.py`; `test_dev_routes_404_in_prod`
+  содержит контроль «в dev тот же маршрут → 200», иначе 404 в prod проходил бы при опечатке в пути.
+- Остановка: жду «ок» пользователя перед кодом.
