@@ -187,3 +187,30 @@
   поэтому он ещё требует, чтобы системное время читал именно `app/clock.py`; `test_dev_routes_404_in_prod`
   содержит контроль «в dev тот же маршрут → 200», иначе 404 в prod проходил бы при опечатке в пути.
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T20:32:14+06:00 — Фичи шага 1.1 (пользователь ответил «ок, решения принимаю»)
+- 0170316 feat(db): миграция `0001` (`dev_clock`, `CHECK id = 1`), `alembic upgrade head` в команде контейнера
+  api, воркер ждёт healthy api. `alembic check` → «No new upgrade operations detected»; маркер снят с
+  `test_upgrade_downgrade_upgrade_head`.
+- 5de272f feat(core): `Clock` (UTC, сдвиг только в dev, кеш 1 с, `invalidate`), `read/write_dev_offset`,
+  `create_clock`; маркеры сняты с unit-тестов и инварианта.
+- 3522a54 feat(dev): `GET/POST /api/dev/clock` (роутер только при `APP_ENV=dev`, `|offset| ≤ 10 лет`),
+  `worker_context`, тик воркера пишет в лог время Clock и сдвиг. `uv run pytest -q` → 17 passed.
+- Проблема: после пересоздания контейнера api запрос через nginx `:5173/api/...` → 502 (nginx разрешил `api`
+  в IP один раз при старте; ошибка закрытого шага 0.3). Решение: 82bddcc fix(frontend) — `resolver 127.0.0.11`
+  и переменная в `proxy_pass`. Проверено: `docker compose up -d --force-recreate api` → `:5173/api/health` → 200.
+- 696bbd9 docs(decisions) ADR-025; 3f0970b docs(claude) — команды миграций и dev-времени.
+- Проблема (без последствий): правка файлов через Python `write_text` на Windows дала CRLF в рабочей копии
+  `backend/Dockerfile` (eol=lf); исправлено до коммита, в индексе LF.
+
+## 2026-10-10T20:32:15+06:00 — Шаг 1.1 завершён
+- Коммиты: 628b13a, 6e76caa (build), 5bdc90e (refactor, заглушки), 83c757b (test, red), c8606be, 0170316,
+  5de272f, 3522a54 (feat), 82bddcc (fix шага 0.3), 696bbd9, 3f0970b и этот.
+- Тесты: красный прогон 5 passed, 13 xfailed → зелёный 17 passed (backend), scripts/ 8 passed;
+  `scripts/test.ps1` и `scripts/test.sh` → exit 0. ruff check и format --check → exit 0;
+  `git grep "step 1.1: not implemented" -- ":!docs"` → пусто; `npm --prefix frontend run check` → exit 0.
+- Done When шага: `docker compose exec api alembic current` → `0001 (head)`; api с `APP_ENV=prod`:
+  `POST` и `GET :8000/api/dev/clock` → 404 (затем api возвращён в dev, сдвиг сброшен в 0).
+- Сверх плана: воркер видит сдвиг из БД (лог `worker_tick` с `offset_seconds: 86400` после POST);
+  smoke.ps1 и smoke.sh → 4×OK.
+- Ждёт ручной проверки пользователя: `/docs` с разделом dev, POST сдвига, лог воркера, 404 в prod.
