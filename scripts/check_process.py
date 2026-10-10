@@ -2,17 +2,17 @@
 
 Usage:
     python scripts/check_process.py --step X.Y   # one step: worklog + its commits
-    python scripts/check_process.py --all        # whole history; only the last step may be unfinished
+    python scripts/check_process.py --all        # whole history; last step may be unfinished
 
 Checks:
-- every "## " heading of docs/WORKLOG.md starts with an ISO timestamp with offset (WORKLOG_NO_OFFSET,
-  WORKLOG_BAD_HEADING), timestamps never decrease (WORKLOG_NOT_MONOTONIC);
-- WORKLOG.md was only appended to: each committed version and the working copy start with the previous
-  version (WORKLOG_NOT_APPEND_ONLY);
+- every "## " heading of docs/WORKLOG.md starts with an ISO timestamp with offset
+  (WORKLOG_NO_OFFSET, WORKLOG_BAD_HEADING), timestamps never decrease (WORKLOG_NOT_MONOTONIC);
+- WORKLOG.md was only appended to: each committed version and the working copy start with the
+  previous version (WORKLOG_NOT_APPEND_ONLY);
 - the step has "Шаг X.Y начат" and "Шаг X.Y завершён" entries (STEP_NO_START, STEP_NO_END);
-- every commit has a "Stage: X.Y" line (COMMIT_NO_STAGE); commits of the step use Conventional Commits
-  (COMMIT_NOT_CONVENTIONAL); the step has commits (STEP_NO_COMMITS) and a test(...) commit before its
-  first feat(...) commit (STEP_TEST_NOT_BEFORE_FEAT).
+- every commit has a "Stage: X.Y" line (COMMIT_NO_STAGE); commits of the step use Conventional
+  Commits (COMMIT_NOT_CONVENTIONAL); the step has commits (STEP_NO_COMMITS) and a test(...) commit
+  before its first feat(...) commit (STEP_TEST_NOT_BEFORE_FEAT).
 
 Exit code: 0 if everything is fine, 1 if there are violations, 2 on usage errors. Stdlib only.
 """
@@ -20,6 +20,7 @@ Exit code: 0 if everything is fine, 1 if there are violations, 2 on usage errors
 from __future__ import annotations
 
 import argparse
+import itertools
 import re
 import subprocess
 import sys
@@ -120,14 +121,20 @@ def parse_worklog(text: str, report: Report) -> list[Entry]:
         ts, looks_like_time = parse_timestamp(raw)
         if ts is None:
             if looks_like_time:
-                report.error("WORKLOG_NO_OFFSET", f"{WORKLOG}:{number}: timestamp without offset: {raw}")
+                report.error(
+                    "WORKLOG_NO_OFFSET", f"{WORKLOG}:{number}: timestamp without offset: {raw}"
+                )
             else:
-                report.error("WORKLOG_BAD_HEADING", f"{WORKLOG}:{number}: heading must start with a timestamp")
+                report.error(
+                    "WORKLOG_BAD_HEADING",
+                    f"{WORKLOG}:{number}: heading must start with a timestamp",
+                )
             continue
         if entries and ts < entries[-1].ts:
             report.error(
                 "WORKLOG_NOT_MONOTONIC",
-                f"{WORKLOG}:{number}: {raw} is earlier than the previous entry (line {entries[-1].line})",
+                f"{WORKLOG}:{number}: {raw} is earlier than the previous entry"
+                f" (line {entries[-1].line})",
             )
         entries.append(Entry(number, ts, (heading.group("title") or "").strip()))
     return entries
@@ -144,9 +151,11 @@ def check_append_only(repo: Path, report: Report) -> None:
     path = repo / WORKLOG
     if path.exists():
         versions.append(("working tree", normalize(path.read_text(encoding="utf-8"))))
-    for (_, previous), (label, current) in zip(versions, versions[1:]):
+    for (_, previous), (label, current) in itertools.pairwise(versions):
         if not current.startswith(previous):
-            report.error("WORKLOG_NOT_APPEND_ONLY", f"{WORKLOG} in {label} changes or removes earlier lines")
+            report.error(
+                "WORKLOG_NOT_APPEND_ONLY", f"{WORKLOG} in {label} changes or removes earlier lines"
+            )
 
 
 def read_commits(repo: Path) -> list[Commit]:
@@ -167,10 +176,14 @@ def read_commits(repo: Path) -> list[Commit]:
 def check_commits(commits: list[Commit], report: Report) -> None:
     for commit in commits:
         if commit.stage is None:
-            report.error("COMMIT_NO_STAGE", f"{commit.short} '{commit.subject}' has no 'Stage: X.Y' line")
+            report.error(
+                "COMMIT_NO_STAGE", f"{commit.short} '{commit.subject}' has no 'Stage: X.Y' line"
+            )
 
 
-def check_step(step: str, entries: list[Entry], commits: list[Commit], report: Report, *, finished: bool) -> None:
+def check_step(
+    step: str, entries: list[Entry], commits: list[Commit], report: Report, *, finished: bool
+) -> None:
     starts = [e for e in entries if (m := STEP_START_RE.match(e.title)) and m.group("step") == step]
     ends = [e for e in entries if (m := STEP_END_RE.match(e.title)) and m.group("step") == step]
     if not starts:
@@ -179,7 +192,10 @@ def check_step(step: str, entries: list[Entry], commits: list[Commit], report: R
         if not ends:
             report.error("STEP_NO_END", f"{WORKLOG} has no '## <time> — Шаг {step} завершён' entry")
         elif starts and ends[-1].line < starts[0].line:
-            report.error("STEP_NO_END", f"'Шаг {step} завершён' (line {ends[-1].line}) precedes its start entry")
+            report.error(
+                "STEP_NO_END",
+                f"'Шаг {step} завершён' (line {ends[-1].line}) precedes its start entry",
+            )
 
     own = [c for c in commits if c.stage == step]
     if not own:
@@ -187,7 +203,10 @@ def check_step(step: str, entries: list[Entry], commits: list[Commit], report: R
         return
     for commit in own:
         if commit.type is None:
-            report.error("COMMIT_NOT_CONVENTIONAL", f"{commit.short} '{commit.subject}' is not a Conventional Commit")
+            report.error(
+                "COMMIT_NOT_CONVENTIONAL",
+                f"{commit.short} '{commit.subject}' is not a Conventional Commit",
+            )
 
     types = [c.type for c in own]
     if "feat" in types:
@@ -195,7 +214,8 @@ def check_step(step: str, entries: list[Entry], commits: list[Commit], report: R
         if "test" not in types[:first_feat]:
             report.error(
                 "STEP_TEST_NOT_BEFORE_FEAT",
-                f"step {step}: no test(...) commit before the first feat(...) commit {own[first_feat].short}",
+                f"step {step}: no test(...) commit before the first feat(...) commit"
+                f" {own[first_feat].short}",
             )
     elif finished and "test" not in types:
         report.error("STEP_TEST_NOT_BEFORE_FEAT", f"step {step}: no test(...) commit")
@@ -232,14 +252,22 @@ def run(repo: Path, step: str | None) -> Report:
 
 
 def main(argv: list[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):  # Cyrillic messages through pipes on Windows (cp1251 by default)
+    if hasattr(
+        sys.stdout, "reconfigure"
+    ):  # Cyrillic messages through pipes on Windows (cp1251 by default)
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")
-    parser = argparse.ArgumentParser(description="Check WORKLOG entries and commits of a plan step.")
+    parser = argparse.ArgumentParser(
+        description="Check WORKLOG entries and commits of a plan step."
+    )
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--step", help="step number from docs/plan.md, e.g. 0.1")
-    target.add_argument("--all", action="store_true", help="check every step; the last one may be unfinished")
-    parser.add_argument("--repo", default=".", help="path inside the git repository (default: current dir)")
+    target.add_argument(
+        "--all", action="store_true", help="check every step; the last one may be unfinished"
+    )
+    parser.add_argument(
+        "--repo", default=".", help="path inside the git repository (default: current dir)"
+    )
     args = parser.parse_args(argv)
 
     if args.step is not None and not STEP_ARG_RE.match(args.step):

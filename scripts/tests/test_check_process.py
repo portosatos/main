@@ -68,7 +68,9 @@ def run_check(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def assert_ok(result: subprocess.CompletedProcess[str]) -> None:
-    assert result.returncode == 0, f"expected exit 0\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"expected exit 0\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
 
 
 def assert_error(result: subprocess.CompletedProcess[str], code: str) -> None:

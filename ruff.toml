@@ -1,0 +1,11 @@
+# One ruff config for the whole repo (backend, scripts, generator):
+# uv run --project backend ruff check . && uv run --project backend ruff format --check .
+line-length = 100
+target-version = "py312"
+extend-exclude = ["docs/agent-session"]
+src = ["backend", "scripts"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "RUF"]
+# Russian UI texts and messages: Cyrillic and dashes are intentional, not confusables.
+ignore = ["RUF001", "RUF002", "RUF003"]
