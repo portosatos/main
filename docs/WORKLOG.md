@@ -242,3 +242,34 @@
 - Изменён тест шага 1.1: `api_client` вынесен в `tests/integration/client.py` и по умолчанию шлёт
   `X-Requested-With: ht` (после CSRF-middleware `POST /api/dev/clock` без заголовка → 403).
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T20:56:38+06:00 — Фичи шага 1.2 (пользователь ответил «ок, допущения принимаю»)
+- b36f26e feat(db): миграция `0002` — `users` (citext email, тихие часы выключены, 22:00–08:00),
+  `user_timezones` (`UNIQUE(user_id, valid_from)`), `sessions` (`id = sha256(token)`); `alembic check` →
+  «No new upgrade operations detected»; зависимости argon2-cffi и email-validator.
+- 234392a feat(auth): argon2id (`verify_password` не падает на битом хеше); маркер снят с `unit/test_passwords.py`.
+- be7e396 feat(auth): `register/login/logout/me`, cookie `ht_session`, сессия 14 дней по Clock, `current_user`;
+  34 passed, 3 xfailed (CSRF, Swagger, сид ещё с маркерами — маркер модуля заменён на маркеры этих трёх тестов).
+- ac726db feat(auth): ASGI-middleware CSRF (403 без `X-Requested-With: ht` на всех изменяющих методах, в том
+  числе `POST /api/dev/clock`), `/docs` с `requestInterceptor`; 36 passed, 1 xfailed.
+- 76933a9 feat(auth): сид `python -m app.seed` после миграций, `DEMO_USER_*` в compose и `.env.example`;
+  37 passed. Стек пересобран: в логе api `demo_user_created`; после `docker compose restart api` повторной записи
+  нет, в БД 1 пользователь и 1 запись пояса; smoke.ps1 и smoke.sh → 5×OK (красное окно smoke: b607ef5..76933a9).
+- 85702aa docs(prompts), ba9f2e2 docs(decisions) ADR-026, dee76d7 docs(claude) — команды (демо-пользователь, CSRF).
+- Проблема: длинная команда с несколькими heredoc в Git Bash упала с «unexpected EOF» до записи файлов
+  (ничего не изменилось); файлы написаны инструментом Write.
+- Проверка в браузере: Swagger `/docs` → «Try it out» на `POST /api/auth/login` (демо) → 200, curl в Swagger
+  содержит `X-Requested-With: ht`, затем `/api/auth/me` → 200, `document.cookie` не видит `ht_session` (HttpOnly).
+
+## 2026-10-10T20:56:38+06:00 — Шаг 1.2 завершён
+- Коммиты: d4934e6, a19a73b (refactor, заглушки), b607ef5 (test, red), b567847, b36f26e, 234392a, be7e396, ac726db,
+  76933a9 (feat), 85702aa, ba9f2e2, dee76d7 и этот.
+- Тесты: красный прогон 17 passed, 20 xfailed → зелёный 37 passed (backend), scripts/ 8 passed;
+  `scripts/test.ps1` и `scripts/test.sh` → exit 0. ruff check и format --check → exit 0;
+  `git grep "step 1.2: not implemented" -- ":!docs"` → пусто; `npm --prefix frontend run check` → exit 0
+  (frontend не менялся).
+- Done When шага: `scripts/smoke.ps1` и `smoke.sh` → exit 0, `OK demo login …/api/auth/me -> 200`;
+  `docker compose exec api alembic current` → `0002 (head)`.
+- Сверх плана: 3 теста (422 на email/пароль, битый хеш, Swagger с CSRF-заголовком); тест шага 1.1 переведён на
+  общий клиент с CSRF-заголовком.
+- Ждёт ручной проверки пользователя: Swagger — регистрация, вход, `/me`; флаги cookie в DevTools; 403 без заголовка.
