@@ -17,7 +17,6 @@ from conftest import (
 )
 
 FAST = ("--hr-interval", "60")
-RED = pytest.mark.xfail(strict=True, reason="step 2.2: not implemented")
 STEPS_GOAL = 8000  # SPEC F8 default
 END = date(2026, 10, 8)  # Thursday: the last complete ISO week is 2026-09-28..10-04
 
@@ -48,7 +47,6 @@ def lines_before(out, moment) -> list[str]:
     ]
 
 
-@RED
 def test_scenario_short_sleep_last_3_nights_under_6h(htgen) -> None:
     first = date(2026, 10, 1)
     out, plain = run(htgen, first, 12, "--scenario", "short-sleep"), run(htgen, first, 12)
@@ -62,7 +60,6 @@ def test_scenario_short_sleep_last_3_nights_under_6h(htgen) -> None:
     )
 
 
-@RED
 def test_scenario_sedentary_steps_and_active_minutes_low(htgen) -> None:
     first = date(2026, 10, 1)
     out, plain = run(htgen, first, 13, "--scenario", "sedentary"), run(htgen, first, 13)
@@ -78,7 +75,6 @@ def test_scenario_sedentary_steps_and_active_minutes_low(htgen) -> None:
     )
 
 
-@RED
 def test_scenario_high_rhr_last_2_days_elevated(htgen) -> None:
     first = END - timedelta(days=15)  # 14 days of the base and 2 elevated days
     out, plain = run(htgen, first, 14, "--scenario", "high-rhr"), run(htgen, first, 14)
@@ -91,7 +87,6 @@ def test_scenario_high_rhr_last_2_days_elevated(htgen) -> None:
         assert all((v >= base + 7) == elevated for v in last2), (base, last2)
 
 
-@RED
 def test_scenario_irregular_bedtime_stdev_over_90(htgen) -> None:
     first = END - timedelta(days=8)
     out, plain = run(htgen, first, 15, "--scenario", "irregular"), run(htgen, first, 15)
@@ -104,7 +99,6 @@ def test_scenario_irregular_bedtime_stdev_over_90(htgen) -> None:
         assert irregular or stdev < 60, stdev
 
 
-@RED
 def test_scenario_worse_week_avg_sleep_drop_over_60(htgen) -> None:
     first = date(2026, 9, 21)  # Monday: two complete ISO weeks before END
     previous_week = dates(first, date(2026, 9, 27))
@@ -119,7 +113,6 @@ def test_scenario_worse_week_avg_sleep_drop_over_60(htgen) -> None:
         assert (drop >= 60) == worse, drop
 
 
-@RED
 @pytest.mark.parametrize("seed", [1, 2, 3])
 def test_scenario_recovery_fixes_each_condition(htgen, seed: int) -> None:
     first = END - timedelta(days=20)

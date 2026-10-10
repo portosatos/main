@@ -13,6 +13,7 @@ import random
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
+from htgen.scenarios import NONE, Scenarios
 from htgen.timeline import Timeline
 
 SLEEP, SITTING, LIGHT, WALK = range(4)
@@ -30,6 +31,10 @@ SITTINGS = (2, 3)
 SITTING_MINUTES = (60, 150)
 LIGHT_ACTIVE_SHARE = 0.3
 LIGHT_CADENCE = (5.0, 40.0)
+SEDENTARY_LIGHT_SHARE = 0.1
+SEDENTARY_LIGHT_CADENCE = (5.0, 25.0)
+BRISK_WALK_MINUTES = (60, 90)
+BRISK_CADENCE = (110.0, 120.0)  # every minute >= 100 steps: active (SPEC F7)
 PLACEMENT_TRIES = 50
 
 
@@ -48,19 +53,27 @@ class Night:
     phone_wake: datetime
 
 
-def night(seed: int, wake_day: date, timeline: Timeline) -> Night:
+def night(seed: int, wake_day: date, timeline: Timeline, scenarios: Scenarios = NONE) -> Night:
     r = rng(seed, wake_day, "night")
-    bed = timeline.day_start(wake_day) + MINUTE * r.randint(*BED_MINUTES)
-    wake = bed + MINUTE * r.randint(*SLEEP_MINUTES)
+    bed_minutes, sleep_minutes = r.randint(*BED_MINUTES), r.randint(*SLEEP_MINUTES)
     error = (-PHONE_SLEEP_ERROR, PHONE_SLEEP_ERROR)
-    return Night(bed, wake, bed + MINUTE * r.randint(*error), wake + MINUTE * r.randint(*error))
+    phone_bed_error, phone_wake_error = r.randint(*error), r.randint(*error)
+    s = rng(seed, wake_day, "scenario:night")
+    scenario_bed = scenarios.bed_minutes(wake_day, s)
+    if scenario_bed is not None:
+        bed_minutes = scenario_bed
+    if (scenario_sleep := scenarios.sleep_minutes(wake_day)) is not None:
+        sleep_minutes = s.randint(*scenario_sleep)
+    bed = timeline.day_start(wake_day) + MINUTE * bed_minutes
+    wake = bed + MINUTE * sleep_minutes
+    return Night(bed, wake, bed + MINUTE * phone_bed_error, wake + MINUTE * phone_wake_error)
 
 
 @dataclass(frozen=True)
 class DayProfile:
     day: date
-    start: datetime  # local midnight of the date, UTC
-    end: datetime  # local midnight of the next date, UTC
+    start: datetime  # the first moment of the date (local midnight), UTC
+    end: datetime  # the first moment of the next date, UTC
     state: list[int]  # per minute of the window
     cadence: list[float]  # true steps per minute
     phone_ratio: list[float]  # share of the true steps the phone counts
@@ -114,11 +127,11 @@ def _clip(
     return [(max(s, lo), min(e, hi)) for s, e in _merge(spans) if s < hi and e > lo]
 
 
-def plan_day(seed: int, day: date, timeline: Timeline) -> DayProfile:
+def plan_day(seed: int, day: date, timeline: Timeline, scenarios: Scenarios = NONE) -> DayProfile:
     start = timeline.day_start(day)
     end = timeline.day_start(day + timedelta(days=1))
     size = int((end - start).total_seconds() // 60)
-    nights = [night(seed, day, timeline), night(seed, day + timedelta(days=1), timeline)]
+    nights = [night(seed, d, timeline, scenarios) for d in (day, day + timedelta(days=1))]
 
     state = [LIGHT] * size
     for n in nights:
@@ -143,22 +156,37 @@ def plan_day(seed: int, day: date, timeline: Timeline) -> DayProfile:
     r = rng(seed, day, "activity")
     cadence = [0.0] * size
     phone_ratio = [r.uniform(*OTHER_PHONE_RATIO) for _ in range(size)]
-    for _ in range(r.choice(WALKS)):
-        walk = place(r, r.randint(*WALK_MINUTES), at(7), at(21, 30))
-        if walk is None:
-            continue
-        tempo, ratio = r.uniform(*WALK_CADENCE), r.uniform(*WALK_PHONE_RATIO)
-        for i in walk:
+
+    def walk(r: random.Random, minutes: tuple[int, int], pace: tuple[float, float]) -> None:
+        block = place(r, r.randint(*minutes), at(7), at(21, 30))
+        if block is None:
+            return
+        tempo, ratio = r.uniform(*pace), r.uniform(*WALK_PHONE_RATIO)
+        for i in block:
             state[i] = WALK
             cadence[i] = min(max(tempo + r.uniform(-5, 5), WALK_CADENCE[0]), WALK_CADENCE[1])
             phone_ratio[i] = ratio
+
+    sedentary = scenarios.sedentary(day)
+    if scenarios.brisk_walk(day):
+        walk(rng(seed, day, "scenario:activity"), BRISK_WALK_MINUTES, BRISK_CADENCE)
+    for _ in range(0 if sedentary else r.choice(WALKS)):
+        walk(r, WALK_MINUTES, WALK_CADENCE)
     for _ in range(r.randint(*SITTINGS)):
         sitting = place(r, r.randint(*SITTING_MINUTES), at(8, 30), at(20))
         for i in sitting or ():
             state[i] = SITTING
+    share, light = (
+        (SEDENTARY_LIGHT_SHARE, SEDENTARY_LIGHT_CADENCE)
+        if sedentary
+        else (LIGHT_ACTIVE_SHARE, LIGHT_CADENCE)
+    )
     for i in range(size):
-        if state[i] == LIGHT and r.random() < LIGHT_ACTIVE_SHARE:
-            cadence[i] = r.uniform(*LIGHT_CADENCE)
+        if state[i] == LIGHT and r.random() < share:
+            cadence[i] = r.uniform(*light)
+    resting_hr = r.uniform(58.0, 66.0)
+    if (scenario_hr := scenarios.resting_hr(day)) is not None:
+        resting_hr = rng(seed, day, "scenario:hr").uniform(*scenario_hr)
 
     return DayProfile(
         day=day,
@@ -169,5 +197,5 @@ def plan_day(seed: int, day: date, timeline: Timeline) -> DayProfile:
         phone_ratio=phone_ratio,
         sleep=_clip([(n.bed, n.wake) for n in nights], start, end),
         phone_sleep=_clip([(n.phone_bed, n.phone_wake) for n in nights], start, end),
-        resting_hr=r.uniform(58.0, 66.0),
+        resting_hr=resting_hr,
     )

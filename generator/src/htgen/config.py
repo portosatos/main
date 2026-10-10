@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from htgen.gaps import Gap
+from htgen.scenarios import Scenarios
 from htgen.timeline import Timeline
 
 
@@ -39,6 +40,7 @@ class Config:
     gaps: tuple[Gap, ...] = ()  # explicit, --gap
     gap_prob: float = 0.0  # random gaps: chance that a gap of a device starts on a date
     gap_max_hours: float = DEFAULT_GAP_MAX_HOURS
+    scenarios: frozenset[str] = frozenset()  # --scenario names
 
     def days(self) -> Iterator[date]:
         day = self.first
@@ -48,6 +50,9 @@ class Config:
 
     def timeline(self) -> Timeline:
         return Timeline(self.tz, self.tz_changes)
+
+    def scenario_plan(self) -> Scenarios:
+        return Scenarios(self.scenarios, self.first, self.last)
 
     def has(self, device: Device) -> bool:
         return device in self.devices

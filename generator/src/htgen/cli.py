@@ -25,6 +25,7 @@ from htgen.devices import day_lines
 from htgen.gaps import RandomGaps, parse_gap
 from htgen.ndjson import meta_line
 from htgen.profile import plan_day
+from htgen.scenarios import NAMES
 from htgen.timeline import Timeline
 
 
@@ -90,6 +91,14 @@ def _hours(value: str) -> float:
     if not 0 < hours <= 24 * 14:
         raise argparse.ArgumentTypeError("--gap-max-hours: больше 0 и не больше 336")
     return hours
+
+
+def _scenarios(value: str) -> list[str]:
+    names = [name.strip() for name in value.split(",") if name.strip()]
+    unknown = [name for name in names if name not in NAMES]
+    if not names or unknown:
+        raise argparse.ArgumentTypeError(f"сценарии: {', '.join(NAMES)}; а не {value!r}")
+    return names
 
 
 def _hr_interval(value: str) -> int:
@@ -170,6 +179,14 @@ def _parser() -> argparse.ArgumentParser:
         metavar="HOURS",
         help=f"самый длинный случайный пропуск, ч (от 1 ч; по умолчанию {DEFAULT_GAP_MAX_HOURS:g})",
     )
+    parser.add_argument(
+        "--scenario",
+        type=_scenarios,
+        action="append",
+        default=[],
+        metavar="NAME[,NAME]",
+        help=f"данные для правил в конце периода: {', '.join(NAMES)}; можно повторять",
+    )
     parser.add_argument("--out", default="-", help="файл NDJSON; '-' — stdout (по умолчанию)")
     return parser
 
@@ -177,6 +194,7 @@ def _parser() -> argparse.ArgumentParser:
 def generate(config: Config) -> Iterator[str]:
     timeline = config.timeline()
     random_gaps = RandomGaps(config.seed, timeline, config.gap_prob, config.gap_max_hours)
+    scenarios = config.scenario_plan()
     yield meta_line(config.devices)
     for day in config.days():
         holes = {
@@ -186,7 +204,8 @@ def generate(config: Config) -> Iterator[str]:
             ]
             for device in config.devices
         }
-        yield from day_lines(plan_day(config.seed, day, timeline), config, timeline, holes)
+        profile = plan_day(config.seed, day, timeline, scenarios)
+        yield from day_lines(profile, config, timeline, holes)
 
 
 def _write(lines: Iterator[str], stream: TextIO) -> None:
@@ -224,7 +243,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         gaps=gaps,
         gap_prob=args.gap_prob,
         gap_max_hours=args.gap_max_hours,
+        scenarios=frozenset(name for names in args.scenario for name in names),
     )
+    if (problem := config.scenario_plan().problem()) is not None:
+        parser.error(f"--scenario: {problem}")
     # LF and UTF-8 on every OS: the same seed gives byte-identical files on Windows and Linux.
     if args.out == "-":
         try:
