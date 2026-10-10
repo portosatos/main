@@ -36,7 +36,6 @@ def times_of(record: dict) -> list[datetime]:
 # --- plan: tests before code ------------------------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_same_seed_byte_identical_output(htgen) -> None:
     args = ("--start", "2026-10-01", "--days", "2", "--seed", "42")
     first, second = htgen(*args), htgen(*args)
@@ -46,7 +45,6 @@ def test_same_seed_byte_identical_output(htgen) -> None:
     assert other.path.read_bytes() != first.path.read_bytes()
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_period_bounds_respected(htgen) -> None:
     out = htgen("--start", "2026-10-01", "--end", "2026-10-03", "--seed", "7", *FAST)
     lo, hi = local_midnight(date(2026, 10, 1)), local_midnight(date(2026, 10, 4))
@@ -63,7 +61,6 @@ def test_period_bounds_respected(htgen) -> None:
     assert days == {date(2026, 10, 1), date(2026, 10, 2)}
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_first_line_is_meta_with_devices(htgen) -> None:
     out = htgen("--start", "2026-10-01", "--days", "1", *FAST)
     assert out.meta == {
@@ -115,7 +112,6 @@ def test_steps_intervals_do_not_overlap_per_device(
             assert e1 <= s2, (r1, r2)
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_walks_recorded_by_both_devices_phone_90_to_97_percent(htgen) -> None:
     out = htgen("--start", "2026-10-01", "--days", "3", "--seed", "3", *FAST)
     watch = intervals(out.of("steps", "watch-1"))
@@ -151,7 +147,6 @@ def test_unaligned_produces_non_minute_boundaries(htgen) -> None:
         assert any(ts(r["start"]).second != 0 for r in unaligned.of("steps", device)), device
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_phone_has_no_hr(htgen) -> None:
     out = htgen("--start", "2026-10-01", "--days", "2", *FAST)
     assert out.of("hr", "phone-1") == []
@@ -185,7 +180,6 @@ def test_records_pass_data_format_validation(htgen) -> None:
             assert isinstance(record["bpm"], int) and 30 <= record["bpm"] <= 230, record
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 @pytest.mark.parametrize(("args", "step"), [((), 5), (("--hr-interval", "30"), 30)])
 def test_watch_hr_every_hr_interval_seconds(htgen, args: tuple[str, ...], step: int) -> None:
     out = htgen("--start", "2026-10-01", "--days", "1", *args)
@@ -194,16 +188,16 @@ def test_watch_hr_every_hr_interval_seconds(htgen, args: tuple[str, ...], step: 
     assert len(points) == 24 * 3600 // step  # the watch is worn all day (no gaps before step 2.2)
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_daily_profile_sleep_walks_and_sedentary(htgen) -> None:
     out = htgen("--start", "2026-10-01", "--days", "4", "--seed", "5", *FAST)
     lo, hi = local_midnight(date(2026, 10, 1)), local_midnight(date(2026, 10, 5))
     nights = [
         (s, e)
         for s, e in merge_adjacent([(s, e) for s, e, _ in intervals(out.of("sleep", "watch-1"))])
-        if lo < s and e < hi  # the period cuts the first and the last night
+        if lo < s and e < hi  # the period cuts the last night and the first one, if bedtime < 00:00
     ]
-    assert len(nights) == 3
+    wake_days = {end.astimezone(MSK).date() for _start, end in nights}
+    assert wake_days >= {date(2026, 10, 2), date(2026, 10, 3), date(2026, 10, 4)}
     for start, end in nights:
         assert timedelta(hours=6) <= end - start <= timedelta(hours=9), (start, end)
         assert start.astimezone(MSK).hour in {21, 22, 23, 0, 1}, start
@@ -216,18 +210,24 @@ def test_daily_profile_sleep_walks_and_sedentary(htgen) -> None:
         assert any(s[0][0].astimezone(MSK).date() == day for s in sitting), day
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_phone_sleep_within_20_minutes_of_watch(htgen) -> None:
     out = htgen("--start", "2026-10-01", "--days", "6", "--seed", "11", *FAST)
     lo, hi = local_midnight(date(2026, 10, 1)), local_midnight(date(2026, 10, 7))
 
     def nights(device: str) -> list[tuple[datetime, datetime]]:
         spans = [(s, e) for s, e, _ in intervals(out.of("sleep", device))]
-        return [(s, e) for s, e in merge_adjacent(spans) if lo < s and e < hi]
+        return merge_adjacent(spans)
 
-    watch, phone = nights("watch-1"), nights("phone-1")
-    assert len(watch) == len(phone) == 5
+    # Nights inside the period on the watch; the phone night may be cut by the period start.
+    watch = [(s, e) for s, e in nights("watch-1") if lo < s and e < hi]
+    phone = nights("phone-1")
+    assert {e.astimezone(MSK).date() for _s, e in watch} >= {date(2026, 10, d) for d in range(2, 7)}
     tolerance = timedelta(minutes=20)
-    for (ws, we), (ps, pe) in zip(watch, phone, strict=True):
-        assert abs(ps - ws) <= tolerance and abs(pe - we) <= tolerance, ((ws, we), (ps, pe))
-    assert watch != phone, "the phone is less accurate than the watch"
+    matched = []
+    for ws, we in watch:
+        near = [(ps, pe) for ps, pe in phone if abs(ps - ws) <= tolerance]
+        assert len(near) == 1, (ws, we, phone)
+        (ps, pe), *_ = near
+        assert abs(pe - we) <= tolerance, ((ws, we), (ps, pe))
+        matched.append((ps, pe))
+    assert watch != matched, "the phone is less accurate than the watch"

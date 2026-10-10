@@ -12,7 +12,9 @@ from zoneinfo import ZoneInfo
 
 from htgen import GENERATOR
 from htgen.config import DEFAULT_DAYS, DEFAULT_TZ, DEVICES, Config, Device
+from htgen.devices import day_lines
 from htgen.ndjson import meta_line
+from htgen.profile import plan_day
 
 
 def resolve_period(
@@ -87,8 +89,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def generate(config: Config) -> Iterator[str]:
+    zone = ZoneInfo(config.tz)
     yield meta_line(config.devices)
-    raise NotImplementedError("step 2.1: watch and phone records")
+    for day in config.days():
+        yield from day_lines(plan_day(config.seed, day, zone), config, zone)
 
 
 def _write(lines: Iterator[str], stream: TextIO) -> None:
