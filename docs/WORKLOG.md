@@ -77,3 +77,28 @@
   Тесты health тоже падают на заглушке Settings: она нужна им для создания приложения, до заглушки
   create_app они не доходят. Фикстура тестовой БД при этом уже отработала (база создана).
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T18:18:59+06:00 — Фичи шага 0.2 готовы (пользователь ответил «ок» на тесты до кода, допущения 1–3 приняты)
+- c57b7b4 docs(decisions): ADR-020 (postgres на 5433, compose без .env), ADR-021 (health пока только БД).
+- 5a71cc5 feat(backend): settings and health endpoint — `uv run pytest -q` → 4 passed, маркеры сняты.
+  При недоступной БД health отвечает 503 за ~2 с (таймаут `db_health_timeout_s`; на Windows отказ в
+  соединении приходит не сразу).
+- bc02f27 feat(worker): заглушка `python -m app.worker`, JSON-лог тика (structlog).
+- 867da35 build(compose): образ backend на uv (не root, `init: true` — `docker compose stop` мгновенный),
+  сервисы api (healthcheck по /api/health) и worker.
+- 13974c3 feat(scripts): dev, test, smoke в .ps1 (совместимы с Windows PowerShell 5.1, только ASCII) и .sh.
+  Проверены и негативные случаи smoke (недоступный URL → exit 1).
+- cc60a14 style(lint): проблема — общий Done When запускает ruff из корня, а у scripts/ не было конфига, и
+  ruff брал чужой (правила PLW). Решение: один корневой ruff.toml (line-length 100, кириллица разрешена —
+  RUF001–003 выключены), scripts/check_process.py и его тесты переформатированы; поведение не менялось,
+  8 тестов scripts/ зелёные, `check_process.py --step 0.1` → OK.
+- 017218c docs(claude): раздел «Команды».
+
+## 2026-10-10T18:18:59+06:00 — Шаг 0.2 завершён
+- Коммиты: 6761e03, 16372ec, b4c054e, ec95bfc (test, red), c57b7b4, 5a71cc5 (feat), bc02f27, 867da35,
+  13974c3, cc60a14, 017218c и этот.
+- Тесты: 4 xfailed → 4 passed (backend) + 8 passed (scripts/). ruff check и format --check — exit 0.
+- Done When: `docker compose up -d --build` → api/mailpit/postgres healthy, worker running; smoke.ps1 и
+  smoke.sh → exit 0; `git ls-files --eol "scripts/*.sh"` → i/lf у всех трёх.
+- Не выполнялось: CI (появится на шаге 0.3).
+- Ждёт ручной проверки пользователя: http://localhost:8000/docs и http://localhost:8025.
