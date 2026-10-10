@@ -228,3 +228,17 @@
   демо-пользователя при старте api; smoke дополняется входом демо-пользователя.
 - Порядок: заглушки → тесты до кода (strict xfail) и расширение smoke (red, ADR-022) → стоп до «ок» → код.
 - Примечание: в промпте сессии написано «шаг 0.2 в docs/plan.md» — по смыслу это шаг 1.2, прочитан он.
+
+## 2026-10-10T20:44:45+06:00 — Тесты до кода: 13 тестов (20 с параметрами), 20 xfailed, 17 passed
+- a19a73b refactor(backend): заглушки `hash_password`, `verify_password`, `seed_demo_user`
+  (`NotImplementedError`), чтобы тесты падали на поведении, а не на импорте.
+- b607ef5 test(auth) (red): `integration/test_auth.py` и `unit/test_passwords.py` со strict xfail;
+  `uv run pytest -q` → 17 passed, 20 xfailed. Причины с `--runxfail`: маршрутов `/api/auth/*` нет → 404
+  вместо 201/401/403/409/422; заглушки → `NotImplementedError`; в `/docs` нет `requestInterceptor`.
+- Smoke (ADR-022, без маркера): `scripts/smoke.ps1` и `smoke.sh` → 4×OK, `FAIL demo login … 404`, exit 1.
+  Красный до фичи auth; в `scripts/test.*` и CI smoke не входит.
+- Сверх плана: `test_register_rejects_bad_email_or_short_password_422`, `test_verify_never_raises_on_a_broken_hash`,
+  `test_swagger_ui_sends_csrf_header` (иначе ручная проверка через `/docs` упрётся в 403).
+- Изменён тест шага 1.1: `api_client` вынесен в `tests/integration/client.py` и по умолчанию шлёт
+  `X-Requested-With: ht` (после CSRF-middleware `POST /api/dev/clock` без заголовка → 403).
+- Остановка: жду «ок» пользователя перед кодом.
