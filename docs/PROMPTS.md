@@ -341,3 +341,15 @@ text
 СТОП, жди, пока я прочитаю дифф.
 7. После моего «принято»: [x] в плане, время закрытия и заметки, WORKLOG, коммит, push.
 
+
+## 2026-10-11T00:09:42+06:00 — Разрешение писать код шага 3.2 и принятие допущений
+Допущения (будут ADR-031): тесты задач коммитят в тестовую БД по-настоящему; контрольная точка в одной транзакции
+с пачкой (точное возобновление); пачка — 5000 строк файла; файл удаляется после `done`; ошибка обработчика →
+`failed` без повторов; health: `worker.status` ok/stale/unknown (stale > 120 с), код ответа от воркера не зависит;
+heartbeat и `locked_at` обновляются после каждой пачки; `ingest_jobs.lines_done`, `ingest_jobs.warnings`,
+таблица `worker_heartbeat`; отчёт API — `counts`, `progress`, `errors`, `warnings`; потоковый multipart через
+`python-multipart`; nginx `client_max_body_size` 501m; volume `ingest` в `/data/ingest`; `scripts/upload.*`
+(демо-пользователь, `:5173`, опрос раз в 1 с, exit 0 только при `done`, в .ps1 — `curl.exe`).
+text
+ок, допущения 1–13 принимаю
+
