@@ -117,13 +117,15 @@
   (`python -m app.seed` после миграций, идемпотентно). Все изменяющие запросы к API — с заголовком
   `X-Requested-With: ht`, иначе 403 (ADR-026); Swagger `/docs` добавляет его сам.
 - Dev-время (только `APP_ENV=dev`): `GET /api/dev/clock`, `POST /api/dev/clock` с `{"offset_seconds": 86400}`
-  (сдвиг; 0 — сброс). При `APP_ENV=prod` → 404.
+  (сдвиг; 0 — сброс). При `APP_ENV=prod` → 404. В UI — dev-панель внизу страниц после входа
+  (`http://localhost:5173`, ADR-027); ссылка на Mailpit — `VITE_MAILPIT_URL` или тот же хост, порт 8025.
 - Только backend: `cd backend; uv run pytest`. Линтер: `uv run --project backend ruff check .` и
   `uv run --project backend ruff format --check .`
 - Frontend (Node 22+): `npm ci --prefix frontend` (один раз), `npm --prefix frontend run check` (typecheck +
   lint + vitest + build), `npm --prefix frontend run dev` — Vite на `http://localhost:5173` с proxy `/api` →
   `localhost:8000` (сервис frontend из compose при этом остановить: `docker compose stop frontend`).
-  Компоненты shadcn: `cd frontend; npx shadcn@latest add <name>`.
+  Компоненты shadcn: `cd frontend; npx shadcn@latest add <name>` (под React 19: компонент, которому передают
+  `ref`, переписать на `forwardRef`, ADR-027). Часть тестов: `cd frontend; npx vitest run src/pages`.
 - CI: `.github/workflows/ci.yml` на каждый push в `main` и PR; последний прогон —
   `gh run list --branch main --limit 1`, логи упавшего — `gh run view <id> --log-failed`.
 - Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
