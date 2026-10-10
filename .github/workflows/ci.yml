@@ -1,0 +1,92 @@
+# Checks every push to main and every pull request: lint and tests of backend, scripts/ and
+# frontend, LF endings of *.sh, and the step process (WORKLOG and commits, scripts/check_process.py).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (ruff, pytest)
+    runs-on: ubuntu-latest
+    services:
+      # Same images and host ports as docker-compose.yml, so test defaults work unchanged.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: health
+          POSTGRES_PASSWORD: health
+          POSTGRES_DB: health_tracker
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U health -d health_tracker"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.31.4
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://health:health@localhost:5433/health_tracker_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0  # upstream has no moving major tag
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install backend dependencies
+        run: uv sync --project backend --locked
+      - name: ruff check
+        run: uv run --project backend ruff check .
+      - name: ruff format --check
+        run: uv run --project backend ruff format --check .
+      - name: pytest backend (unit + integration)
+        working-directory: backend
+        run: uv run pytest
+      - name: pytest scripts/
+        run: uv run --project backend pytest scripts/tests -q
+
+  frontend:
+    name: frontend (npm run check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: npm ci
+        run: npm ci --prefix frontend
+      - name: typecheck, lint, vitest, build
+        run: npm --prefix frontend run check
+
+  process:
+    name: process (LF, check_process)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # check_process.py walks the whole history
+      - name: "*.sh are stored with LF"
+        run: |
+          files="$(git ls-files --eol -- '*.sh')"
+          echo "$files"
+          if [ -z "$files" ]; then echo "no *.sh files found"; exit 1; fi
+          bad="$(echo "$files" | grep -v '^i/lf' || true)"
+          if [ -n "$bad" ]; then echo "not LF in the index:"; echo "$bad"; exit 1; fi
+      - name: check_process.py --all
+        run: python3 scripts/check_process.py --all
