@@ -565,3 +565,18 @@
 - `docker compose restart worker` посреди файла за 90 дней: `job_interrupted` → задача сразу в очереди → `attempt 2`
   → `done`, итог 1 662 526 `new`, 0 `duplicate` (как без рестарта).
 - Замерочные пользователи `bench90@`, `restart90@example.com` удалены из dev-БД.
+
+## 2026-10-11T00:27:01+06:00 — Шаг 3.2 завершён
+- Коммиты: f5968be, ddc38b8 (docs), c32a9f4 (refactor, заглушки), f3d1c34 (test, red), 28540e8, 74263a4 (docs),
+  e3f104d, 54097ab, a0d73d4, c4736a5, ae66890 (feat), 08b4a5f, 4761953 и этот (docs).
+- Тесты: красный прогон `88 passed, 12 xfailed` → зелёный backend `100 passed` (12 новых: 11 по плану, 1 сверх плана —
+  воркер просыпается по NOTIFY); generator 51 passed, scripts/ 8 passed; `scripts/test.ps1` и `scripts/test.sh` → exit 0,
+  `OK: all tests passed`; ruff check и format --check → exit 0; `git grep -n "step 3.2: not implemented" -- ":!docs"`
+  → пусто; `alembic check` → «No new upgrade operations detected»; `npm --prefix frontend run check` → exit 0 (14 tests,
+  build), т.к. менялся `frontend/nginx.conf`.
+- Стек: `docker compose up -d --build --wait` → всё healthy, `alembic current` → `0004 (head)`, `scripts/smoke.sh` → OK,
+  `/api/health` → `worker.status: ok`.
+- Done When шага: `htgen --days 30 --seed 7 --out f.ndjson` + `scripts/upload.ps1 f.ndjson` → `done`, exit 0;
+  `scripts/upload.sh` того же файла → 0 `new`, exit 0.
+- Ждёт ручной проверки пользователя: двойная загрузка через `scripts/upload.ps1` (во второй раз 0 `new`), health,
+  дифф.
