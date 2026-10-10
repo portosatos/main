@@ -663,3 +663,14 @@
   `unit/test_localtime.py` (7 по плану, strict xfail) → реализация → ADR о границах суток и времени до первой записи.
 - Прочитано: CLAUDE.md, шаг 4.1 в docs/plan.md, SPEC F5, F6 (статусы дня), §6.2, §7.1 (`user_timezones`), §8 этап 4,
   §9 #17, #18; ADR-009.
+
+## 2026-10-11T01:17:23+06:00 — Шаг 4.1: тесты до кода, 9 xfailed
+- Коммиты: 62da020 refactor(localtime): заглушка `TzHistory` (`zone_at`, `local_date`, `ranges_for_date`,
+  NotImplementedError); 3da42c1 test(localtime) (red): `unit/test_localtime.py` — 7 тестов по плану и 2 сверх плана
+  (`test_before_first_record_first_tz_applies` — Допущение: до первой записи истории действует первый пояс;
+  `test_records_order_and_validation`). Маркер — `xfail(strict=True, raises=NotImplementedError, …)`: тест, упавший
+  по другой причине, был бы ошибкой, а не xfail.
+- Красный прогон: `9 xfailed`; с `--runxfail` все 9 падают с `NotImplementedError: step 4.1`. Весь backend:
+  `109 passed, 9 xfailed`. ruff check и format --check → exit 0.
+- Ожидаемые границы для Сантьяго (переход в полночь) и Берлина сверены с tzdata отдельным запуском zoneinfo.
+- Ждёт подтверждения пользователя («ок»).
