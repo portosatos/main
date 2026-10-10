@@ -175,6 +175,12 @@ Done When: проверяемые пункты (тест или команда) 
 ### Шаг 0.3 — Скелет frontend и CI
 **Этап SPEC:** 0 · **Зависит от:** 0.2 · **Критерии §9:** вклад в #1, #21, #22
 
+**Статус:** [x] закрыт 2026-10-10T20:14:30+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-10T19:56:19+06:00.
+Заметки: расширение smoke закоммичено красным без маркера (ADR-022); Tailwind v4, React 18, TypeScript ~6.0,
+Node 22 в Docker и CI (ADR-023); MSW 2 вместо 3 — peer `@vitest/mocker`, иначе `npm ci` на Node 22 падает
+(уточнение ADR-023); nginx на хост-порту 5173, CI с `fetch-depth: 0` и сервисом mailpit (ADR-024);
+`setup-uv` закреплён на `v10.3.0`. README-скелет из SPEC §8 (этап 0) по решению пользователя — на шаге 13.2.
+
 **Цель:** frontend за nginx на том же origin, что и API, и CI, который проверяет каждый push.
 
 **Объём:** Vite + React + TS, Tailwind, `shadcn init` (button, card), **Vitest + React Testing Library + MSW**
@@ -187,10 +193,10 @@ Done When: проверяемые пункты (тест или команда) 
 - расширение smoke: `GET :5173/` → 200, `GET :5173/api/health` → 200 (proxy через nginx)
 
 **Done When:**
-- [ ] `npm --prefix frontend run check` → exit 0.
-- [ ] `docker compose up -d --build && scripts/smoke.ps1` → exit 0, включая проверки frontend и proxy.
-- [ ] `gh run list --branch main --limit 1` → `completed success`.
-- [ ] Каждая команда из раздела «Команды» `CLAUDE.md` выполняется с exit 0.
+- [x] `npm --prefix frontend run check` → exit 0.
+- [x] `docker compose up -d --build && scripts/smoke.ps1` → exit 0, включая проверки frontend и proxy.
+- [x] `gh run list --branch main --limit 1` → `completed success`.
+- [x] Каждая команда из раздела «Команды» `CLAUDE.md` выполняется с exit 0 (демо и генератор ещё не существуют — шаги 13.1 и 2.1).
 
 **Ручная проверка:** Открыть `http://localhost:5173`: видна оболочка «Трекер здоровья». На GitHub во вкладке Actions последний прогон зелёный.
 
