@@ -242,6 +242,13 @@ Node 22 в Docker и CI (ADR-023); MSW 2 вместо 3 — peer `@vitest/mocker
 ### Шаг 1.2 — Авторизация (backend)
 **Этап SPEC:** 1 · **Зависит от:** 1.1 · **Критерии §9:** вклад в #1, #20
 
+**Статус:** [x] закрыт 2026-10-10T20:59:48+06:00 (принят пользователем, ручная проверка пройдена: пункты 1, 2, 4, 5; флаги cookie
+проверены консультантом через curl, DevTools не открывали). Начат 2026-10-10T20:41:33+06:00.
+Заметки: сессия — абсолютные 14 дней по Clock, `sessions.id = sha256(token)`; CSRF — ASGI-middleware до маршрутизации
+(без заголовка на любой изменяющий запрос → 403, в том числе `/api/dev/clock`); Swagger `/docs` сам шлёт заголовок;
+сид `python -m app.seed` после миграций (`DEMO_USER_*`, пароль следует за env); ADR-026. Сверх плана — 3 теста и
+README-скелет (по просьбе пользователя). На шаге 1.3: frontend шлёт `X-Requested-With: ht` на всех изменяющих запросах.
+
 **Цель:** регистрация, вход, выход и сессии по cookie с защитой от CSRF.
 
 **Объём:** `users` (с `notify_email`, полями тихих часов), `user_timezones` (начальный пояс из тела регистрации),
@@ -265,7 +272,7 @@ Node 22 в Docker и CI (ADR-023); MSW 2 вместо 3 — peer `@vitest/mocker
 - `test_seed_demo_user_idempotent`
 
 **Done When:**
-- [ ] `scripts/smoke.*` дополнен входом демо-пользователя → exit 0 (`/api/auth/me` отвечает 200 с cookie).
+- [x] `scripts/smoke.*` дополнен входом демо-пользователя → exit 0 (`/api/auth/me` отвечает 200 с cookie).
 
 **Ручная проверка:** В Swagger (`/docs`) зарегистрироваться, войти, вызвать `/api/auth/me`. В DevTools → Application → Cookies у `ht_session` стоят HttpOnly и SameSite=Lax.
 
