@@ -274,7 +274,6 @@ async def demo_login(database_url: str, sessionmaker: Sessionmaker, password: st
     return response.status_code
 
 
-@pytest.mark.xfail(strict=True, reason="step 1.2: not implemented")
 async def test_seed_demo_user_idempotent(
     migrated_database_url: str, test_sessionmaker: Sessionmaker
 ) -> None:

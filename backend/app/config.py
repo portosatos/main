@@ -17,3 +17,7 @@ class Settings(BaseSettings):
     db_health_timeout_s: float = 2.0
     # How long a process trusts its cached dev clock offset (ADR-025).
     clock_cache_ttl_s: float = 1.0
+    # Demo user created by `python -m app.seed` on api start; an empty password skips it.
+    demo_user_email: str = "demo@example.com"
+    demo_user_password: str = ""
+    demo_user_timezone: str = "Europe/Moscow"
