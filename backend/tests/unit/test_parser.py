@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.services.ingest.parser import (
+    MAX_LINE_BYTES,
     DeviceMeta,
     HeartRate,
     Invalid,
@@ -221,3 +222,19 @@ def test_byte_offsets_tracked() -> None:
     stream.seek(resumed_from)
     resumed = list(parse_lines(stream, start_offset=resumed_from, first_line=3))
     assert resumed == lines[2:]
+
+
+def test_line_over_limit_invalid_and_skipped() -> None:
+    """Added after the code of step 3.1 (ADR-030): an over-long line is invalid, read in chunks,
+    and the offsets after it stay exact."""
+    huge = b'{"type": "steps", "pad": "' + b"x" * (MAX_LINE_BYTES * 3) + b'"}\n'
+    data = raw(HR) + b"\n" + huge + raw(HR) + b"\n"
+
+    lines = parse(data)
+
+    assert [line.number for line in lines] == [1, 2, 3]
+    assert isinstance(lines[1].record, Invalid)
+    assert "КиБ" in lines[1].record.reason
+    assert lines[1].end_offset - lines[1].offset == len(huge)
+    assert isinstance(lines[2].record, HeartRate)
+    assert lines[2].end_offset == len(data)
