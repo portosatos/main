@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api import auth, dev, health
+from app.api import auth, dev, docs, health
+from app.auth.csrf import CsrfHeaderMiddleware
 from app.clock import create_clock
 from app.config import Settings
 from app.db import create_engine, create_sessionmaker
@@ -32,8 +33,11 @@ def create_app(
         finally:
             await app.state.engine.dispose()
 
-    app = FastAPI(title="Health Tracker API", lifespan=lifespan)
+    # /docs is served by app.api.docs: Swagger UI that sends the CSRF header.
+    app = FastAPI(title="Health Tracker API", lifespan=lifespan, docs_url=None)
     app.state.settings = settings
+    app.add_middleware(CsrfHeaderMiddleware)
+    app.include_router(docs.router)
     app.include_router(health.router)
     app.include_router(auth.router)
     if settings.app_env == "dev":

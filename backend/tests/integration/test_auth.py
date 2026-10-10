@@ -190,7 +190,6 @@ async def test_me_without_cookie_401(
     assert unknown_token.status_code == 401
 
 
-@pytest.mark.xfail(strict=True, reason="step 1.2: not implemented")
 async def test_mutating_request_without_csrf_header_403(
     migrated_database_url: str, test_sessionmaker: Sessionmaker
 ) -> None:
@@ -308,7 +307,6 @@ async def test_seed_demo_user_idempotent(
     assert await demo_login(migrated_database_url, test_sessionmaker, PASSWORD) == 401
 
 
-@pytest.mark.xfail(strict=True, reason="step 1.2: not implemented")
 async def test_swagger_ui_sends_csrf_header(migrated_database_url: str) -> None:
     """/docs must stay usable for manual checks: Swagger adds the header to its requests."""
     async with api_client(migrated_database_url) as client:
