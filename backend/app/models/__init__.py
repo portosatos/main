@@ -6,18 +6,22 @@ from app.models.dev_clock import DevClock
 from app.models.device import Device
 from app.models.ingest import HrPoint, IngestJob, SleepRaw, StepsRaw
 from app.models.jobs import Job, WorkerHeartbeat
+from app.models.minutes import CoverageMinute, SleepMinute, StepsMinute
 from app.models.session import AuthSession
 from app.models.user import User, UserTimezone
 
 __all__ = [
     "AuthSession",
     "Base",
+    "CoverageMinute",
     "DevClock",
     "Device",
     "HrPoint",
     "IngestJob",
     "Job",
+    "SleepMinute",
     "SleepRaw",
+    "StepsMinute",
     "StepsRaw",
     "User",
     "UserTimezone",
