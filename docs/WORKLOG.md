@@ -27,3 +27,10 @@
 - DECISIONS: ADR-001…ADR-010 (стек backend и frontend отдельно, очередь на Postgres, SSE, исходные записи и
   производные минуты, классификация, объединение по минутам, день пробуждения, история поясов, планировщик).
   Итого 18 ADR. Добавлен docs/agent-session/README.md.
+
+## 2026-10-10T17:30:49+06:00 — Тесты до кода шага 0.1: 8 xfailed
+- scripts/tests/test_check_process.py: 7 тестов из плана + test_all_mode_allows_unfinished_last_step_only
+  (режим --all нужен для CI на шаге 0.3 и для Done When шага 13.2).
+- `python -m pytest scripts/tests -q` → 8 xfailed; с `--runxfail` → 8 failed, у всех причина
+  `NotImplementedError: step 0.1: check_process.py is not implemented yet` (заглушка), а не ошибка теста.
+- Остановка: жду «ок» пользователя перед кодом.
