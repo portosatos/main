@@ -11,8 +11,6 @@ from app.config import AppEnv, Settings
 from app.main import create_app
 from app.worker.main import worker_context
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 1.1: not implemented")
-
 
 @asynccontextmanager
 async def api_client(
