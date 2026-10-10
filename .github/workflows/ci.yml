@@ -79,6 +79,11 @@ jobs:
           test -s sample.ndjson
           wc -l sample.ndjson
           head -n 2 sample.ndjson
+      - name: htgen writes 90 days with random gaps
+        run: |
+          uv run --project generator htgen --days 90 --devices watch,phone --gap-prob 0.05 --seed 42 --out big.ndjson
+          test -s big.ndjson
+          wc -l big.ndjson
 
   frontend:
     name: frontend (npm run check)
