@@ -25,6 +25,15 @@ services:
     healthcheck:
       disable: true  # the image healthcheck probes the API port; the worker has no HTTP
 
+  frontend:
+    build: ./frontend
+    image: health-tracker-frontend:dev
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     environment:
