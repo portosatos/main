@@ -102,13 +102,21 @@
 ## 6. Команды
 > Агент поддерживает этот раздел в актуальном состоянии; заполняется на этапе 0.
 - Запуск всего: `docker compose up --build` или `scripts/dev.ps1` / `scripts/dev.sh` (`-d` — в фоне).
-  Порты на хосте: api 8000 (`/docs`), Mailpit UI 8025 и SMTP 1025, postgres **5433** (ADR-020).
-- Smoke запущенного стека: `scripts/smoke.ps1` / `scripts/smoke.sh` (`/api/health` и Mailpit → 200).
+  Порты на хосте: приложение **5173** (nginx, `/api` проксируется в api; ADR-024), api 8000 (`/docs`),
+  Mailpit UI 8025 и SMTP 1025, postgres **5433** (ADR-020).
+- Smoke запущенного стека: `scripts/smoke.ps1` / `scripts/smoke.sh` (`/api/health`, Mailpit, frontend `:5173/`
+  и `:5173/api/health` через proxy → 200).
 - Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend
   и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
   `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
 - Только backend: `cd backend; uv run pytest`. Линтер: `uv run --project backend ruff check .` и
   `uv run --project backend ruff format --check .`
+- Frontend (Node 22+): `npm ci --prefix frontend` (один раз), `npm --prefix frontend run check` (typecheck +
+  lint + vitest + build), `npm --prefix frontend run dev` — Vite на `http://localhost:5173` с proxy `/api` →
+  `localhost:8000` (сервис frontend из compose при этом остановить: `docker compose stop frontend`).
+  Компоненты shadcn: `cd frontend; npx shadcn@latest add <name>`.
+- CI: `.github/workflows/ci.yml` на каждый push в `main` и PR; последний прогон —
+  `gh run list --branch main --limit 1`, логи упавшего — `gh run view <id> --log-failed`.
 - Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
 - Генератор (появится на шаге 2.1): `uv run --project generator htgen --help`
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
