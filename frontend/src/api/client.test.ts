@@ -4,7 +4,7 @@ import { server } from "@/test/server";
 
 import { api, setUnauthorizedRedirect } from "./client";
 
-test.fails("adds X-Requested-With on mutating requests", async () => {
+test("adds X-Requested-With on mutating requests", async () => {
   const seen: Record<string, string | null> = {};
   server.use(
     http.all("/api/things", ({ request }) => {
@@ -23,7 +23,7 @@ test.fails("adds X-Requested-With on mutating requests", async () => {
   expect(seen).toMatchObject({ POST: "ht", PUT: "ht", PATCH: "ht", DELETE: "ht" });
 });
 
-test.fails("sends the session cookie with every request", async () => {
+test("sends the session cookie with every request", async () => {
   let credentials: RequestCredentials | undefined;
   server.use(
     http.get("/api/things", ({ request }) => {
@@ -37,7 +37,7 @@ test.fails("sends the session cookie with every request", async () => {
   expect(credentials).toBe("include");
 });
 
-test.fails("redirects to /login on 401", async () => {
+test("redirects to /login on 401", async () => {
   const navigate = vi.fn();
   setUnauthorizedRedirect(navigate);
   server.use(
@@ -48,7 +48,7 @@ test.fails("redirects to /login on 401", async () => {
   expect(navigate).toHaveBeenCalledWith("/login");
 });
 
-test.fails("does not redirect on 401 from /api/auth/* (the form shows the error)", async () => {
+test("does not redirect on 401 from /api/auth/* (the form shows the error)", async () => {
   const navigate = vi.fn();
   setUnauthorizedRedirect(navigate);
   server.use(
