@@ -32,3 +32,6 @@ blob-report/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Uploads of a locally run api/worker (INGEST_DIR in .env.example)
+ingest-data/

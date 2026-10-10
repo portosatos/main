@@ -134,5 +134,10 @@
   без `--out` пишет в stdout); пояса, пропуски и сценарии — `--tz-change "2026-10-05T12:00Z=America/New_York"`,
   `--gap "2026-10-03T00:00/2026-10-04T12:00@watch"`, `--gap-prob 0.05`, `--scenario short-sleep`.
   Тесты: `cd generator; uv run pytest` (входят в `scripts/test.*` и CI).
+- Загрузка файла в запущенный стек: `scripts/upload.ps1 FILE` / `scripts/upload.sh FILE` — вход демо-пользователем
+  через `:5173`, `POST /api/ingest/files`, опрос задачи до `done`/`failed`, отчёт; exit 0 только при `done` (другой
+  пользователь — `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`). Файлы — volume `ingest` (`/data/ingest`, общий для api и
+  worker), лимит 500 МБ. Воркер: `docker compose logs -f worker` (JSON-логи `job_started`/`job_done`), тик в
+  `GET /api/health` → `worker.status`. Очередь — таблица `jobs`, отчёты — `ingest_jobs` (ADR-031).
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
