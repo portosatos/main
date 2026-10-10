@@ -107,3 +107,12 @@
 - Со слов пользователя: «принято» (дифф e10b212..2ee6b94 прочитан, раздел «Проверьте руками» пройден).
   Шаг закрыт, в docs/plan.md отмечен [x] с заметками.
 - Следующий шаг: 0.3 (скелет frontend и CI).
+
+## 2026-10-10T19:56:19+06:00 — Шаг 0.3 начат: скелет frontend и CI
+- План: frontend/ на Vite + React 18 + TS, Tailwind, `shadcn init` (button, card), Vitest + React Testing
+  Library + MSW, `npm run check` (typecheck + lint + vitest + build); nginx.conf (proxy `/api`,
+  `proxy_buffering off`), frontend Dockerfile, сервис frontend в compose на :5173; smoke проверяет frontend и
+  proxy; GitHub Actions: ruff, pytest с service-контейнерами postgres и mailpit, `npm run check`, LF для
+  `*.sh`, `check_process.py --all`; раздел «Команды» в CLAUDE.md.
+- Окружение: Node v24.19.0, npm 11.17.0 (в Docker и CI — Node 22 LTS, как в SPEC §4), gh 2.102.0 (вошёл как
+  portosatos, репозиторий portosatos/main публичный, прогонов Actions ещё нет), порт 5173 свободен.
