@@ -3,7 +3,7 @@
 line-length = 100
 target-version = "py312"
 extend-exclude = ["docs/agent-session"]
-src = ["backend", "scripts"]
+src = ["backend", "generator/src", "scripts"]
 
 [lint]
 select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "RUF"]

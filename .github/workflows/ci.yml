@@ -1,5 +1,5 @@
-# Checks every push to main and every pull request: lint and tests of backend, scripts/ and
-# frontend, LF endings of *.sh, and the step process (WORKLOG and commits, scripts/check_process.py).
+# Checks every push to main and every pull request: lint and tests of backend, generator, scripts/
+# and frontend, LF endings of *.sh, and the step process (WORKLOG and commits, scripts/check_process.py).
 name: CI
 
 on:
@@ -58,6 +58,21 @@ jobs:
         run: uv run pytest
       - name: pytest scripts/
         run: uv run --project backend pytest scripts/tests -q
+
+  generator:
+    name: generator (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0  # upstream has no moving major tag
+        with:
+          enable-cache: true
+          cache-dependency-glob: generator/uv.lock
+      - name: Install generator dependencies
+        run: uv sync --project generator --locked
+      - name: pytest generator
+        working-directory: generator
+        run: uv run pytest -q
 
   frontend:
     name: frontend (npm run check)
