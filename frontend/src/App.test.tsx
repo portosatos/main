@@ -12,7 +12,7 @@ const demo = {
   notify_email: null,
 };
 
-// A logged-in session that POST /api/auth/logout ends.
+// A logged-in session that POST /api/auth/logout ends; not a dev stack (no dev panel).
 function fakeSession() {
   let loggedIn = true;
   server.use(
@@ -25,6 +25,7 @@ function fakeSession() {
       loggedIn = false;
       return new HttpResponse(null, { status: 204 });
     }),
+    http.get("/api/dev/clock", () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
   );
 }
 

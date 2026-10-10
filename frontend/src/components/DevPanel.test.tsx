@@ -14,7 +14,7 @@ function renderPanel() {
   return renderRoutes([{ path: "/", element: <DevPanel /> }]);
 }
 
-test.fails("hidden when /api/dev/clock returns 404", async () => {
+test("hidden when /api/dev/clock returns 404", async () => {
   let requested = false;
   server.use(
     http.get("/api/dev/clock", () => {
@@ -31,7 +31,7 @@ test.fails("hidden when /api/dev/clock returns 404", async () => {
   expect(screen.queryByRole("region", { name: "Dev-панель" })).not.toBeInTheDocument();
 });
 
-test.fails("sets offset and shows new time", async () => {
+test("sets offset and shows new time", async () => {
   // A stateful fake of the dev clock API: GET returns what the last POST set.
   let offset = 0;
   let posted: unknown;

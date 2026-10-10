@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "@/api/auth";
+import DevPanel from "@/components/DevPanel";
 import { Button } from "@/components/ui/button";
 import { sections } from "@/lib/sections";
 
@@ -50,6 +51,7 @@ export default function AppLayout() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         <Outlet />
       </main>
+      <DevPanel />
     </div>
   );
 }
