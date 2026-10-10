@@ -674,3 +674,23 @@
   `109 passed, 9 xfailed`. ruff check и format --check → exit 0.
 - Ожидаемые границы для Сантьяго (переход в полночь) и Берлина сверены с tzdata отдельным запуском zoneinfo.
 - Ждёт подтверждения пользователя («ок»).
+
+## 2026-10-11T01:26:03+06:00 — Фича готова: локальные даты по истории поясов
+- Коммит: 1bec388 feat(localtime): `TzHistory` — `zone_at`, `local_date`, `ranges_for_date`; маркеры шага сняты.
+  Сутки в поясе — `[00:00 дня, 00:00 следующего)` с `fold=0` (00:00 в «дыре» → конец дыры), обрезка периодом записи,
+  первый пояс действует и до своего `valid_from`, соседние куски склеиваются.
+- 5af6a69 docs(prompts), fd3df50 docs(localtime): ADR-033 (допущения 1–3, приняты пользователем).
+- Зелёный прогон: `unit/test_localtime.py` → `9 passed`. Дополнительно, без коммита: стресс-прогон property-тестов
+  (3000 примеров «каждая минута — одна дата» и 20 000 «туда и обратно») → OK, 59 с.
+- Заметка пользователя: дни считаются по поясу пользователя, а `htgen` по умолчанию пишет `Europe/Moscow` — в
+  демо-скрипте и e2e (шаги 12–13) генератор запускать с `--tz` пояса пользователя (записано в ADR-033).
+
+## 2026-10-11T01:26:03+06:00 — Шаг 4.1 завершён
+- Коммиты: 0eb8c39 (docs), 62da020 (refactor, заглушка), 3da42c1 (test, red), 7e14be6, 5af6a69 (docs),
+  1bec388 (feat), fd3df50 (docs) и этот (docs).
+- Тесты: красный прогон `9 xfailed` (с `--runxfail` — 9 × `NotImplementedError`) → зелёный backend `118 passed`
+  (9 новых); `scripts/test.ps1` и `scripts/test.sh` → exit 0, `OK: all tests passed` (backend 118, generator 51,
+  scripts 8); ruff check и format --check → exit 0; `git grep -n "step 4.1: not implemented" -- ":!docs"` → пусто.
+  Frontend, generator, миграции не менялись.
+- Done When шага: только общий DoD.
+- Ждёт ручной проверки пользователя и чтения диффа.
