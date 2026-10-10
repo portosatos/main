@@ -352,3 +352,16 @@
   отдельный генератор случайных чисел на каждую дату (`seed + дата`). Тесты генератора — в `scripts/test.*` и CI.
 - Порядок: каркас пакета и заглушки (тесты падают на поведении, а не на импорте) → тесты до кода
   (`xfail(strict=True)`) → стоп до «ок» → код.
+
+## 2026-10-10T22:31:33+06:00 — Тесты до кода шага 2.1: 18 xfailed
+- 17ad01d build(generator): пакет `htgen` (hatchling, `[project.scripts] htgen = "htgen.cli:main"`, зависимость
+  `tzdata`, dev — pytest и hypothesis), заглушки `cli.main` и `cli.resolve_period` (бросают
+  `NotImplementedError`), 2 теста пакета (passed); тесты генератора добавлены в `scripts/test.ps1`,
+  `scripts/test.sh` и в CI (job `generator`); `ruff.toml`: `generator/src` в `src`.
+- 23e12f8 test(generator) (red): 8 тестов из плана и 5 сверх плана (выбор периода и ошибки, ошибка CLI → exit 2,
+  валидация SPEC 7.2, шаг пульса `--hr-interval`, суточный профиль: сон 6–9 ч, прогулка и сидячий период
+  каждый день, сон телефона в пределах ±20 мин от часов). Маркер
+  `xfail(strict=True, raises=NotImplementedError)`: тест, упавший по другой причине, был бы `failed`.
+- Красный прогон (`cd generator; uv run pytest -q`): `2 passed, 18 xfailed`; с `--runxfail` все 18 падают
+  с `NotImplementedError: step 2.1`.
+- Остановка: жду «ок» пользователя перед кодом.
