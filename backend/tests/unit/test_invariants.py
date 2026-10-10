@@ -3,8 +3,6 @@
 import re
 from pathlib import Path
 
-import pytest
-
 APP_DIR = Path(__file__).resolve().parents[2] / "app"
 CLOCK_FILE = APP_DIR / "clock.py"
 
@@ -19,7 +17,6 @@ def test_forbidden_pattern_matches_known_calls() -> None:
         assert not FORBIDDEN_NOW.search(allowed), allowed
 
 
-@pytest.mark.xfail(strict=True, reason="step 1.1: not implemented")
 def test_no_direct_now_calls_outside_clock() -> None:
     offenders = [
         f"{path.relative_to(APP_DIR.parent)}:{lineno}: {line.strip()}"

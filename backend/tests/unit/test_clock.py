@@ -6,8 +6,6 @@ import pytest
 from app.clock import Clock
 from app.config import AppEnv
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 1.1: not implemented")
-
 FIXED = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
 
 

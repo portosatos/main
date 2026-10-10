@@ -15,3 +15,5 @@ class Settings(BaseSettings):
     database_url: str
     # Upper bound for the DB check in /api/health, so a dead DB does not hang healthchecks.
     db_health_timeout_s: float = 2.0
+    # How long a process trusts its cached dev clock offset (ADR-025).
+    clock_cache_ttl_s: float = 1.0
