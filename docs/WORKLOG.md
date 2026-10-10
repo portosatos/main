@@ -290,3 +290,19 @@
   скрыта, если `/api/dev/clock` → 404; smoke дополняется `GET :5173/login` → 200.
 - Порядок: зависимости и заглушки модулей (тесты должны падать на поведении, а не на импорте) → тесты до кода
   (`test.fails`) → стоп до «ок» → код.
+
+## 2026-10-10T21:08:19+06:00 — Тесты до кода шага 1.3: 12 expected fail
+- 2ccaa96 build(frontend): `react-router` 7 (8.x требует React 19, а SPEC фиксирует React 18), TanStack Query 5,
+  react-hook-form 7, zod 4, `@hookform/resolvers`; shadcn `input`, `label`.
+- 55fcef9 refactor(frontend): заглушки `api/client.ts` (бросает «not implemented»), страниц входа и регистрации
+  (только заголовок), `ProtectedRoute` (пускает всех), `DevPanel` (показана всегда, без часов).
+- 6ac7b94 test(frontend) (red): 8 тестов из плана и 4 сверх плана (cookie `credentials: include`, нет редиректа
+  на 401 от `/api/auth/*`, сообщение сервера при неверном пароле, пароль короче 8 символов) — все `test.fails`.
+  Vitest запускается с `TZ=UTC`. Smoke дополнен `GET :5173/login` (уже 200: SPA-fallback nginx с шага 0.3).
+- Красный прогон (`npx vitest run`): 6 файлов, 1 passed | 12 expected fail. Без маркеров причины такие:
+  клиент — `Error: not implemented`; страницы — нет поля «Email» / кнопки «Войти»; ProtectedRoute — не найдена
+  «Страница входа» (пустил на закрытую); DevPanel — запроса к `/api/dev/clock` нет, время не показано.
+  `npm --prefix frontend run check` → exit 0.
+- Проблема: длинная команда с несколькими heredoc в Git Bash снова упала с «unexpected EOF» до записи файлов;
+  тесты записаны инструментом Write.
+- Остановка: жду «ок» пользователя перед кодом.
