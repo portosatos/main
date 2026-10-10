@@ -60,7 +60,7 @@ jobs:
         run: uv run --project backend pytest scripts/tests -q
 
   generator:
-    name: generator (pytest)
+    name: generator (pytest, htgen)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -73,6 +73,12 @@ jobs:
       - name: pytest generator
         working-directory: generator
         run: uv run pytest -q
+      - name: htgen writes a 7-day file
+        run: |
+          uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson
+          test -s sample.ndjson
+          wc -l sample.ndjson
+          head -n 2 sample.ndjson
 
   frontend:
     name: frontend (npm run check)
