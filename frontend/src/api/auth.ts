@@ -17,8 +17,6 @@ export function useMe() {
   return useQuery({
     queryKey: meQueryKey,
     queryFn: () => api.get<User>("/api/auth/me"),
-    // 401 is an answer, not a failure worth retrying.
-    retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -45,12 +43,16 @@ export function useRegister() {
   });
 }
 
-export function useLogout() {
+// `leave` runs first (e.g. navigate to /login): with the protected pages gone, clearing the cache
+// does not make them refetch. Nothing cached for this user may outlive the session.
+export function useLogout(leave: () => void) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<void>("/api/auth/logout"),
-    // Nothing cached for this user may outlive the session.
-    onSettled: () => queryClient.clear(),
+    onSettled: () => {
+      leave();
+      queryClient.clear();
+    },
   });
 }
 

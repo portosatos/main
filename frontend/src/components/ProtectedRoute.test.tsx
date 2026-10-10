@@ -6,7 +6,7 @@ import { server } from "@/test/server";
 
 import ProtectedRoute from "./ProtectedRoute";
 
-test.fails("unauthenticated user is redirected", async () => {
+test("unauthenticated user is redirected", async () => {
   server.use(
     http.get("/api/auth/me", () => HttpResponse.json({ detail: "Не авторизован" }, { status: 401 })),
   );
