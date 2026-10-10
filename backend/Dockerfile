@@ -20,7 +20,8 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
 
-RUN useradd --system --no-create-home app
+# /data/ingest: the uploads volume; a fresh named volume takes this directory's owner.
+RUN useradd --system --no-create-home app     && mkdir -p /data/ingest && chown app /data/ingest
 USER app
 
 EXPOSE 8000

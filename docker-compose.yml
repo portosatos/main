@@ -12,6 +12,10 @@ x-backend: &backend
     DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@example.com}
     DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-demo12345}
     DEMO_USER_TIMEZONE: ${DEMO_USER_TIMEZONE:-Europe/Moscow}
+    INGEST_DIR: /data/ingest
+  volumes:
+    # Uploaded files: written by the api, read by the worker (SPEC F3).
+    - ingest:/data/ingest
   depends_on:
     postgres:
       condition: service_healthy
@@ -71,3 +75,4 @@ services:
 
 volumes:
   pgdata:
+  ingest:
