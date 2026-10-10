@@ -11,10 +11,6 @@ from hypothesis import strategies as st
 
 from app.services.localtime import TzHistory, UtcRange
 
-NOT_IMPLEMENTED = pytest.mark.xfail(
-    strict=True, raises=NotImplementedError, reason="step 4.1: not implemented"
-)
-
 MSK = "Europe/Moscow"  # +03:00, no DST
 NYC = "America/New_York"  # -04:00 in October 2026 (EDT), DST ends 2026-11-01
 REGISTERED = datetime(2026, 9, 1, tzinfo=UTC)
@@ -94,7 +90,6 @@ def histories(draw: st.DrawFn) -> tuple[list[Rec], datetime]:
     return [Rec(tz, base + timedelta(seconds=s)) for tz, s in raw], base
 
 
-@NOT_IMPLEMENTED
 def test_local_date_uses_tz_active_at_event() -> None:
     move = utc(2026, 10, 5, 22)  # 01:00 Oct 6 in Moscow = 18:00 Oct 5 in New York
     h = history(MSK, (move, NYC))
@@ -112,7 +107,6 @@ def test_local_date_uses_tz_active_at_event() -> None:
     assert h.local_date(utc(2026, 10, 6, 2).astimezone(plus_five)) == date(2026, 10, 5)
 
 
-@NOT_IMPLEMENTED
 def test_msk_to_nyc_move_day_is_31h() -> None:
     h = history(MSK, (utc(2026, 10, 5, 12), NYC))  # 15:00 in Moscow = 08:00 in New York
 
@@ -123,7 +117,6 @@ def test_msk_to_nyc_move_day_is_31h() -> None:
     assert h.ranges_for_date(date(2026, 10, 6)) == [(utc(2026, 10, 6, 4), utc(2026, 10, 7, 4))]
 
 
-@NOT_IMPLEMENTED
 def test_westward_move_after_midnight_splits_day_into_two_ranges() -> None:
     # 02:00 Oct 6 in Moscow = 19:00 Oct 5 in New York: the move takes the clock back over midnight.
     h = history(MSK, (utc(2026, 10, 5, 23), NYC))
@@ -145,7 +138,6 @@ def test_westward_move_after_midnight_splits_day_into_two_ranges() -> None:
     )
 
 
-@NOT_IMPLEMENTED
 def test_eastward_move_short_day() -> None:
     h = history(NYC, (utc(2026, 10, 5, 12), MSK))  # 08:00 in New York = 15:00 in Moscow
 
@@ -156,7 +148,6 @@ def test_eastward_move_short_day() -> None:
     assert h.ranges_for_date(date(2026, 10, 6)) == [(utc(2026, 10, 5, 21), utc(2026, 10, 6, 21))]
 
 
-@NOT_IMPLEMENTED
 @settings(deadline=None)
 @given(
     data=histories(),
@@ -199,7 +190,6 @@ def test_every_minute_maps_to_exactly_one_date(
         assert pieces[i][2] == h.local_date(m), m
 
 
-@NOT_IMPLEMENTED
 def test_dst_transition_23h_and_25h_days() -> None:
     berlin = TzHistory([Rec("Europe/Berlin", utc(2026, 1, 1))])
     assert berlin.ranges_for_date(date(2026, 3, 29)) == [
@@ -219,7 +209,6 @@ def test_dst_transition_23h_and_25h_days() -> None:
     assert hours(santiago.ranges_for_date(date(2026, 4, 4))) == 25  # 23:00–24:00 Apr 4 twice
 
 
-@NOT_IMPLEMENTED
 @settings(deadline=None, max_examples=300)
 @given(data=histories(), offset_s=st.integers(0, SPAN_S))
 def test_ranges_for_date_roundtrip(data: tuple[list[Rec], datetime], offset_s: int) -> None:
@@ -240,7 +229,6 @@ def test_ranges_for_date_roundtrip(data: tuple[list[Rec], datetime], offset_s: i
         assert h.local_date(end) != day
 
 
-@NOT_IMPLEMENTED
 def test_before_first_record_first_tz_applies() -> None:
     """Допущение: data from before registration (the first record) is dated in the first zone."""
     h = history(MSK)
@@ -252,7 +240,6 @@ def test_before_first_record_first_tz_applies() -> None:
     assert h.ranges_for_date(date(2026, 9, 1)) == [(utc(2026, 8, 31, 21), utc(2026, 9, 1, 21))]
 
 
-@NOT_IMPLEMENTED
 def test_records_order_and_validation() -> None:
     records = [Rec(MSK, REGISTERED), Rec(NYC, utc(2026, 10, 5, 12)), Rec(MSK, utc(2026, 10, 20))]
     forward, backward = TzHistory(records), TzHistory(reversed(records))
