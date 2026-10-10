@@ -1,7 +1,7 @@
 # Smoke check of a running stack (scripts/dev.ps1 or docker compose up):
-# GET /api/health, the Mailpit UI, the frontend (nginx) and /api/health through the frontend
-# proxy must answer 200 (waits up to -TimeoutSec for each); then the demo user logs in through
-# the frontend proxy and GET /api/auth/me with the session cookie must answer 200.
+# GET /api/health, the Mailpit UI, the frontend (nginx) with its /login route and /api/health
+# through the frontend proxy must answer 200 (waits up to -TimeoutSec for each); then the demo user
+# logs in through the frontend proxy and GET /api/auth/me with the session cookie must answer 200.
 param(
     [string]$ApiUrl = "http://localhost:$(if ($env:API_PORT) { $env:API_PORT } else { 8000 })",
     [string]$MailpitUrl = "http://localhost:$(if ($env:MAILPIT_UI_PORT) { $env:MAILPIT_UI_PORT } else { 8025 })",
@@ -55,7 +55,8 @@ function Test-DemoLogin([string]$BaseUrl) {
 $apiOk = Test-Http200 "api health" "$ApiUrl/api/health"
 $mailpitOk = Test-Http200 "mailpit ui" "$MailpitUrl/"
 $frontendOk = Test-Http200 "frontend" "$FrontendUrl/"
+$loginPageOk = Test-Http200 "frontend login page" "$FrontendUrl/login"
 $proxyOk = Test-Http200 "api via frontend proxy" "$FrontendUrl/api/health"
 $loginOk = Test-DemoLogin $FrontendUrl
-if ($apiOk -and $mailpitOk -and $frontendOk -and $proxyOk -and $loginOk) { exit 0 }
+if ($apiOk -and $mailpitOk -and $frontendOk -and $loginPageOk -and $proxyOk -and $loginOk) { exit 0 }
 exit 1

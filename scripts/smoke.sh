@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Smoke check of a running stack (scripts/dev.sh or docker compose up):
-# GET /api/health, the Mailpit UI, the frontend (nginx) and /api/health through the frontend
-# proxy must answer 200 (waits up to TIMEOUT_SEC for each); then the demo user logs in through
-# the frontend proxy and GET /api/auth/me with the session cookie must answer 200.
+# GET /api/health, the Mailpit UI, the frontend (nginx) with its /login route and /api/health
+# through the frontend proxy must answer 200 (waits up to TIMEOUT_SEC for each); then the demo user
+# logs in through the frontend proxy and GET /api/auth/me with the session cookie must answer 200.
 set -uo pipefail
 
 API_URL="${API_URL:-http://localhost:${API_PORT:-8000}}"
@@ -46,6 +46,7 @@ status=0
 check_200 "api health" "$API_URL/api/health" || status=1
 check_200 "mailpit ui" "$MAILPIT_URL/" || status=1
 check_200 "frontend" "$FRONTEND_URL/" || status=1
+check_200 "frontend login page" "$FRONTEND_URL/login" || status=1
 check_200 "api via frontend proxy" "$FRONTEND_URL/api/health" || status=1
 check_demo_login "$FRONTEND_URL" || status=1
 exit "$status"
