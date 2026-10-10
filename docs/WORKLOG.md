@@ -281,3 +281,12 @@
   `test_register_sets_httponly_samesite_lax_cookie` и `test_cookie_secure_flag_in_prod`.
 - По просьбе пользователя до закрытия шага добавлен README-скелет: 30f2f1c docs(readme); a873da3 docs(prompts).
 - Шаг закрыт, в docs/plan.md отмечен [x] с заметками. Следующий шаг: 1.3 (frontend: вход, layout, dev-панель).
+
+## 2026-10-10T21:01:49+06:00 — Шаг 1.3 начат: frontend — вход, layout, dev-панель
+- План: зависимости (React Router, TanStack Query, react-hook-form, zod); API-клиент (`credentials: include`,
+  `X-Requested-With: ht` на изменяющих запросах, при 401 переход на `/login`); страницы входа и регистрации
+  (ошибки на русском, регистрация передаёт пояс браузера); `ProtectedRoute` по `/api/auth/me`; layout с шапкой,
+  пустыми пунктами меню и кнопкой «Выйти»; `DevPanel` (время `Clock`, установка сдвига, ссылка на Mailpit),
+  скрыта, если `/api/dev/clock` → 404; smoke дополняется `GET :5173/login` → 200.
+- Порядок: зависимости и заглушки модулей (тесты должны падать на поведении, а не на импорте) → тесты до кода
+  (`test.fails`) → стоп до «ок» → код.
