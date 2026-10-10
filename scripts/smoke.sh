@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Smoke check of a running stack (scripts/dev.sh or docker compose up):
-# GET /api/health and the Mailpit UI must answer 200. Waits up to TIMEOUT_SEC for each.
+# GET /api/health, the Mailpit UI, the frontend (nginx) and /api/health through the frontend
+# proxy must answer 200. Waits up to TIMEOUT_SEC for each.
 set -uo pipefail
 
 API_URL="${API_URL:-http://localhost:${API_PORT:-8000}}"
 MAILPIT_URL="${MAILPIT_URL:-http://localhost:${MAILPIT_UI_PORT:-8025}}"
+FRONTEND_URL="${FRONTEND_URL:-http://localhost:${FRONTEND_PORT:-5173}}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-60}"
 
 check_200() {
@@ -26,4 +28,6 @@ check_200() {
 status=0
 check_200 "api health" "$API_URL/api/health" || status=1
 check_200 "mailpit ui" "$MAILPIT_URL/" || status=1
+check_200 "frontend" "$FRONTEND_URL/" || status=1
+check_200 "api via frontend proxy" "$FRONTEND_URL/api/health" || status=1
 exit "$status"
