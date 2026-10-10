@@ -45,7 +45,6 @@ async def scratch_database_url(test_database_url: str) -> AsyncIterator[str]:
     yield scratch
 
 
-@pytest.mark.xfail(strict=True, reason="step 1.1: not implemented")
 async def test_upgrade_downgrade_upgrade_head(scratch_database_url: str) -> None:
     url = scratch_database_url
 

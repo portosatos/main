@@ -24,6 +24,10 @@ services:
     command: ["python", "-m", "app.worker"]
     healthcheck:
       disable: true  # the image healthcheck probes the API port; the worker has no HTTP
+    depends_on:
+      # The API applies migrations on start; the worker reads dev_clock only after that.
+      api:
+        condition: service_healthy
 
   frontend:
     build: ./frontend

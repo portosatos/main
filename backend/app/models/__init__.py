@@ -1,7 +1,7 @@
-"""SQLAlchemy models. Base.metadata is the target of Alembic autogenerate."""
+"""SQLAlchemy models. Base.metadata (with every model imported here) is the target of Alembic
+autogenerate."""
 
-from sqlalchemy.orm import DeclarativeBase
+from app.models.base import Base
+from app.models.dev_clock import DevClock
 
-
-class Base(DeclarativeBase):
-    pass
+__all__ = ["Base", "DevClock"]
