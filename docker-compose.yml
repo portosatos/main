@@ -2,7 +2,29 @@
 # on a fresh clone without .env; .env (see .env.example) only overrides them.
 name: health-tracker
 
+x-backend: &backend
+  build: ./backend
+  image: health-tracker-backend:dev
+  init: true  # PID 1 forwards SIGTERM, so `docker compose stop` is instant
+  environment:
+    APP_ENV: ${APP_ENV:-dev}
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-health}:${POSTGRES_PASSWORD:-health}@postgres:5432/${POSTGRES_DB:-health_tracker}
+  depends_on:
+    postgres:
+      condition: service_healthy
+
 services:
+  api:
+    <<: *backend
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    healthcheck:
+      disable: true  # the image healthcheck probes the API port; the worker has no HTTP
+
   postgres:
     image: postgres:16-alpine
     environment:
