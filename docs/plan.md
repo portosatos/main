@@ -94,6 +94,11 @@ Done When: проверяемые пункты (тест или команда) 
 ### Шаг 0.1 — Репозиторий, журналы, проверка процесса
 **Этап SPEC:** 0 · **Зависит от:** — · **Критерии §9:** вклад в #21, #22
 
+**Статус:** [x] закрыт 2026-10-10T17:48:24+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-10T17:26:08+06:00.
+Заметки: 18 ADR + ADR-019; сверх плана тест режима `--all`; ошибка в хелпере теста (`mkdir` без `parents`)
+найдена после реализации и исправлена в `feat`; команда проверки маркеров в общем DoD исключает `docs/`
+(ADR-019). Не выполнялось: ruff (не установлен, backend не трогали), `scripts/test.ps1` (появится на 0.2).
+
 **Цель:** репозиторий, в котором с первого коммита есть правила, журналы и автоматическая проверка процесса.
 
 **Объём:**
@@ -120,15 +125,15 @@ Done When: проверяемые пункты (тест или команда) 
 - `test_step_requires_test_commit_before_feat_commit`
 
 **Done When:**
-- [ ] `python -m pytest scripts/tests -q` → зелёные.
-- [ ] `git check-attr eol -- scripts/x.sh` → `eol: lf`; `git check-attr eol -- Dockerfile` → `eol: lf`.
-- [ ] `python scripts/check_process.py --step 0.1` → exit 0.
-- [ ] `git remote -v` показывает GitHub; `git ls-remote origin main` совпадает с `git rev-parse main`.
-- [ ] Решения перенесены (проверка `git grep`, каждая команда находит совпадение):
+- [x] `python -m pytest scripts/tests -q` → зелёные.
+- [x] `git check-attr eol -- scripts/x.sh` → `eol: lf`; `git check-attr eol -- Dockerfile` → `eol: lf`.
+- [x] `python scripts/check_process.py --step 0.1` → exit 0.
+- [x] `git remote -v` показывает GitHub; `git ls-remote origin main` совпадает с `git rev-parse main`.
+- [x] Решения перенесены (проверка `git grep`, каждая команда находит совпадение):
       `git grep -n "после каждого шага" CLAUDE.md`, `git grep -n "Stage: X.Y" CLAUDE.md`,
       `git grep -n "xfail(strict=True" CLAUDE.md`, `git grep -n "Ручная проверка" CLAUDE.md`,
       `git grep -n "Vitest" docs/SPEC.md`, `git grep -n "docs/plan.md" CLAUDE.md`.
-- [ ] В `DECISIONS.md` есть ADR на каждое из решений 1–8: `git grep -c "^## ADR-" docs/DECISIONS.md` ≥ 18
+- [x] В `DECISIONS.md` есть ADR на каждое из решений 1–8: `git grep -c "^## ADR-" docs/DECISIONS.md` ≥ 18
       (10 из SPEC и 8 из плана).
 
 **Ручная проверка:** пользователь читает diff коммита `docs: apply approved plan decisions` и подтверждает,
