@@ -139,5 +139,8 @@
   пользователь — `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`). Файлы — volume `ingest` (`/data/ingest`, общий для api и
   worker), лимит 500 МБ. Воркер: `docker compose logs -f worker` (JSON-логи `job_started`/`job_done`), тик в
   `GET /api/health` → `worker.status`. Очередь — таблица `jobs`, отчёты — `ingest_jobs` (ADR-031).
+- Минутные таблицы (`steps_minute`, `sleep_minute`, `coverage_minute`, ADR-032) пересчитываются воркером после каждой
+  пачки. Полная пересборка пользователя: `docker compose exec api htadmin rebuild --user demo@example.com`
+  (локально — `cd backend; uv run python -m app.cli rebuild --user …`); неизвестный email → exit 1.
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
