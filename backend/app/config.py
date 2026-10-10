@@ -1,5 +1,6 @@
 """Application settings from environment variables (and an optional .env file)."""
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,3 +22,8 @@ class Settings(BaseSettings):
     demo_user_email: str = "demo@example.com"
     demo_user_password: str = ""
     demo_user_timezone: str = "Europe/Moscow"
+    # Uploaded files (SPEC F3): a volume shared by the api and the worker.
+    ingest_dir: Path = Path("/data/ingest")
+    ingest_max_bytes: int = 500 * 1024 * 1024
+    # /api/health calls the worker stale when its last tick is older than this.
+    worker_stale_after_s: float = 120.0

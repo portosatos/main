@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api import auth, dev, docs, health
+from app.api import auth, dev, docs, health, ingest
 from app.auth.csrf import CsrfHeaderMiddleware
 from app.clock import create_clock
 from app.config import Settings
@@ -40,6 +40,7 @@ def create_app(
     app.include_router(docs.router)
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(ingest.router)
     if settings.app_env == "dev":
         app.include_router(dev.router)
     return app
