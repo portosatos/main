@@ -26,8 +26,6 @@ from app.worker.main import SimulatedCrash, Worker
 from tests.integration.client import CSRF_HEADERS
 from tests.integration.ingest import ndjson
 
-NOT_IMPLEMENTED = pytest.mark.xfail(strict=True, reason="step 3.2: not implemented")
-
 PASSWORD = "correct horse battery"
 T0 = datetime(2026, 10, 1, tzinfo=UTC)
 META = {
@@ -401,7 +399,6 @@ async def test_errors_capped_at_50(clean: None, settings: Settings, db_engine: A
     assert [e["line"] for e in job["errors"]] == list(range(12, 62))
 
 
-@NOT_IMPLEMENTED
 async def test_health_reports_worker_heartbeat(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

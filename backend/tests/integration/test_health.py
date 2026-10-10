@@ -21,7 +21,9 @@ async def test_health_ok_when_db_up(test_database_url: str) -> None:
     response = await get_health(test_database_url)
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "db": "ok"}
+    body = response.json()
+    assert (body["status"], body["db"]) == ("ok", "ok")
+    assert body["worker"]["status"] in ("ok", "stale", "unknown")  # see test_ingest_jobs.py
 
 
 async def test_health_503_when_db_unreachable() -> None:
