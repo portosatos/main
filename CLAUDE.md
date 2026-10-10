@@ -129,8 +129,10 @@
 - CI: `.github/workflows/ci.yml` на каждый push в `main` и PR; последний прогон —
   `gh run list --branch main --limit 1`, логи упавшего — `gh run view <id> --log-failed`.
 - Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
-- Генератор (`generator/`, формат — `docs/DATA_FORMAT.md`, ADR-028): `uv run --project generator htgen --help`;
+- Генератор (`generator/`, формат — `docs/DATA_FORMAT.md`, ADR-028, ADR-029): `uv run --project generator htgen --help`;
   пример — `uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson` (`*.ndjson` в `.gitignore`,
-  без `--out` пишет в stdout). Тесты: `cd generator; uv run pytest` (входят в `scripts/test.*` и CI).
+  без `--out` пишет в stdout); пояса, пропуски и сценарии — `--tz-change "2026-10-05T12:00Z=America/New_York"`,
+  `--gap "2026-10-03T00:00/2026-10-04T12:00@watch"`, `--gap-prob 0.05`, `--scenario short-sleep`.
+  Тесты: `cd generator; uv run pytest` (входят в `scripts/test.*` и CI).
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
