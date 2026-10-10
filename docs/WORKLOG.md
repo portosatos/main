@@ -128,3 +128,17 @@
   api и mailpit — OK, frontend и proxy — FAIL (соединение отклонено: сервиса frontend ещё нет), exit 1 в обоих.
   Smoke пока не закоммичен: вопрос пользователю, как коммитить красную проверку без маркера.
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T20:07:08+06:00 — Фичи шага 0.3 (пользователь ответил «ок»: smoke по рекомендации, допущения приняты)
+- 274ab71 test(smoke): расширение smoke закоммичено красным (ADR-022); зелёное с 618534d.
+- 9bac22e docs(decisions): ADR-022 (красный smoke без маркера), ADR-023 (версии frontend), ADR-024 (nginx на 5173, CI).
+- 33da40c feat(frontend): Tailwind v4 + `shadcn init` (radix, button, card), оболочка с заголовком
+  «Трекер здоровья»; маркер `test.fails` снят, `npm run check` → 1 passed, exit 0. Сгенерированные shadcn
+  компоненты экспортируют `buttonVariants` — правило react-refresh для `src/components/ui` выключено.
+- Проблема: `docker compose build frontend` упал на `npm ci` — `@vitest/mocker` 5 требует peer `msw@^2.4.9`,
+  npm 10 (Node 22) на конфликте с msw 3 отказывается ставить, локальный npm 11 (Node 24) это пропускал.
+  Решение: 2071f4c build(frontend) — msw 2 (`onUnhandledRequest`), уточнение в ADR-023.
+- 618534d build(compose): образ frontend (Node 22 → nginx 1.29), nginx.conf (`/api` → api:8000,
+  `proxy_buffering off`, SPA fallback), сервис frontend на :5173. `docker compose up -d --build --wait` → все
+  healthy; smoke.sh и smoke.ps1 → 4×OK, exit 0; `/dashboard` → 200 text/html.
+- 352f9b6 ci: github actions for backend, frontend and process checks — до пуша: yaml валиден, `check_process.py --all` → OK.
