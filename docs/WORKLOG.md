@@ -65,3 +65,15 @@
 - Окружение: uv 0.13.0, Docker 29.8.2 + Compose v5.5.1, системный Python 3.14 (backend — на 3.12 через uv).
 - Проблема: порт 5432 на машине занят локальным postgres (PID 5500). Допущение: postgres из compose
   публикуется на хост-порт 5433 (переопределяется `POSTGRES_HOST_PORT`), внутри сети compose — 5432.
+
+## 2026-10-10T18:07:11+06:00 — Тесты до кода шага 0.2: 4 xfailed
+- backend/tests/unit/test_config.py: test_settings_load_from_env, test_app_env_defaults_to_dev;
+  backend/tests/integration/test_health.py: test_health_ok_when_db_up, test_health_503_when_db_unreachable
+  (сверх плана: при недоступной БД ответ должен прийти быстрее 5 с — иначе healthcheck контейнера зависает).
+- Фикстура тестовой БД `test_database_url` (tests/integration/conftest.py) создаёт `health_tracker_test` на
+  postgres из compose; маркеры unit/integration ставятся по каталогу, mailpit зарегистрирован на будущее.
+- `uv run pytest -q` → 4 xfailed; с `--runxfail` → 4 failed, у всех причина
+  `NotImplementedError: step 0.2: Settings are not implemented yet` (заглушки app/config.py и app/main.py).
+  Тесты health тоже падают на заглушке Settings: она нужна им для создания приложения, до заглушки
+  create_app они не доходят. Фикстура тестовой БД при этом уже отработала (база создана).
+- Остановка: жду «ок» пользователя перед кодом.
