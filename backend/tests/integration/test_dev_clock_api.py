@@ -1,29 +1,13 @@
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 
-import httpx
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.config import AppEnv, Settings
-from app.main import create_app
+from app.config import Settings
 from app.worker.main import worker_context
-
-
-@asynccontextmanager
-async def api_client(
-    database_url: str,
-    app_env: AppEnv = "dev",
-    sessionmaker: async_sessionmaker[AsyncSession] | None = None,
-) -> AsyncIterator[httpx.AsyncClient]:
-    settings = Settings(_env_file=None, database_url=database_url, app_env=app_env)
-    app = create_app(settings, sessionmaker=sessionmaker)
-    async with app.router.lifespan_context(app):
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            yield client
+from tests.integration.client import api_client
 
 
 def parse_times(body: dict) -> tuple[datetime, datetime]:

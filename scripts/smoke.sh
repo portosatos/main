@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # Smoke check of a running stack (scripts/dev.sh or docker compose up):
 # GET /api/health, the Mailpit UI, the frontend (nginx) and /api/health through the frontend
-# proxy must answer 200. Waits up to TIMEOUT_SEC for each.
+# proxy must answer 200 (waits up to TIMEOUT_SEC for each); then the demo user logs in through
+# the frontend proxy and GET /api/auth/me with the session cookie must answer 200.
 set -uo pipefail
 
 API_URL="${API_URL:-http://localhost:${API_PORT:-8000}}"
 MAILPIT_URL="${MAILPIT_URL:-http://localhost:${MAILPIT_UI_PORT:-8025}}"
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:${FRONTEND_PORT:-5173}}"
+DEMO_USER_EMAIL="${DEMO_USER_EMAIL:-demo@example.com}"
+DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:-demo12345}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-60}"
 
 check_200() {
@@ -25,9 +28,24 @@ check_200() {
     return 1
 }
 
+check_demo_login() {
+    local base="$1" jar code
+    jar="$(mktemp)"
+    curl -s -o /dev/null -m 10 -c "$jar" -X POST "$base/api/auth/login"         -H 'Content-Type: application/json' -H 'X-Requested-With: ht'         --data "{\"email\": \"$DEMO_USER_EMAIL\", \"password\": \"$DEMO_USER_PASSWORD\"}"
+    code="$(curl -s -o /dev/null -m 10 -b "$jar" -w '%{http_code}' "$base/api/auth/me")"
+    rm -f "$jar"
+    if [ "$code" = "200" ]; then
+        echo "OK   demo login $base/api/auth/me -> 200 ($DEMO_USER_EMAIL)"
+        return 0
+    fi
+    echo "FAIL demo login $base ($DEMO_USER_EMAIL) -> /api/auth/me HTTP $code"
+    return 1
+}
+
 status=0
 check_200 "api health" "$API_URL/api/health" || status=1
 check_200 "mailpit ui" "$MAILPIT_URL/" || status=1
 check_200 "frontend" "$FRONTEND_URL/" || status=1
 check_200 "api via frontend proxy" "$FRONTEND_URL/api/health" || status=1
+check_demo_login "$FRONTEND_URL" || status=1
 exit "$status"
