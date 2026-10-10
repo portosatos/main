@@ -179,7 +179,6 @@ def counts(job: dict[str, Any]) -> dict[str, int]:
     return job["counts"]
 
 
-@NOT_IMPLEMENTED
 async def test_upload_returns_202_before_processing_done(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -204,7 +203,6 @@ async def test_upload_returns_202_before_processing_done(
         assert (await get_job(client, job_id))["status"] == "done"
 
 
-@NOT_IMPLEMENTED
 async def test_job_completes_with_counts_per_class(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -227,7 +225,6 @@ async def test_job_completes_with_counts_per_class(
     assert not [p for p in settings.ingest_dir.rglob("*") if p.is_file()]
 
 
-@NOT_IMPLEMENTED
 async def test_reupload_same_file_zero_new_all_duplicate(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -250,7 +247,6 @@ async def test_reupload_same_file_zero_new_all_duplicate(
     assert len(rows_after_both) == 144
 
 
-@NOT_IMPLEMENTED
 async def test_partially_overlapping_file_new_only_for_new_part(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -264,16 +260,17 @@ async def test_partially_overlapping_file_new_only_for_new_part(
     assert counts(job) == {"total": 144, "new": 72, "duplicate": 72, "conflict": 0, "invalid": 0}
 
 
-@NOT_IMPLEMENTED
 async def test_worker_crash_after_batch_k_resumes_same_result(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
     records = day_records(0)[:40]
     data = ndjson(META, *records[:15]) + b"{broken\n" + ndjson(*records[15:])
-    clock = MovableClock(T0)
     async with user_client(settings, "crash") as crashed, user_client(settings, "calm") as calm:
         crash_job = await upload(crashed, data)
         calm_job = await upload(calm, data)
+        # Jobs are queued at the system time: the test clock starts after that.
+        start = datetime.now(UTC)
+        clock = MovableClock(start)
 
         dying = make_worker(db_engine, clock, batch_size=10, crash_after_batch=2)
         claimed = await dying.claim()
@@ -288,7 +285,7 @@ async def test_worker_crash_after_batch_k_resumes_same_result(
         assert counts(half)["total"] == 19  # line 1 is meta
 
         # Five minutes later the lock is stale: the job is back in the queue and resumes.
-        clock.at = T0 + timedelta(minutes=5, seconds=1)
+        clock.at = start + timedelta(minutes=5, seconds=1)
         survivor = make_worker(db_engine, clock, batch_size=10)
         await survivor.tick()
         assert await survivor.run_until_idle() == 2
@@ -311,13 +308,13 @@ async def test_worker_crash_after_batch_k_resumes_same_result(
         assert resumed_rows == [row[1:] for row in await raw_rows(db_engine, calm)]
 
 
-@NOT_IMPLEMENTED
 async def test_stale_lock_requeued_after_5_min_by_clock(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
-    clock = MovableClock(T0)
     async with user_client(settings, "stale") as client:
         job_id = await upload(client, days_file(0))
+        start = datetime.now(UTC)
+        clock = MovableClock(start)
         dying = make_worker(db_engine, clock, batch_size=10, crash_after_batch=1)
         claimed = await dying.claim()
         assert claimed is not None
@@ -325,11 +322,11 @@ async def test_stale_lock_requeued_after_5_min_by_clock(
             await dying.process(claimed)
 
         other = make_worker(db_engine, clock, worker_id="other")
-        clock.at = T0 + timedelta(minutes=4, seconds=59)
+        clock.at = start + timedelta(minutes=4, seconds=59)
         await other.tick()
         assert await other.claim() is None, "locked less than 5 minutes ago: not stale yet"
 
-        clock.at = T0 + timedelta(minutes=5, seconds=1)
+        clock.at = start + timedelta(minutes=5, seconds=1)
         await other.tick()
         again = await other.claim()
         assert again is not None and again.payload["ingest_job_id"] == job_id
@@ -338,7 +335,6 @@ async def test_stale_lock_requeued_after_5_min_by_clock(
         assert (await get_job(client, job_id))["status"] == "done"
 
 
-@NOT_IMPLEMENTED
 async def test_same_user_jobs_sequential_different_users_parallel(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -390,7 +386,6 @@ async def test_job_of_other_user_404(clean: None, settings: Settings) -> None:
         assert (await owner.get(f"/api/ingest/jobs/{job_id}")).status_code == 401
 
 
-@NOT_IMPLEMENTED
 async def test_errors_capped_at_50(clean: None, settings: Settings, db_engine: AsyncEngine) -> None:
     good = day_records(0)[:10]
     data = ndjson(META, *good) + b"".join(b"garbage %d\n" % i for i in range(120))
@@ -436,7 +431,6 @@ async def test_health_reports_worker_heartbeat(
         assert abs(datetime.now(UTC) - last_tick) < timedelta(seconds=30)
 
 
-@NOT_IMPLEMENTED
 async def test_worker_wakes_on_notify_without_waiting_for_tick(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

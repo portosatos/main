@@ -1,34 +1,35 @@
-"""Worker loop.
+"""The worker process: python -m app.worker (SPEC §6.1).
 
-Still a stub: logs a tick (with Clock time) every WORKER_TICK_S seconds. The job queue arrives
-in step 3.2.
+Takes jobs from the queue in Postgres and runs them. Wakes on NOTIFY from `enqueue` and, as a
+fallback, every WORKER_TICK_S seconds; every tick records a heartbeat and returns stale jobs to
+the queue. Jobs of one user run one at a time (advisory lock), jobs of different users in
+parallel when several workers run.
 """
 
 import asyncio
 import os
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+import signal
+import socket
+import time
+from collections.abc import AsyncIterator, Awaitable
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import structlog
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.clock import Clock, create_clock
 from app.config import Settings
 from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
 from app.services.ingest.classify import BATCH_SIZE
-from app.worker.queue import STALE_AFTER, QueuedJob
+from app.worker import queue
+from app.worker.handlers import HANDLERS, JobContext
+from app.worker.heartbeat import beat
+from app.worker.queue import JOBS_CHANNEL, STALE_AFTER, QueuedJob
 
 log = structlog.get_logger("app.worker")
-
-
-@dataclass
-class WorkerContext:
-    engine: AsyncEngine
-    sessionmaker: async_sessionmaker[AsyncSession]
-    clock: Clock
 
 
 class SimulatedCrash(BaseException):
@@ -36,15 +37,27 @@ class SimulatedCrash(BaseException):
     failed and stays locked, as after a real crash."""
 
 
+class JobInterrupted(Exception):
+    """The worker is stopping: the job goes back to the queue after its last committed batch."""
+
+
 @dataclass
 class ClaimedJob:
-    """A job taken by this worker: running, its user's advisory lock held until processed."""
+    """A job taken by this worker: running, its user's advisory lock held on `conn`."""
 
     job: QueuedJob
+    conn: AsyncConnection
 
     @property
     def payload(self) -> dict:
         return self.job.payload
+
+    async def close(self) -> None:
+        """Free the user lock and the connection."""
+        try:
+            await queue.unlock_users(self.conn)
+        finally:
+            await self.conn.close()
 
 
 class Worker:
@@ -69,26 +82,134 @@ class Worker:
         self.stale_after = stale_after
         self.crash_after_batch = crash_after_batch
         self.listening = asyncio.Event()
+        self._sessionmaker = create_sessionmaker(engine)
+        self._stop: asyncio.Event | None = None
 
     async def tick(self) -> None:
         """Heartbeat (for /api/health) and return of stale jobs to the queue."""
-        raise NotImplementedError("step 3.2")
+        now = await self.clock.now()
+        async with self._sessionmaker() as session:
+            requeued = await queue.requeue_stale(session, now=now, stale_after=self.stale_after)
+            await beat(session, self.worker_id, now)
+            await session.commit()
+        if requeued:
+            log.warning("jobs_requeued", count=requeued)
+        log.info("worker_tick", now=now.isoformat())
 
     async def claim(self) -> ClaimedJob | None:
         """The oldest queued job whose user is not busy with another job, or None."""
-        raise NotImplementedError("step 3.2")
+        conn = await self.engine.connect()
+        try:
+            job = await queue.claim(conn, now=await self.clock.now())
+        except BaseException:
+            await conn.close()
+            raise
+        if job is None:
+            await conn.close()
+            return None
+        return ClaimedJob(job, conn)
 
     async def process(self, claimed: ClaimedJob) -> None:
         """Run the job, mark it done or failed, release the user's lock."""
-        raise NotImplementedError("step 3.2")
+        job = claimed.job
+        bound = log.bind(job_id=job.id, kind=job.kind, user_id=str(job.user_id))
+        handler = HANDLERS.get(job.kind)
+        try:
+            bound.info("job_started", attempt=job.attempts)
+            if handler is None:
+                raise LookupError(f"unknown job kind {job.kind!r}")
+            await handler.run(self._context(job))
+        except JobInterrupted:
+            async with self._sessionmaker() as session:
+                await queue.release(session, job.id)
+                await session.commit()
+            bound.info("job_interrupted")
+        except Exception as exc:
+            bound.exception("job_failed")
+            async with self._sessionmaker() as session:
+                await queue.finish(session, job.id, "failed", repr(exc))
+                if handler is not None:
+                    await handler.failed(session, job, await self.clock.now())
+                await session.commit()
+        else:
+            async with self._sessionmaker() as session:
+                await queue.finish(session, job.id, "done")
+                await session.commit()
+            bound.info("job_done")
+        finally:
+            await claimed.close()
 
     async def run_until_idle(self) -> int:
         """Claim and process jobs until none is available; the number processed."""
-        raise NotImplementedError("step 3.2")
+        processed = 0
+        while not self._stopping() and (claimed := await self.claim()) is not None:
+            await self.process(claimed)
+            processed += 1
+        return processed
 
     async def run(self, stop: asyncio.Event) -> None:
         """The worker loop: wakes on NOTIFY or every tick_s, until `stop` is set."""
-        raise NotImplementedError("step 3.2")
+        self._stop = stop
+        wake = asyncio.Event()
+        listener = await self.engine.connect()
+        try:
+            driver = (await listener.get_raw_connection()).driver_connection
+            await driver.add_listener(JOBS_CHANNEL, lambda *_: wake.set())
+            self.listening.set()
+            log.info("worker_started", worker_id=self.worker_id, tick_s=self.tick_s)
+            next_tick = 0.0
+            while not stop.is_set():
+                if time.monotonic() >= next_tick:
+                    next_tick = time.monotonic() + self.tick_s
+                    await self._guarded(self.tick())
+                wake.clear()
+                await self._guarded(self.run_until_idle())
+                await _wait_any(wake, stop, seconds=max(next_tick - time.monotonic(), 0))
+        finally:
+            self.listening.clear()
+            await listener.close()
+            log.info("worker_stopped", worker_id=self.worker_id)
+
+    def _context(self, job: QueuedJob) -> JobContext:
+        async def checkpoint(session: AsyncSession, now: datetime) -> None:
+            await queue.touch(session, job.id, now)
+            await beat(session, self.worker_id, now)
+
+        def after_batch(number: int) -> None:
+            if self.crash_after_batch == number:
+                raise SimulatedCrash(f"after batch {number}")
+            if self._stopping():
+                raise JobInterrupted
+
+        return JobContext(
+            job, self._sessionmaker, self.clock, self.batch_size, checkpoint, after_batch
+        )
+
+    def _stopping(self) -> bool:
+        return self._stop is not None and self._stop.is_set()
+
+    async def _guarded(self, step: Awaitable[object]) -> None:
+        """A failed tick or claim (database restart, ...) must not kill the loop."""
+        try:
+            await step
+        except Exception as exc:
+            log.warning("worker_step_failed", error=repr(exc))
+
+
+async def _wait_any(*events: asyncio.Event, seconds: float) -> None:
+    waiters = [asyncio.ensure_future(event.wait()) for event in events]
+    try:
+        await asyncio.wait(waiters, timeout=seconds, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        for waiter in waiters:
+            waiter.cancel()
+
+
+@dataclass
+class WorkerContext:
+    engine: AsyncEngine
+    sessionmaker: async_sessionmaker[AsyncSession]
+    clock: Clock
 
 
 @asynccontextmanager
@@ -104,22 +225,20 @@ async def worker_context(settings: Settings) -> AsyncIterator[WorkerContext]:
 
 async def run(settings: Settings, tick_s: float) -> None:
     async with worker_context(settings) as ctx:
-        log.info("worker_started", tick_s=tick_s, app_env=settings.app_env)
-        tick = 0
-        while True:
-            tick += 1
-            try:
-                reading = await ctx.clock.read()
-            except Exception as exc:  # a DB hiccup must not kill the worker loop
-                log.warning("worker_tick_clock_failed", tick=tick, error=repr(exc))
-            else:
-                log.info(
-                    "worker_tick",
-                    tick=tick,
-                    now=reading.now.isoformat(),
-                    offset_seconds=reading.offset_seconds,
-                )
-            await asyncio.sleep(tick_s)
+        stop = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            # Not on Windows; there Ctrl+C raises KeyboardInterrupt.
+            with suppress(NotImplementedError):
+                loop.add_signal_handler(signum, stop.set)
+        worker = Worker(
+            ctx.engine,
+            ctx.clock,
+            worker_id=f"{socket.gethostname()}-{os.getpid()}",
+            tick_s=tick_s,
+        )
+        log.info("worker_starting", app_env=settings.app_env)
+        await worker.run(stop)
 
 
 def main() -> None:
