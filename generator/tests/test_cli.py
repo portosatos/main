@@ -10,7 +10,6 @@ from htgen.cli import main, resolve_period
 TODAY = date(2026, 10, 10)
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_resolve_period_combinations() -> None:
     d = date
     assert resolve_period(d(2026, 10, 1), d(2026, 10, 7), None, TODAY) == (
@@ -28,7 +27,6 @@ def test_resolve_period_combinations() -> None:
     assert resolve_period(d(2026, 10, 1), d(2026, 10, 1), None, TODAY) == (d(2026, 10, 1),) * 2
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 @pytest.mark.parametrize(
     ("start", "end", "days"),
     [
@@ -44,7 +42,6 @@ def test_resolve_period_rejects_bad_combinations(
         resolve_period(start, end, days, TODAY)
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_bad_period_is_a_usage_error(tmp_path: Path) -> None:
     out = tmp_path / "x.ndjson"
     with pytest.raises(SystemExit) as exc:
