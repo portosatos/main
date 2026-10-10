@@ -522,3 +522,17 @@
   запись в volume, 500 МБ, 202), `GET /api/ingest/jobs[/{id}]` → `/api/health` с тиком воркера →
   `scripts/upload.{ps1,sh}` → замер загрузки файла за 90 дней (указание пользователя при приёмке 3.1).
 - Не делаем: SSE, минутные таблицы, сводки.
+
+## 2026-10-11T00:06:11+06:00 — Шаг 3.2: тесты до кода, 12 xfailed
+- c32a9f4 refactor(worker): заглушки `Worker` (`tick`, `claim`, `process`, `run_until_idle`, `run`),
+  `SimulatedCrash`, `enqueue`/`requeue_stale`, роуты `/api/ingest/*`, настройки `ingest_dir`,
+  `ingest_max_bytes`, `worker_stale_after_s` (`NotImplementedError`).
+- f3d1c34 test(ingest): `integration/test_ingest_jobs.py` — 11 тестов плана и 1 сверх плана
+  (`test_worker_wakes_on_notify_without_waiting_for_tick`). Тесты коммитят по-настоящему (API, воркер и очередь —
+  разные соединения), пользователи `@jobs.example.com` удаляются фикстурой до и после теста.
+- Красный прогон: backend `88 passed, 12 xfailed`. С `--runxfail`: 10 падают с `NotImplementedError: step 3.2`
+  в `POST /api/ingest/files`, health — `KeyError: 'worker'` (поля нет), NOTIFY-тест — `NotImplementedError`
+  в `Worker.run`.
+- Проблема / как решили: в первом прогоне тесты падали не по той причине — 422 при регистрации: домен `.test`
+  зарезервирован и отклоняется `email-validator`; заменён на `jobs.example.com` до коммита.
+- Остановка: жду «ок» пользователя перед кодом.
