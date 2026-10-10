@@ -365,3 +365,34 @@
 - Красный прогон (`cd generator; uv run pytest -q`): `2 passed, 18 xfailed`; с `--runxfail` все 18 падают
   с `NotImplementedError: step 2.1`.
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T22:46:02+06:00 — Фичи шага 2.1 (пользователь ответил «ок, допущения принимаю»)
+- 9e337fa feat(generator): CLI (argparse), `resolve_period`, meta-строка, вывод UTF-8 + LF (stdout или `--out`);
+  маркеры сняты с 5 тестов `test_cli.py`. Пока записей нет, после meta оставлена заглушка
+  `NotImplementedError`, иначе тесты вывода падали бы на `AssertionError` и strict-xfail с `raises=` дал бы `failed`.
+- 430c638 feat(generator): суточный профиль (`profile.py`: ночи, прогулки, сидячие периоды, лёгкая активность —
+  отдельный `Random` на (seed, дата, назначение)) и модели устройств (`devices.py`). Маркеры сняты, кроме тестов
+  с `--unaligned` (там до следующей фичи заглушка). Проблема: `test_daily_profile…` и
+  `test_phone_sleep…` считали, что период всегда обрезает первую ночь. При отбое после полуночи
+  (seed 5: 00:05) первая ночь целиком внутри периода, и вышло 4 ночи вместо 3. **Исправлены сами тесты**:
+  проверяют полные ночи с подъёмом в каждую дату, кроме первой. Проверка устойчивости (скрипт во временной
+  папке): тесты прогулок, профиля и сна на seed 0–59 → 0 падений.
+- ea61992 feat(generator): `--unaligned` — сдвиг сетки шагов 1–59 с на дату; сняты последние маркеры (20 passed).
+- ac63ff8 fix(generator): `htgen … | head` на Windows падал с `OSError: [Errno 22]`; теперь закрытый stdout → exit 0.
+  Регрессионный `test_closed_stdout_pipe_is_not_an_error` — **тест после кода**.
+- 7d8d842, e84783d docs(data-format): `docs/DATA_FORMAT.md` (формат ht.v1, валидация, опции и модели `htgen`, разрез
+  сна в полночь, `--out` вместо `>` в PowerShell 5.1); c4c840e ADR-028; 3750deb ci — в задаче CI `generator` запуск
+  `htgen --days 7 --seed 1 --out sample.ndjson` и `test -s`; f0adad4 — команды в CLAUDE.md, раздел README.
+
+## 2026-10-10T22:46:02+06:00 — Шаг 2.1 завершён
+- Коммиты: a888c9d, 17ad01d (build), 23e12f8 (test, red), b7e3cef, 1bb0d53, 9e337fa, 430c638, ea61992 (feat),
+  ac63ff8 (fix), 7d8d842, c4c840e, 3750deb, f0adad4, e84783d и этот.
+- Тесты: красный прогон `2 passed, 18 xfailed` → зелёный `21 passed` (generator; 1 тест после кода);
+  backend 37 passed, scripts/ 8 passed; `scripts/test.ps1` и `scripts/test.sh` → exit 0, `OK: all tests passed`;
+  ruff check и format --check → exit 0; `git grep -n "step 2.1: not implemented" -- ":!docs"` → пусто.
+  Frontend не менялся.
+- Done When шага: `uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson` → exit 0,
+  129 387 строк, 10 МБ, период 2026-10-03…2026-10-09 (только `--days` → до вчера).
+- Сверх плана: 5 тестов до кода и 1 после; `--devices`; обработка закрытого stdout.
+- Ждёт ручной проверки пользователя: запуск `htgen`, просмотр файла (meta, смещения, прогулки на обоих
+  устройствах), повтор с тем же seed → тот же хеш, `--unaligned`.
