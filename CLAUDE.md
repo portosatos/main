@@ -101,9 +101,15 @@
 
 ## 6. Команды
 > Агент поддерживает этот раздел в актуальном состоянии; заполняется на этапе 0.
-- Запуск всего: `docker compose up --build`
-- Тесты: `scripts/test.ps1` / `scripts/test.sh`
-- Демо: `scripts/demo.ps1` / `scripts/demo.sh`
-- Генератор: `uv run --project generator htgen --help`
+- Запуск всего: `docker compose up --build` или `scripts/dev.ps1` / `scripts/dev.sh` (`-d` — в фоне).
+  Порты на хосте: api 8000 (`/docs`), Mailpit UI 8025 и SMTP 1025, postgres **5433** (ADR-020).
+- Smoke запущенного стека: `scripts/smoke.ps1` / `scripts/smoke.sh` (`/api/health` и Mailpit → 200).
+- Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend
+  и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
+  `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
+- Только backend: `cd backend; uv run pytest`. Линтер: `uv run --project backend ruff check .` и
+  `uv run --project backend ruff format --check .`
+- Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
+- Генератор (появится на шаге 2.1): `uv run --project generator htgen --help`
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
