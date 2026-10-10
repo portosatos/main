@@ -5,7 +5,7 @@ import { cleanup } from "@testing-library/react";
 import { server } from "./server";
 
 // Any request without a handler fails the test: the UI must not reach a real backend.
-beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   server.resetHandlers();
   cleanup();
