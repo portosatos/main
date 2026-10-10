@@ -38,7 +38,8 @@
 - [ ] `uv run --project backend ruff check . && uv run --project backend ruff format --check .` → exit 0
       (если трогали backend или generator, то и для generator).
 - [ ] `scripts/test.ps1` (Windows) / `scripts/test.sh` → все unit и integration тесты зелёные, xfail-маркеров
-      этого шага нет: `git grep -n "step <X.Y>: not implemented"` → пусто.
+      этого шага нет: `git grep -n "step <X.Y>: not implemented" -- ":!docs"` → пусто
+      (`docs/` исключён: журналы цитируют эту строку, а WORKLOG править нельзя; ADR-019).
 - [ ] Если трогали frontend: `npm --prefix frontend run check` (typecheck + lint + vitest + build) → exit 0.
 - [ ] `python scripts/check_process.py --step <X.Y>` → exit 0. Скрипт проверяет: в WORKLOG есть записи «начат»
       и «завершён» с ISO-временем и смещением, время не убывает, WORKLOG только дополнялся; у всех коммитов шага
