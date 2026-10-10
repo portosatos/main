@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     DateTime,
     Enum,
@@ -29,7 +30,7 @@ INGEST_STATUS = Enum("queued", "processing", "done", "failed", name="ingest_stat
 
 
 class IngestJob(Base):
-    """One upload and its report. Step 3.2 adds the file path and the byte progress."""
+    """One upload, its progress, checkpoint and report (SPEC F3)."""
 
     __tablename__ = "ingest_jobs"
 
@@ -39,6 +40,12 @@ class IngestJob(Base):
     )
     source: Mapped[str] = mapped_column(INGEST_SOURCE, nullable=False)
     filename: Mapped[str | None] = mapped_column(Text)
+    # The uploaded file on the ingest volume; deleted once the job is done.
+    file_path: Mapped[str | None] = mapped_column(Text)
+    bytes_total: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
+    # Checkpoint: bytes and lines processed and committed together with their records.
+    bytes_done: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
+    lines_done: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     status: Mapped[str] = mapped_column(
         INGEST_STATUS, nullable=False, default="queued", server_default=text("'queued'")
     )
@@ -51,6 +58,10 @@ class IngestJob(Base):
     records_invalid: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     # The first 50 invalid and conflicting lines: [{"line", "kind", "reason"}].
     errors: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    # Devices created without meta (SPEC §7.2), as text for the report.
+    warnings: Mapped[list[str]] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
