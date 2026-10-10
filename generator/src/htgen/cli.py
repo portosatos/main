@@ -13,8 +13,16 @@ from typing import TextIO
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from htgen import GENERATOR
-from htgen.config import DEFAULT_DAYS, DEFAULT_TZ, DEVICES, Config, Device
+from htgen.config import (
+    DEFAULT_DAYS,
+    DEFAULT_GAP_MAX_HOURS,
+    DEFAULT_TZ,
+    DEVICES,
+    Config,
+    Device,
+)
 from htgen.devices import day_lines
+from htgen.gaps import RandomGaps, parse_gap
 from htgen.ndjson import meta_line
 from htgen.profile import plan_day
 from htgen.timeline import Timeline
@@ -68,6 +76,20 @@ def _tz_change(value: str) -> tuple[datetime, str]:
             f"а не {value!r}"
         )
     return instant, _zone(zone)
+
+
+def _probability(value: str) -> float:
+    prob = float(value)
+    if not 0 <= prob <= 1:
+        raise argparse.ArgumentTypeError("--gap-prob: от 0 до 1")
+    return prob
+
+
+def _hours(value: str) -> float:
+    hours = float(value)
+    if not 0 < hours <= 24 * 14:
+        raise argparse.ArgumentTypeError("--gap-max-hours: больше 0 и не больше 336")
+    return hours
 
 
 def _hr_interval(value: str) -> int:
@@ -125,15 +147,46 @@ def _parser() -> argparse.ArgumentParser:
         help="с этого момента действует другой пояс, например 2026-10-05T12:00Z=America/New_York; "
         "можно повторять",
     )
+    gaps = parser.add_argument_group("пропуски", "в пропуске устройство не пишет ничего")
+    gaps.add_argument(
+        "--gap",
+        action="append",
+        default=[],
+        metavar="FROM/TO[@watch|@phone]",
+        help="явный пропуск, например 2026-10-03T00:00/2026-10-04T12:00@watch; "
+        "время без смещения — местное; без @ — у всех устройств; можно повторять",
+    )
+    gaps.add_argument(
+        "--gap-prob",
+        type=_probability,
+        default=0.0,
+        metavar="P",
+        help="вероятность, что у устройства в дату начнётся случайный пропуск (по умолчанию 0)",
+    )
+    gaps.add_argument(
+        "--gap-max-hours",
+        type=_hours,
+        default=DEFAULT_GAP_MAX_HOURS,
+        metavar="HOURS",
+        help=f"самый длинный случайный пропуск, ч (от 1 ч; по умолчанию {DEFAULT_GAP_MAX_HOURS:g})",
+    )
     parser.add_argument("--out", default="-", help="файл NDJSON; '-' — stdout (по умолчанию)")
     return parser
 
 
 def generate(config: Config) -> Iterator[str]:
     timeline = config.timeline()
+    random_gaps = RandomGaps(config.seed, timeline, config.gap_prob, config.gap_max_hours)
     yield meta_line(config.devices)
     for day in config.days():
-        yield from day_lines(plan_day(config.seed, day, timeline), config, timeline)
+        holes = {
+            device.kind: [
+                *((g.start, g.end) for g in config.gaps if g.kind in (None, device.kind)),
+                *random_gaps.touching(day, device.kind),
+            ]
+            for device in config.devices
+        }
+        yield from day_lines(plan_day(config.seed, day, timeline), config, timeline, holes)
 
 
 def _write(lines: Iterator[str], stream: TextIO) -> None:
@@ -149,7 +202,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len(set(moments)) != len(moments):
         parser.error("два --tz-change в один и тот же момент")
     tz_changes = tuple(sorted(args.tz_change))
-    today = Timeline(args.tz, tz_changes).local_date(datetime.now(UTC))
+    timeline = Timeline(args.tz, tz_changes)
+    today = timeline.local_date(datetime.now(UTC))
+    try:
+        gaps = tuple(parse_gap(value, timeline) for value in args.gap)
+    except ValueError as error:
+        parser.error(f"--gap: {error}")
     try:
         first, last = resolve_period(args.start, args.end, args.days, today)
     except ValueError as error:
@@ -163,6 +221,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         unaligned=args.unaligned,
         tz=args.tz,
         tz_changes=tz_changes,
+        gaps=gaps,
+        gap_prob=args.gap_prob,
+        gap_max_hours=args.gap_max_hours,
     )
     # LF and UTF-8 on every OS: the same seed gives byte-identical files on Windows and Linux.
     if args.out == "-":

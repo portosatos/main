@@ -2,7 +2,8 @@
 
 Watch: steps per minute of being awake (zeros included), pulse every --hr-interval seconds,
 sleep. Phone: steps in 5-minute intervals of being awake, sleep with a +-20 minute error,
-no pulse. Steps intervals of one device follow each other and never overlap.
+no pulse. Steps intervals of one device follow each other and never overlap. In a gap the
+device writes nothing: sleep is cut at its edges, steps resume from its end.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from collections.abc import Iterator
 from datetime import datetime, timedelta
 
 from htgen.config import PHONE, WATCH, Config, Device
+from htgen.gaps import Span, subtract
 from htgen.profile import SITTING, SLEEP, WALK, DayProfile, rng
 from htgen.timeline import Timeline
 
@@ -23,10 +25,15 @@ Line = tuple[datetime, int, str, str]  # sort key (moment, type, device) and the
 
 
 def _steps(
-    profile: DayProfile, device: Device, length: timedelta, offset: timedelta, timeline: Timeline
+    profile: DayProfile,
+    device: Device,
+    length: timedelta,
+    offset: timedelta,
+    timeline: Timeline,
+    holes: list[Span],
 ) -> Iterator[Line]:
     phone = device == PHONE
-    for segment_start, segment_end in profile.awake_segments():
+    for segment_start, segment_end in subtract(profile.awake_segments(), holes):
         start = segment_start + offset
         while start + length <= segment_end:
             end = start + length
@@ -54,12 +61,17 @@ def _sleep(
         )
 
 
-def _pulse(profile: DayProfile, config: Config, timeline: Timeline) -> Iterator[Line]:
+def _pulse(
+    profile: DayProfile, config: Config, timeline: Timeline, holes: list[Span]
+) -> Iterator[Line]:
     r = rng(config.seed, profile.day, "hr")
     rest = profile.resting_hr
     step = timedelta(seconds=config.hr_interval)
     moment = profile.start
     while moment < profile.end:
+        if any(start <= moment < end for start, end in holes):
+            moment += step
+            continue
         i = profile.minute(moment)
         state, cadence = profile.state[i], profile.cadence[i]
         if state == SLEEP:
@@ -80,18 +92,25 @@ def _pulse(profile: DayProfile, config: Config, timeline: Timeline) -> Iterator[
         moment += step
 
 
-def day_lines(profile: DayProfile, config: Config, timeline: Timeline) -> list[str]:
-    """NDJSON lines of one date in time order (sleep, steps, pulse at the same moment)."""
+def day_lines(
+    profile: DayProfile, config: Config, timeline: Timeline, holes: dict[str, list[Span]]
+) -> list[str]:
+    """NDJSON lines of one date in time order (sleep, steps, pulse at the same moment).
+
+    `holes` are the gaps of each device kind that touch the date.
+    """
     offset = timedelta(0)
     if config.unaligned:  # the same shift of the grid for both devices, e.g. 08:00:30
         offset = timedelta(seconds=rng(config.seed, profile.day, "align").randint(*UNALIGNED_SHIFT))
     lines: list[Line] = []
     if config.has(WATCH):
-        lines += _sleep(profile.sleep, WATCH, timeline)
-        lines += _steps(profile, WATCH, WATCH_STEPS, offset, timeline)
-        lines += _pulse(profile, config, timeline)
+        gaps = holes.get(WATCH.kind, [])
+        lines += _sleep(subtract(profile.sleep, gaps), WATCH, timeline)
+        lines += _steps(profile, WATCH, WATCH_STEPS, offset, timeline, gaps)
+        lines += _pulse(profile, config, timeline, gaps)
     if config.has(PHONE):
-        lines += _sleep(profile.phone_sleep, PHONE, timeline)
-        lines += _steps(profile, PHONE, PHONE_STEPS, offset, timeline)
+        gaps = holes.get(PHONE.kind, [])
+        lines += _sleep(subtract(profile.phone_sleep, gaps), PHONE, timeline)
+        lines += _steps(profile, PHONE, PHONE_STEPS, offset, timeline, gaps)
     lines.sort(key=lambda line: line[:3])
     return [line[3] for line in lines]

@@ -11,7 +11,6 @@ import pytest
 from conftest import ts
 
 FAST = ("--hr-interval", "60")
-RED = pytest.mark.xfail(strict=True, reason="step 2.2: not implemented")
 GAP_FROM = ts("2026-10-02T06:00:00+03:00")
 GAP_TO = ts("2026-10-03T12:00:00+03:00")
 NEAR = timedelta(minutes=25)  # the phone has no pulse and sleeps +-20 min apart from the watch
@@ -28,7 +27,6 @@ def hits(record: dict, lo: datetime, hi: datetime) -> bool:
     return start < hi and end > lo
 
 
-@RED
 @pytest.mark.parametrize(
     ("gap", "silent"),
     [
@@ -53,7 +51,6 @@ def test_explicit_gap_has_no_records_for_device(htgen, gap: str, silent: set[str
         assert first_after - GAP_TO <= NEAR, (device, first_after)
 
 
-@RED
 @pytest.mark.parametrize(("max_hours", "prob"), [(5, 0.3), (30, 0.2)])
 def test_random_gaps_bounded_by_max_hours(htgen, max_hours: int, prob: float) -> None:
     out = htgen(
@@ -101,7 +98,6 @@ def test_tz_change_switches_offset_at_instant(htgen) -> None:
     assert bed and all(b.hour in {21, 22, 23} for b in bed), bed
 
 
-@RED
 def test_overlapping_periods_same_seed_identical_records_in_intersection(htgen) -> None:
     common = (
         "--seed", "8", "--unaligned", "--gap-prob", "0.5", "--gap-max-hours", "30",

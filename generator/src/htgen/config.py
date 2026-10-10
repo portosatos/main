@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
+from htgen.gaps import Gap
 from htgen.timeline import Timeline
 
 
@@ -22,6 +23,7 @@ DEVICES = {"watch": WATCH, "phone": PHONE}
 
 DEFAULT_TZ = "Europe/Moscow"
 DEFAULT_DAYS = 7
+DEFAULT_GAP_MAX_HOURS = 30.0
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,9 @@ class Config:
     unaligned: bool = False
     tz: str = DEFAULT_TZ
     tz_changes: tuple[tuple[datetime, str], ...] = ()  # (instant, IANA zone from then on)
+    gaps: tuple[Gap, ...] = ()  # explicit, --gap
+    gap_prob: float = 0.0  # random gaps: chance that a gap of a device starts on a date
+    gap_max_hours: float = DEFAULT_GAP_MAX_HOURS
 
     def days(self) -> Iterator[date]:
         day = self.first
