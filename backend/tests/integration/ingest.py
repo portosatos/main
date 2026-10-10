@@ -91,3 +91,63 @@ async def device_rows(session: AsyncSession, user_id: uuid.UUID) -> list[tuple]:
         "SELECT external_id, kind::text, name FROM devices WHERE user_id = :u ORDER BY 1",
         u=user_id,
     )
+
+
+# Derived minute tables (step 3.3), keyed by the device's external id.
+
+
+async def steps_minute_rows(session: AsyncSession, user_id: uuid.UUID) -> dict[tuple, float]:
+    """{(external_id, minute_utc): steps} of the user's devices."""
+    found = await rows(
+        session,
+        "SELECT d.external_id, m.minute_utc, m.steps FROM steps_minute m "
+        "JOIN devices d ON d.id = m.device_id WHERE d.user_id = :u",
+        u=user_id,
+    )
+    return {(external_id, minute): steps for external_id, minute, steps in found}
+
+
+async def sleep_minute_rows(session: AsyncSession, user_id: uuid.UUID) -> set[tuple]:
+    """{(external_id, minute_utc)} of the user's devices."""
+    return set(
+        await rows(
+            session,
+            "SELECT d.external_id, m.minute_utc FROM sleep_minute m "
+            "JOIN devices d ON d.id = m.device_id WHERE d.user_id = :u",
+            u=user_id,
+        )
+    )
+
+
+async def coverage_minute_rows(session: AsyncSession, user_id: uuid.UUID) -> set[tuple]:
+    """{(external_id, minute_utc)} of the user's devices."""
+    return set(
+        await rows(
+            session,
+            "SELECT d.external_id, m.minute_utc FROM coverage_minute m "
+            "JOIN devices d ON d.id = m.device_id WHERE d.user_id = :u",
+            u=user_id,
+        )
+    )
+
+
+DERIVED_TABLES = {
+    "steps_minute": "format('%s|%s|%s', d.external_id, m.minute_utc, m.steps)",
+    "sleep_minute": "format('%s|%s', d.external_id, m.minute_utc)",
+    "coverage_minute": "format('%s|%s', d.external_id, m.minute_utc)",
+}
+
+
+async def derived_hashes(session: AsyncSession, user_id: uuid.UUID) -> dict[str, tuple[int, str]]:
+    """{table: (row count, md5 of the ordered rows)} of the user's derived minute tables."""
+    result = {}
+    for table, row in DERIVED_TABLES.items():
+        [(count, digest)] = await rows(
+            session,
+            f"SELECT count(*), md5(coalesce(string_agg({row}, ',' "
+            f"ORDER BY d.external_id, m.minute_utc), '')) FROM {table} m "
+            "JOIN devices d ON d.id = m.device_id WHERE d.user_id = :u",
+            u=user_id,
+        )
+        result[table] = (count, digest)
+    return result
