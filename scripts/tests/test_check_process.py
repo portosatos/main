@@ -9,13 +9,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 SCRIPT = Path(__file__).resolve().parents[1] / "check_process.py"
 WORKLOG = "docs/WORKLOG.md"
 TRAILER = "\n\nStage: 0.1\n"
-
-pytestmark = pytest.mark.xfail(strict=True, reason="step 0.1: not implemented")
 
 HEADER = "# WORKLOG\n\nЖурнал работы.\n"
 START = "\n## 2026-10-10T10:00:00+03:00 — Шаг 0.1 начат: репозиторий и журналы\n- План: ...\n"
@@ -36,7 +32,7 @@ def git(repo: Path, *args: str) -> str:
 
 def init_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
-    repo.mkdir()
+    repo.mkdir(parents=True)
     git(repo, "init", "-q", "-b", "main")
     git(repo, "config", "user.name", "Test")
     git(repo, "config", "user.email", "test@example.com")

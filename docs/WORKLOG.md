@@ -34,3 +34,11 @@
 - `python -m pytest scripts/tests -q` → 8 xfailed; с `--runxfail` → 8 failed, у всех причина
   `NotImplementedError: step 0.1: check_process.py is not implemented yet` (заглушка), а не ошибка теста.
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T17:39:58+06:00 — Фича готова: scripts/check_process.py
+- Пользователь ответил «ок» на тесты до кода. Реализован check_process.py (stdlib): --step X.Y и --all.
+- `python -m pytest scripts/tests -q` → 8 passed; маркеры xfail сняты, `git grep -n "step 0.1: not implemented"` → пусто.
+- Проблема: после реализации 2 теста упали из-за ошибки в самом хелпере теста (`repo.mkdir()` без
+  `parents=True` для вложенных репозиториев). В красном прогоне её скрыла более ранняя положительная проверка.
+  Исправлено в том же коммите, логика проверок в тестах не менялась.
+- Вывод переключён на UTF-8: иначе на Windows кириллица в сообщениях через pipe шла в cp1251.
