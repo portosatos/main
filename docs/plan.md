@@ -281,6 +281,12 @@ README-скелет (по просьбе пользователя). На шаг�
 ### Шаг 1.3 — Frontend: вход, layout, dev-панель
 **Этап SPEC:** 1 · **Зависит от:** 1.2, 0.3 · **Критерии §9:** вклад в #1
 
+**Статус:** [x] закрыт 2026-10-10T22:13:33+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-10T21:01:49+06:00.
+Заметки: `react-router` 7 (8.x требует React 19); shadcn `Input` на `forwardRef` — компоненты shadcn v4 написаны
+под React 19, в React 18 `ref` терялся; при 401 вне `/api/auth/*` — навигация на `/login` и очистка кеша; dev-панель
+внизу layout, сдвиг в часах и кнопками, скрыта при 404; Vitest с `TZ=UTC`; ADR-027. Сверх плана — 4 теста до кода
+и 1 после (выход). Smoke `GET :5173/login` был зелёным и до кода (SPA-fallback nginx с шага 0.3).
+
 **Цель:** пользователь входит через UI и видит каркас приложения; в dev видна панель времени.
 
 **Объём:** API-клиент (`credentials: include`, `X-Requested-With`, при 401 переход на `/login`), TanStack Query,
@@ -298,7 +304,7 @@ React Router, страницы входа и регистрации (react-hook-
 - `components/DevPanel.test.tsx::sets offset and shows new time`
 
 **Done When:**
-- [ ] `docker compose up -d --build && scripts/smoke.*` → exit 0 (`GET :5173/login` → 200).
+- [x] `docker compose up -d --build && scripts/smoke.*` → exit 0 (`GET :5173/login` → 200).
 
 **Ручная проверка:** Зарегистрироваться, войти и выйти через UI. Сдвинуть время на dev-панели: показанное время меняется.
 
