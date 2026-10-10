@@ -306,3 +306,34 @@
 - Проблема: длинная команда с несколькими heredoc в Git Bash снова упала с «unexpected EOF» до записи файлов;
   тесты записаны инструментом Write.
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T21:18:21+06:00 — Фичи шага 1.3 (пользователь ответил «ок, допущения принимаю»)
+- 084632b feat(frontend): API-клиент — `credentials: include`, `X-Requested-With: ht` на изменяющих методах,
+  401 вне `/api/auth/*` → навигация на `/login`; маркеры сняты с `api/client.test.ts` (4 passed).
+- ca3d9d7 feat(frontend): страницы входа и регистрации (react-hook-form + zod, ошибки на русском, сообщение
+  сервера в `role="alert"`, пояс браузера при регистрации). Проблема: значения полей не доходили до формы
+  («expected string, received undefined») — shadcn v4 генерирует `Input` под React 19, где `ref` — prop;
+  в React 18 он терялся. Решение: `Input` на `forwardRef` (ADR-027).
+- dcbd3cc feat(frontend): `ProtectedRoute` (401 на `/me` → `/login` с возвратом), layout — шапка, email,
+  «Выйти», пустые пункты меню SPEC §6.4. `App.test.tsx` переписан (оболочка теперь требует сессию) и дополнен
+  тестом «выход ведёт на страницу входа» — **тест после кода**. Проблема: `RouterProvider` из `react-router/dom`
+  в Vitest давал вторую копию контекста («useLocation() may be used only in the context of a <Router>») —
+  взят `RouterProvider` из `react-router`.
+- 8c51594 feat(frontend): dev-панель — время `Clock` (тикает), сдвиг в часах, «+1 ч», «+1 д», «Сброс», ссылка
+  на Mailpit, скрыта при 404; 14 passed, `test.fails` в `frontend/src` не осталось.
+- c76bc69 docs(decisions) ADR-027, e640fbc docs(claude) — команды (dev-панель, Mailpit, shadcn и `ref`).
+- Проверка в браузере (встроенный браузер, стек compose): выход → `/login`; пустая форма → «Введите email»,
+  «Введите пароль»; вход demo → `/`; «+1 д» → «Время Clock: 11.10.2026 …», «Сдвиг: 24 ч»; на 375 px
+  `scrollWidth = clientWidth = 375`; «Сброс» → `GET /api/dev/clock` даёт `offset_seconds: 0`.
+
+## 2026-10-10T21:18:21+06:00 — Шаг 1.3 завершён
+- Коммиты: 017aa20, 2ccaa96 (build), 55fcef9 (refactor, заглушки), 6ac7b94 (test, red), d702de8, 48374bb,
+  084632b, ca3d9d7, dcbd3cc, 8c51594 (feat), c76bc69, e640fbc и этот.
+- Тесты: красный прогон 1 passed | 12 expected fail → зелёный 14 passed (frontend, из них 1 тест после кода);
+  backend 37 passed, scripts/ 8 passed; `scripts/test.ps1` и `scripts/test.sh` → exit 0; ruff check и
+  format --check → exit 0; `npm --prefix frontend run check` → exit 0; `git grep "step 1.3: not implemented"
+  -- ":!docs"` → пусто.
+- Done When шага: `docker compose up -d --build`, `scripts/smoke.ps1` и `smoke.sh` → exit 0, в том числе
+  `OK frontend login page http://localhost:5173/login -> 200`.
+- Сверх плана: 4 теста до кода и 1 после (выход); `Input` на `forwardRef`.
+- Ждёт ручной проверки пользователя: регистрация, вход и выход через UI; сдвиг времени на dev-панели.
