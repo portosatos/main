@@ -1,7 +1,6 @@
 import time
 
 import httpx
-import pytest
 
 from app.config import Settings
 from app.main import create_app
@@ -18,7 +17,6 @@ async def get_health(database_url: str) -> httpx.Response:
             return await client.get("/api/health")
 
 
-@pytest.mark.xfail(strict=True, reason="step 0.2: not implemented")
 async def test_health_ok_when_db_up(test_database_url: str) -> None:
     response = await get_health(test_database_url)
 
@@ -26,7 +24,6 @@ async def test_health_ok_when_db_up(test_database_url: str) -> None:
     assert response.json() == {"status": "ok", "db": "ok"}
 
 
-@pytest.mark.xfail(strict=True, reason="step 0.2: not implemented")
 async def test_health_503_when_db_unreachable() -> None:
     started = time.monotonic()
     response = await get_health(UNREACHABLE_DB_URL)
