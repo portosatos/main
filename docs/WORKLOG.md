@@ -477,3 +477,30 @@
 - Красный прогон: backend `37 passed, 50 xfailed`. С `--runxfail` все 50 падают с `NotImplementedError: step 3.1`
   (36 — в `parse_lines`, 14 — в `create_ingest_job`); htgen в контрактном тесте запускается и пишет файл.
 - Остановка: жду «ок» пользователя перед кодом.
+
+## 2026-10-10T23:49:27+06:00 — Фичи шага 3.1 (пользователь ответил «ок, допущения 1–7 принимаю»)
+- 07271be docs(prompts): промпт сессии шага 3.1 записан с опозданием (после «ок»), с пометкой об этом.
+- 7f4a748 feat(db): миграция 0003 — `btree_gist`, `devices`, минимальная `ingest_jobs`, `steps_raw` с exclusion
+  constraint `steps_raw_no_overlap`, `sleep_raw`, `hr_point`; `create_ingest_job`. upgrade → downgrade → upgrade
+  проходит, `alembic check` чист; constraint проверен вручную в psql (пересечение → ошибка, соседние — вставлены).
+- d0f1351 feat(ingest): потоковый парсер, снят маркер с `test_parser.py` (36 passed).
+  Проблема: в первом варианте коммита в конце `test_parser.py` осталась лишняя пустая строка (ruff format
+  не прошёл бы на этом коммите); коммиты не были запушены — пересобраны через `git reset --soft`.
+- da03fe9 test(ingest): строка длиннее 1 МиБ — **тест после кода** (допущение 6 из ответа на «тесты до кода»).
+- 0a4337a feat(ingest): `DeviceResolver` (устройства из meta, неизвестное → phone с предупреждением) и
+  классификация: `COPY` в staging, SQL против сохранённых, затем пачка в порядке строк. Сняты последние маркеры.
+  Проблема: неделя htgen (129 155 записей) принималась 15,8 с; причина — `line = ANY(массив)` в INSERT;
+  заменено на соединение с `unnest` → 10,6 с, повтор (всё `duplicate`) 4,6 с.
+- b1872ef docs: правила разбора и классификации в `docs/DATA_FORMAT.md`, ADR-030.
+
+## 2026-10-10T23:49:27+06:00 — Шаг 3.1 завершён
+- Коммиты: 1cb1a96, 5fe844b (refactor, заглушки), 600873d (test, red), e238137, 07271be, 7f4a748, d0f1351 (feat),
+  da03fe9 (test после кода), 0a4337a (feat), b1872ef и этот.
+- Тесты: красный прогон `37 passed, 50 xfailed` → зелёный backend `88 passed` (51 новых: 37 парсера, 13 классификации,
+  1 контракт с htgen); generator 51 passed, scripts/ 8 passed; `scripts/test.ps1` и `scripts/test.sh` → exit 0,
+  `OK: all tests passed`; ruff check и format --check → exit 0; `git grep -n "step 3.1: not implemented" -- ":!docs"`
+  → пусто; `alembic check` → «No new upgrade operations detected».
+- Стек: `docker compose up -d --build --wait` → все healthy, `alembic current` → `0003 (head)`, `scripts/smoke.sh` → OK.
+- Done When шага — только общий DoD. Frontend и generator не менялись.
+- Ждёт ручной проверки пользователя: таблица `steps_raw` и её constraint в psql, тесты классификации и контракта
+  с подробным выводом, дифф.
