@@ -77,7 +77,6 @@ def test_first_line_is_meta_with_devices(htgen) -> None:
     assert {r["device"] for r in watch_only.records} == {"watch-1"}
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_every_timestamp_has_offset(htgen) -> None:
     out = htgen("--start", "2026-10-01", "--days", "1", "--unaligned", *FAST)
     assert {r["type"] for r in out.records} == {"steps", "sleep", "hr"}
@@ -95,7 +94,6 @@ def test_every_timestamp_has_offset(htgen) -> None:
     days=st.integers(min_value=1, max_value=3),
     unaligned=st.booleans(),
 )
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_steps_intervals_do_not_overlap_per_device(
     seed: int, start: date, days: int, unaligned: bool
 ) -> None:
@@ -133,7 +131,6 @@ def test_walks_recorded_by_both_devices_phone_90_to_97_percent(htgen) -> None:
         assert 0.90 <= phone_steps / watch_steps <= 0.97, (walk_start, phone_steps, watch_steps)
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_unaligned_produces_non_minute_boundaries(htgen) -> None:
     aligned = htgen("--start", "2026-10-01", "--days", "1", "--seed", "9", *FAST)
     unaligned = htgen("--start", "2026-10-01", "--days", "1", "--seed", "9", "--unaligned", *FAST)
@@ -157,7 +154,6 @@ def test_phone_has_no_hr(htgen) -> None:
 # --- beyond the plan --------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 2.1: not implemented")
 def test_records_pass_data_format_validation(htgen) -> None:
     """SPEC 7.2: end > start, count >= 0, 30 <= bpm <= 230, interval <= 24 h; LF UTF-8 lines."""
     out = htgen("--start", "2026-10-01", "--days", "2", "--unaligned")

@@ -17,6 +17,7 @@ from htgen.profile import SITTING, SLEEP, WALK, DayProfile, rng
 
 WATCH_STEPS = timedelta(minutes=1)
 PHONE_STEPS = timedelta(minutes=5)
+UNALIGNED_SHIFT = (1, 59)  # seconds
 TYPE_ORDER = {"sleep": 0, "steps": 1, "hr": 2}
 
 Line = tuple[datetime, int, str, str]  # sort key (moment, type, device) and the NDJSON line
@@ -82,9 +83,9 @@ def _pulse(profile: DayProfile, config: Config, zone: ZoneInfo) -> Iterator[Line
 
 def day_lines(profile: DayProfile, config: Config, zone: ZoneInfo) -> list[str]:
     """NDJSON lines of one date in time order (sleep, steps, pulse at the same moment)."""
-    if config.unaligned:
-        raise NotImplementedError("step 2.1: --unaligned")
     offset = timedelta(0)
+    if config.unaligned:  # the same shift of the grid for both devices, e.g. 08:00:30
+        offset = timedelta(seconds=rng(config.seed, profile.day, "align").randint(*UNALIGNED_SHIFT))
     lines: list[Line] = []
     if config.has(WATCH):
         lines += _sleep(profile.sleep, WATCH, zone)
