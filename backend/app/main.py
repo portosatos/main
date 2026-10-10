@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api import dev, health
+from app.api import auth, dev, health
 from app.clock import create_clock
 from app.config import Settings
 from app.db import create_engine, create_sessionmaker
@@ -35,6 +35,7 @@ def create_app(
     app = FastAPI(title="Health Tracker API", lifespan=lifespan)
     app.state.settings = settings
     app.include_router(health.router)
+    app.include_router(auth.router)
     if settings.app_env == "dev":
         app.include_router(dev.router)
     return app
