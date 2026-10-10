@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Job
 
 # Channel of NOTIFY on every enqueue; the worker LISTENs on it.
 JOBS_CHANNEL = "jobs"
@@ -32,7 +35,11 @@ async def enqueue(
     now: datetime,
 ) -> int:
     """Insert a queued job and NOTIFY (delivered at commit). The caller commits."""
-    raise NotImplementedError("step 3.2")
+    job = Job(kind=kind, user_id=user_id, payload=payload, run_after=now, created_at=now)
+    session.add(job)
+    await session.flush()
+    await session.execute(select(func.pg_notify(JOBS_CHANNEL, kind)))
+    return job.id
 
 
 async def requeue_stale(

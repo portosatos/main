@@ -26,7 +26,7 @@ from app.worker.main import SimulatedCrash, Worker
 from tests.integration.client import CSRF_HEADERS
 from tests.integration.ingest import ndjson
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 3.2: not implemented")
+NOT_IMPLEMENTED = pytest.mark.xfail(strict=True, reason="step 3.2: not implemented")
 
 PASSWORD = "correct horse battery"
 T0 = datetime(2026, 10, 1, tzinfo=UTC)
@@ -179,6 +179,7 @@ def counts(job: dict[str, Any]) -> dict[str, int]:
     return job["counts"]
 
 
+@NOT_IMPLEMENTED
 async def test_upload_returns_202_before_processing_done(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -203,6 +204,7 @@ async def test_upload_returns_202_before_processing_done(
         assert (await get_job(client, job_id))["status"] == "done"
 
 
+@NOT_IMPLEMENTED
 async def test_job_completes_with_counts_per_class(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -225,6 +227,7 @@ async def test_job_completes_with_counts_per_class(
     assert not [p for p in settings.ingest_dir.rglob("*") if p.is_file()]
 
 
+@NOT_IMPLEMENTED
 async def test_reupload_same_file_zero_new_all_duplicate(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -247,6 +250,7 @@ async def test_reupload_same_file_zero_new_all_duplicate(
     assert len(rows_after_both) == 144
 
 
+@NOT_IMPLEMENTED
 async def test_partially_overlapping_file_new_only_for_new_part(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -260,6 +264,7 @@ async def test_partially_overlapping_file_new_only_for_new_part(
     assert counts(job) == {"total": 144, "new": 72, "duplicate": 72, "conflict": 0, "invalid": 0}
 
 
+@NOT_IMPLEMENTED
 async def test_worker_crash_after_batch_k_resumes_same_result(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -306,6 +311,7 @@ async def test_worker_crash_after_batch_k_resumes_same_result(
         assert resumed_rows == [row[1:] for row in await raw_rows(db_engine, calm)]
 
 
+@NOT_IMPLEMENTED
 async def test_stale_lock_requeued_after_5_min_by_clock(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -332,6 +338,7 @@ async def test_stale_lock_requeued_after_5_min_by_clock(
         assert (await get_job(client, job_id))["status"] == "done"
 
 
+@NOT_IMPLEMENTED
 async def test_same_user_jobs_sequential_different_users_parallel(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -383,6 +390,7 @@ async def test_job_of_other_user_404(clean: None, settings: Settings) -> None:
         assert (await owner.get(f"/api/ingest/jobs/{job_id}")).status_code == 401
 
 
+@NOT_IMPLEMENTED
 async def test_errors_capped_at_50(clean: None, settings: Settings, db_engine: AsyncEngine) -> None:
     good = day_records(0)[:10]
     data = ndjson(META, *good) + b"".join(b"garbage %d\n" % i for i in range(120))
@@ -398,6 +406,7 @@ async def test_errors_capped_at_50(clean: None, settings: Settings, db_engine: A
     assert [e["line"] for e in job["errors"]] == list(range(12, 62))
 
 
+@NOT_IMPLEMENTED
 async def test_health_reports_worker_heartbeat(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -427,6 +436,7 @@ async def test_health_reports_worker_heartbeat(
         assert abs(datetime.now(UTC) - last_tick) < timedelta(seconds=30)
 
 
+@NOT_IMPLEMENTED
 async def test_worker_wakes_on_notify_without_waiting_for_tick(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
