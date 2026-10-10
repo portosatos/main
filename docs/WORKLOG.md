@@ -142,3 +142,17 @@
   `proxy_buffering off`, SPA fallback), сервис frontend на :5173. `docker compose up -d --build --wait` → все
   healthy; smoke.sh и smoke.ps1 → 4×OK, exit 0; `/dashboard` → 200 text/html.
 - 352f9b6 ci: github actions for backend, frontend and process checks — до пуша: yaml валиден, `check_process.py --all` → OK.
+
+## 2026-10-10T20:10:07+06:00 — Шаг 0.3 завершён
+- Коммиты: cd545de, f300132 (chore), b8d7067 (test, red), 911571d, 274ab71 (test smoke, red), 9bac22e,
+  33da40c (feat), 2071f4c, 618534d, 352f9b6 (ci), 7c534aa, a3382b7 и этот.
+- Тесты: Vitest 1 expected fail → 1 passed; backend 4 passed, scripts/ 8 passed (`scripts/test.ps1` и
+  `test.sh` → exit 0). ruff check и format --check → exit 0; `git grep "step 0.3: not implemented"` → пусто.
+- Done When: `npm --prefix frontend run check` → exit 0; `docker compose up -d --build --wait` → все healthy
+  (worker — running), smoke.ps1 и smoke.sh → 4×OK, exit 0; CI на 7c534aa → completed success (backend,
+  frontend, process); команды раздела «Команды» → exit 0 (демо и генератор ещё не существуют — шаги 13.1 и 2.1).
+- Проверено в браузере: `http://localhost:5173` — оболочка «Трекер здоровья», на 375 px без горизонтального
+  скролла; кнопка «Состояние API» → `/api/health` через proxy → `{"status":"ok","db":"ok"}`.
+- Замечание: npm 11 откладывает install-скрипт msw (`npm warn allow-scripts`); он копирует браузерный
+  service worker, для тестов в Node не нужен.
+- Ждёт ручной проверки пользователя: `http://localhost:5173` и вкладка Actions на GitHub.
