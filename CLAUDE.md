@@ -105,7 +105,7 @@
   Порты на хосте: приложение **5173** (nginx, `/api` проксируется в api; ADR-024), api 8000 (`/docs`),
   Mailpit UI 8025 и SMTP 1025, postgres **5433** (ADR-020).
 - Smoke запущенного стека: `scripts/smoke.ps1` / `scripts/smoke.sh` (`/api/health`, Mailpit, frontend `:5173/`
-  и `:5173/api/health` через proxy → 200).
+  и `:5173/api/health` через proxy → 200, вход демо-пользователя и `:5173/api/auth/me` → 200).
 - Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend
   и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
   `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
@@ -113,6 +113,9 @@
   `docker compose exec api alembic current` → `(head)`. Локально: `cd backend; uv run alembic upgrade head`
   (нужен `DATABASE_URL`), новая миграция — `uv run alembic revision --autogenerate -m "..."`, проверка, что
   модели и миграции совпадают, — `uv run alembic check`.
+- Демо-пользователь: `demo@example.com` / `demo12345` (`DEMO_USER_*` в `.env`), создаётся при старте api
+  (`python -m app.seed` после миграций, идемпотентно). Все изменяющие запросы к API — с заголовком
+  `X-Requested-With: ht`, иначе 403 (ADR-026); Swagger `/docs` добавляет его сам.
 - Dev-время (только `APP_ENV=dev`): `GET /api/dev/clock`, `POST /api/dev/clock` с `{"offset_seconds": 86400}`
   (сдвиг; 0 — сброс). При `APP_ENV=prod` → 404.
 - Только backend: `cd backend; uv run pytest`. Линтер: `uv run --project backend ruff check .` и
