@@ -104,3 +104,5 @@
 - Тесты: `scripts/test.ps1` / `scripts/test.sh`
 - Демо: `scripts/demo.ps1` / `scripts/demo.sh`
 - Генератор: `uv run --project generator htgen --help`
+- Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
+- Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
