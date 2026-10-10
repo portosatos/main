@@ -116,3 +116,15 @@
   `*.sh`, `check_process.py --all`; раздел «Команды» в CLAUDE.md.
 - Окружение: Node v24.19.0, npm 11.17.0 (в Docker и CI — Node 22 LTS, как в SPEC §4), gh 2.102.0 (вошёл как
   portosatos, репозиторий portosatos/main публичный, прогонов Actions ещё нет), порт 5173 свободен.
+
+## 2026-10-10T20:00:14+06:00 — Тесты до кода шага 0.3: 1 expected fail (Vitest) + smoke красный на frontend
+- f300132 chore(frontend): скелет Vite + React 18 + TS, ESLint, Vitest + RTL + MSW (`onUnhandledFrame: "error"`
+  — запрос без мока роняет тест), `npm run check`; App — заглушка `<div />`. Версии: vite 8, vitest 5,
+  msw 3, eslint 10, typescript ~6.0 (7.x не поддерживается typescript-eslint).
+- b8d7067 test(frontend): app shell title test (red)
+- `npm --prefix frontend run test` → 1 expected fail. Без `.fails` тест падает по правильной причине:
+  `Unable to find an accessible element with the role "banner"` (заглушка рендерит пустой `<div />`).
+- Расширение smoke (`scripts/smoke.ps1` и `smoke.sh`: `GET :5173/` и `GET :5173/api/health`) на текущем стеке:
+  api и mailpit — OK, frontend и proxy — FAIL (соединение отклонено: сервиса frontend ещё нет), exit 1 в обоих.
+  Smoke пока не закоммичен: вопрос пользователю, как коммитить красную проверку без маркера.
+- Остановка: жду «ок» пользователя перед кодом.
