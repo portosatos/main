@@ -144,6 +144,12 @@ Done When: проверяемые пункты (тест или команда) 
 ### Шаг 0.2 — Скелет backend и docker compose
 **Этап SPEC:** 0 · **Зависит от:** 0.1 · **Критерии §9:** вклад в #1, #21
 
+**Статус:** [x] закрыт 2026-10-10T19:50:05+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-10T18:04:39+06:00.
+Заметки: postgres на хост-порту 5433 и compose без `.env` (ADR-020); `/api/health` пока проверяет только БД,
+тик воркера — на шаге 3.2 (ADR-021); сверх плана — тест «health при недоступной БД отвечает < 5 с»;
+один корневой `ruff.toml` на весь репозиторий, `scripts/` из шага 0.1 переформатированы под него (`cc60a14`).
+Не выполнялось: CI (появится на шаге 0.3).
+
 **Цель:** `docker compose up` поднимает postgres, mailpit, api и заглушку воркера; есть скрипты test и smoke.
 
 **Объём:** `backend/` (uv, FastAPI, pydantic-settings, `GET /api/health` с проверкой БД), заглушка
@@ -158,9 +164,9 @@ Done When: проверяемые пункты (тест или команда) 
 - `backend/tests/integration/test_health.py::test_health_503_when_db_unreachable`
 
 **Done When:**
-- [ ] `docker compose up -d --build` → `docker compose ps` показывает все сервисы `running`/`healthy`.
-- [ ] `scripts/smoke.ps1` и `scripts/smoke.sh` → exit 0: `/api/health` отвечает 200, Mailpit `:8025` отвечает 200.
-- [ ] `git ls-files --eol "scripts/*.sh"` → у всех `i/lf`.
+- [x] `docker compose up -d --build` → `docker compose ps` показывает все сервисы `running`/`healthy`.
+- [x] `scripts/smoke.ps1` и `scripts/smoke.sh` → exit 0: `/api/health` отвечает 200, Mailpit `:8025` отвечает 200.
+- [x] `git ls-files --eol "scripts/*.sh"` → у всех `i/lf`.
 
 **Ручная проверка:** Открыть `http://localhost:8000/docs` и `http://localhost:8025`: обе страницы открываются.
 
