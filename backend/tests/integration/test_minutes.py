@@ -26,8 +26,6 @@ from tests.integration.ingest import (
     upload,
 )
 
-NOT_IMPLEMENTED = pytest.mark.xfail(strict=True, reason="step 3.3: not implemented")
-
 META = {
     "type": "meta",
     "schema": "ht.v1",
@@ -72,7 +70,6 @@ async def device_id(session: AsyncSession, user_id: uuid.UUID, external_id: str)
     return found
 
 
-@NOT_IMPLEMENTED
 @pytest.mark.parametrize("batch_size", [1, BATCH_SIZE])
 async def test_adjacent_unaligned_intervals_minute_0801_equals_60(
     session: AsyncSession, batch_size: int
@@ -103,7 +100,6 @@ INTERVALS = st.lists(
 )
 
 
-@NOT_IMPLEMENTED
 @settings(
     max_examples=40,
     deadline=None,
@@ -134,7 +130,6 @@ async def test_sum_steps_minute_equals_sum_raw(
     assert sum(values) == pytest.approx(total, rel=1e-6, abs=1e-6)
 
 
-@NOT_IMPLEMENTED
 async def test_sleep_minute_marked_if_covered_30s_or_more(session: AsyncSession) -> None:
     user_id = await make_user(session)
     data = ndjson(
@@ -165,7 +160,6 @@ async def test_sleep_minute_marked_if_covered_30s_or_more(session: AsyncSession)
     }
 
 
-@NOT_IMPLEMENTED
 async def test_coverage_from_steps_sleep_and_hr(session: AsyncSession) -> None:
     user_id = await make_user(session)
     data = ndjson(
@@ -190,10 +184,10 @@ async def test_coverage_from_steps_sleep_and_hr(session: AsyncSession) -> None:
         ("watch-1", utc(12, 0)),
         ("phone-1", utc(13, 5)),
     }
-    assert await sleep_minute_rows(session, user_id) == {("watch-1", utc(11, 0))}
+    # 10 s of 11:00 and 5 s of 11:01: covered, but not sleep minutes.
+    assert await sleep_minute_rows(session, user_id) == set()
 
 
-@NOT_IMPLEMENTED
 async def test_recompute_idempotent(session: AsyncSession) -> None:
     user_id = await make_user(session)
     data = ndjson(

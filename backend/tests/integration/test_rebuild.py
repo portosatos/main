@@ -65,7 +65,6 @@ async def delete_derived(session: AsyncSession, user_id: uuid.UUID) -> None:
         )
 
 
-@NOT_IMPLEMENTED
 async def test_rebuild_equals_incremental(session: AsyncSession, htgen_file: bytes) -> None:
     user_id = await make_user(session, email="rebuild@example.com")
     other_id = await make_user(session, email="other@example.com")
@@ -92,7 +91,6 @@ async def test_rebuild_equals_incremental(session: AsyncSession, htgen_file: byt
     assert await derived_hashes(session, other_id) == other
 
 
-@NOT_IMPLEMENTED
 async def test_reupload_leaves_derived_tables_unchanged(
     session: AsyncSession, htgen_file: bytes
 ) -> None:

@@ -99,6 +99,14 @@ async def claim(conn: AsyncConnection, *, now: datetime) -> QueuedJob | None:
             busy.append(job.user_id)
 
 
+async def lock_user(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Wait for the user's running job (if any) and keep its jobs off until this transaction
+    ends: the transaction-level twin of the lock `claim` takes."""
+    await session.execute(
+        select(func.pg_advisory_xact_lock(USER_LOCK_NAMESPACE, func.hashtext(str(user_id))))
+    )
+
+
 async def unlock_users(conn: AsyncConnection) -> None:
     """Release the user locks taken by `claim` on this connection."""
     await conn.execute(select(func.pg_advisory_unlock_all()))

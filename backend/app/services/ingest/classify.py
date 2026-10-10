@@ -4,7 +4,8 @@ Records go in batches. A batch is copied into staging tables (`COPY`) and compar
 stored raw records by one SQL query per record type; then records inside the batch are compared
 with each other in line order; only `new` records are inserted. On a conflict the first loaded
 record wins: stored records first, then earlier lines of the file (ADR-030). The result does not
-depend on the batch size.
+depend on the batch size. After every batch the derived minutes its new records touch are
+recomputed in the same transaction (services/minutes.py, ADR-032).
 """
 
 import bisect
@@ -19,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.ingest.devices import DeviceResolver
 from app.services.ingest.parser import HeartRate, Invalid, Line, Meta, Sleep, Steps
+from app.services.minutes import DirtyMinutes, recompute
 
 BATCH_SIZE = 5000
 # Errors (invalid and conflicting lines) kept in the report; the counters count all of them.
@@ -74,7 +76,8 @@ async def ingest_records(
         if batch:
             ids, warnings = await devices.resolve({record.device for _, record in batch})
             counts.warnings.extend(warnings)
-            await writer.write(batch, ids, counts)
+            dirty = await writer.write(batch, ids, counts)
+            await recompute(session, dirty)
             batch.clear()
 
     for line in lines:
@@ -171,17 +174,20 @@ class _BatchWriter:
         batch: Sequence[tuple[int, Steps | Sleep | HeartRate]],
         device_ids: dict[str, uuid.UUID],
         counts: Counts,
-    ) -> None:
+    ) -> DirtyMinutes:
+        """Store the `new` records of the batch; returns the minutes they touch."""
         conn = await self._driver_connection()
+        dirty = DirtyMinutes()
         steps = [(n, device_ids[r.device], r) for n, r in batch if isinstance(r, Steps)]
         sleep = [(n, device_ids[r.device], r) for n, r in batch if isinstance(r, Sleep)]
         pulse = [(n, device_ids[r.device], r) for n, r in batch if isinstance(r, HeartRate)]
         if steps:
-            await self._steps(conn, steps, counts)
+            await self._steps(conn, steps, counts, dirty)
         if sleep:
-            await self._sleep(conn, sleep, counts)
+            await self._sleep(conn, sleep, counts, dirty)
         if pulse:
-            await self._pulse(conn, pulse, counts)
+            await self._pulse(conn, pulse, counts, dirty)
+        return dirty
 
     async def _driver_connection(self) -> asyncpg.Connection:
         """The asyncpg connection under the session, inside its transaction: COPY needs it."""
@@ -208,7 +214,11 @@ class _BatchWriter:
             await conn.execute(sql, self._job_id, self._now, lines)
 
     async def _steps(
-        self, conn: asyncpg.Connection, items: list[tuple[int, uuid.UUID, Steps]], counts: Counts
+        self,
+        conn: asyncpg.Connection,
+        items: list[tuple[int, uuid.UUID, Steps]],
+        counts: Counts,
+        dirty: DirtyMinutes,
     ) -> None:
         rows = [(n, d, r.start, r.end, r.count) for n, d, r in items]
         columns = ["line", "device_id", "start_utc", "end_utc", "count"]
@@ -248,11 +258,16 @@ class _BatchWriter:
                     interval_lines[(device_id, (record.start, record.end))] = line
                     by_key[(device_id, record.start, record.end)] = (line, record.count)
                     accepted.append(line)
+                    dirty.add(device_id, record.start, record.end)
         await self._insert(conn, INSERT_STEPS, accepted)
         counts.new += len(accepted)
 
     async def _sleep(
-        self, conn: asyncpg.Connection, items: list[tuple[int, uuid.UUID, Sleep]], counts: Counts
+        self,
+        conn: asyncpg.Connection,
+        items: list[tuple[int, uuid.UUID, Sleep]],
+        counts: Counts,
+        dirty: DirtyMinutes,
     ) -> None:
         # Overlaps are allowed: only an exact repeat of the interval is a duplicate.
         rows = [(n, d, r.start, r.end) for n, d, r in items]
@@ -268,6 +283,7 @@ class _BatchWriter:
             else:
                 seen.add(key)
                 accepted.append(line)
+                dirty.add(device_id, record.start, record.end)
         await self._insert(conn, INSERT_SLEEP, accepted)
         counts.new += len(accepted)
 
@@ -276,6 +292,7 @@ class _BatchWriter:
         conn: asyncpg.Connection,
         items: list[tuple[int, uuid.UUID, HeartRate]],
         counts: Counts,
+        dirty: DirtyMinutes,
     ) -> None:
         rows = [(n, d, r.ts, r.bpm) for n, d, r in items]
         columns = ["line", "device_id", "ts_utc", "bpm"]
@@ -299,6 +316,7 @@ class _BatchWriter:
             else:
                 by_key[(device_id, record.ts)] = (line, record.bpm)
                 accepted.append(line)
+                dirty.add_point(device_id, record.ts)
         await self._insert(conn, INSERT_HR, accepted)
         counts.new += len(accepted)
 
