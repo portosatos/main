@@ -15,8 +15,6 @@ from app import cli
 from app.services import minutes
 from tests.integration.ingest import derived_hashes, make_user, upload
 
-NOT_IMPLEMENTED = pytest.mark.xfail(strict=True, reason="step 3.3: not implemented")
-
 GENERATOR_DIR = Path(__file__).resolve().parents[3] / "generator"
 # Two devices, unaligned steps, sleep, pulse, a time zone change and gaps: two days keep it fast.
 HTGEN_ARGS = [
@@ -106,7 +104,6 @@ async def test_reupload_leaves_derived_tables_unchanged(
 
 
 # Beyond the plan: the command line of `htadmin rebuild`.
-@NOT_IMPLEMENTED
 async def test_cli_rebuild_by_email(
     session: AsyncSession,
     test_sessionmaker: async_sessionmaker[AsyncSession],

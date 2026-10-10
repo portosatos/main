@@ -20,6 +20,10 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
 
+# htadmin (maintenance CLI, e.g. `docker compose exec api htadmin rebuild --user <email>`).
+RUN printf '#!/bin/sh\ncd /app && exec python -m app.cli "$@"\n' > /opt/venv/bin/htadmin \
+    && chmod +x /opt/venv/bin/htadmin
+
 # /data/ingest: the uploads volume; a fresh named volume takes this directory's owner.
 RUN useradd --system --no-create-home app     && mkdir -p /data/ingest && chown app /data/ingest
 USER app
