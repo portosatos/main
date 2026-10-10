@@ -9,11 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from htgen.config import PHONE, WATCH, Config, Device
-from htgen.ndjson import iso
 from htgen.profile import SITTING, SLEEP, WALK, DayProfile, rng
+from htgen.timeline import Timeline
 
 WATCH_STEPS = timedelta(minutes=1)
 PHONE_STEPS = timedelta(minutes=5)
@@ -24,7 +23,7 @@ Line = tuple[datetime, int, str, str]  # sort key (moment, type, device) and the
 
 
 def _steps(
-    profile: DayProfile, device: Device, length: timedelta, offset: timedelta, zone: ZoneInfo
+    profile: DayProfile, device: Device, length: timedelta, offset: timedelta, timeline: Timeline
 ) -> Iterator[Line]:
     phone = device == PHONE
     for segment_start, segment_end in profile.awake_segments():
@@ -36,26 +35,26 @@ def _steps(
                 start,
                 TYPE_ORDER["steps"],
                 device.id,
-                f'{{"type":"steps","device":"{device.id}","start":"{iso(start, zone)}",'
-                f'"end":"{iso(end, zone)}","count":{count}}}',
+                f'{{"type":"steps","device":"{device.id}","start":"{timeline.iso(start)}",'
+                f'"end":"{timeline.iso(end)}","count":{count}}}',
             )
             start = end
 
 
 def _sleep(
-    spans: list[tuple[datetime, datetime]], device: Device, zone: ZoneInfo
+    spans: list[tuple[datetime, datetime]], device: Device, timeline: Timeline
 ) -> Iterator[Line]:
     for start, end in spans:
         yield (
             start,
             TYPE_ORDER["sleep"],
             device.id,
-            f'{{"type":"sleep","device":"{device.id}","start":"{iso(start, zone)}",'
-            f'"end":"{iso(end, zone)}"}}',
+            f'{{"type":"sleep","device":"{device.id}","start":"{timeline.iso(start)}",'
+            f'"end":"{timeline.iso(end)}"}}',
         )
 
 
-def _pulse(profile: DayProfile, config: Config, zone: ZoneInfo) -> Iterator[Line]:
+def _pulse(profile: DayProfile, config: Config, timeline: Timeline) -> Iterator[Line]:
     r = rng(config.seed, profile.day, "hr")
     rest = profile.resting_hr
     step = timedelta(seconds=config.hr_interval)
@@ -76,23 +75,23 @@ def _pulse(profile: DayProfile, config: Config, zone: ZoneInfo) -> Iterator[Line
             moment,
             TYPE_ORDER["hr"],
             WATCH.id,
-            f'{{"type":"hr","device":"{WATCH.id}","ts":"{iso(moment, zone)}","bpm":{bpm}}}',
+            f'{{"type":"hr","device":"{WATCH.id}","ts":"{timeline.iso(moment)}","bpm":{bpm}}}',
         )
         moment += step
 
 
-def day_lines(profile: DayProfile, config: Config, zone: ZoneInfo) -> list[str]:
+def day_lines(profile: DayProfile, config: Config, timeline: Timeline) -> list[str]:
     """NDJSON lines of one date in time order (sleep, steps, pulse at the same moment)."""
     offset = timedelta(0)
     if config.unaligned:  # the same shift of the grid for both devices, e.g. 08:00:30
         offset = timedelta(seconds=rng(config.seed, profile.day, "align").randint(*UNALIGNED_SHIFT))
     lines: list[Line] = []
     if config.has(WATCH):
-        lines += _sleep(profile.sleep, WATCH, zone)
-        lines += _steps(profile, WATCH, WATCH_STEPS, offset, zone)
-        lines += _pulse(profile, config, zone)
+        lines += _sleep(profile.sleep, WATCH, timeline)
+        lines += _steps(profile, WATCH, WATCH_STEPS, offset, timeline)
+        lines += _pulse(profile, config, timeline)
     if config.has(PHONE):
-        lines += _sleep(profile.phone_sleep, PHONE, zone)
-        lines += _steps(profile, PHONE, PHONE_STEPS, offset, zone)
+        lines += _sleep(profile.phone_sleep, PHONE, timeline)
+        lines += _steps(profile, PHONE, PHONE_STEPS, offset, timeline)
     lines.sort(key=lambda line: line[:3])
     return [line[3] for line in lines]

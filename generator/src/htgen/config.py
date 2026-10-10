@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+
+from htgen.timeline import Timeline
 
 
 @dataclass(frozen=True)
@@ -31,12 +33,16 @@ class Config:
     hr_interval: int = 5  # seconds between watch pulse points
     unaligned: bool = False
     tz: str = DEFAULT_TZ
+    tz_changes: tuple[tuple[datetime, str], ...] = ()  # (instant, IANA zone from then on)
 
     def days(self) -> Iterator[date]:
         day = self.first
         while day <= self.last:
             yield day
             day += timedelta(days=1)
+
+    def timeline(self) -> Timeline:
+        return Timeline(self.tz, self.tz_changes)
 
     def has(self, device: Device) -> bool:
         return device in self.devices

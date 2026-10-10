@@ -8,15 +8,16 @@ import io
 import os
 import sys
 from collections.abc import Iterator, Sequence
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TextIO
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from htgen import GENERATOR
 from htgen.config import DEFAULT_DAYS, DEFAULT_TZ, DEVICES, Config, Device
 from htgen.devices import day_lines
 from htgen.ndjson import meta_line
 from htgen.profile import plan_day
+from htgen.timeline import Timeline
 
 
 def resolve_period(
@@ -45,6 +46,28 @@ def _devices(value: str) -> tuple[Device, ...]:
     if not kinds or unknown:
         raise argparse.ArgumentTypeError(f"ожидается watch, phone или watch,phone: {value!r}")
     return tuple(device for kind, device in DEVICES.items() if kind in kinds)
+
+
+def _zone(value: str) -> str:
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise argparse.ArgumentTypeError(f"неизвестный часовой пояс IANA: {value!r}") from None
+    return value
+
+
+def _tz_change(value: str) -> tuple[datetime, str]:
+    moment, sep, zone = value.partition("=")
+    try:
+        instant = datetime.fromisoformat(moment)
+    except ValueError:
+        instant = None
+    if not sep or instant is None or instant.tzinfo is None:
+        raise argparse.ArgumentTypeError(
+            f"ожидается МОМЕНТ=ПОЯС, момент со смещением: 2026-10-05T12:00Z=America/New_York, "
+            f"а не {value!r}"
+        )
+    return instant, _zone(zone)
 
 
 def _hr_interval(value: str) -> int:
@@ -86,15 +109,31 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="границы интервалов шагов не на начале минуты (например, 08:00:30)",
     )
+    zones = parser.add_argument_group("часовые пояса")
+    zones.add_argument(
+        "--tz",
+        type=_zone,
+        default=DEFAULT_TZ,
+        help=f"пояс IANA в начале периода (по умолчанию {DEFAULT_TZ})",
+    )
+    zones.add_argument(
+        "--tz-change",
+        type=_tz_change,
+        action="append",
+        default=[],
+        metavar="MOMENT=ZONE",
+        help="с этого момента действует другой пояс, например 2026-10-05T12:00Z=America/New_York; "
+        "можно повторять",
+    )
     parser.add_argument("--out", default="-", help="файл NDJSON; '-' — stdout (по умолчанию)")
     return parser
 
 
 def generate(config: Config) -> Iterator[str]:
-    zone = ZoneInfo(config.tz)
+    timeline = config.timeline()
     yield meta_line(config.devices)
     for day in config.days():
-        yield from day_lines(plan_day(config.seed, day, zone), config, zone)
+        yield from day_lines(plan_day(config.seed, day, timeline), config, timeline)
 
 
 def _write(lines: Iterator[str], stream: TextIO) -> None:
@@ -106,7 +145,11 @@ def _write(lines: Iterator[str], stream: TextIO) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
-    today = datetime.now(ZoneInfo(DEFAULT_TZ)).date()
+    moments = [moment for moment, _zone in args.tz_change]
+    if len(set(moments)) != len(moments):
+        parser.error("два --tz-change в один и тот же момент")
+    tz_changes = tuple(sorted(args.tz_change))
+    today = Timeline(args.tz, tz_changes).local_date(datetime.now(UTC))
     try:
         first, last = resolve_period(args.start, args.end, args.days, today)
     except ValueError as error:
@@ -118,6 +161,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         devices=args.devices,
         hr_interval=args.hr_interval,
         unaligned=args.unaligned,
+        tz=args.tz,
+        tz_changes=tz_changes,
     )
     # LF and UTF-8 on every OS: the same seed gives byte-identical files on Windows and Linux.
     if args.out == "-":

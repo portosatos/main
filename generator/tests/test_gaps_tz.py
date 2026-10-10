@@ -72,7 +72,6 @@ def test_random_gaps_bounded_by_max_hours(htgen, max_hours: int, prob: float) ->
             assert [r for r in out.records if r["type"] != "hr" and hits(r, lo, hi)] == []
 
 
-@RED
 def test_tz_change_switches_offset_at_instant(htgen) -> None:
     moment = ts("2026-10-02T12:00:00+00:00")
     out = htgen(

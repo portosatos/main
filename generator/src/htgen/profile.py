@@ -3,14 +3,17 @@
 Every random choice comes from a generator seeded by (seed, date, purpose), so a date looks the
 same in any period that contains it. A date owns the wall-clock window [00:00, 24:00) local:
 the end of the previous night and the start of the next one are taken from the nights' own seeds.
+With a time zone change the window is longer or shorter than 24 hours (htgen.timeline); times of
+day inside it count from its start.
 """
 
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, datetime, timedelta
+
+from htgen.timeline import Timeline
 
 SLEEP, SITTING, LIGHT, WALK = range(4)
 MINUTE = timedelta(minutes=1)
@@ -35,10 +38,6 @@ def rng(seed: int, day: date, purpose: str) -> random.Random:
     return random.Random(f"htgen:{seed}:{day.isoformat()}:{purpose}")
 
 
-def local_midnight(day: date, zone: ZoneInfo) -> datetime:
-    return datetime.combine(day, time(0), tzinfo=zone).astimezone(UTC)
-
-
 @dataclass(frozen=True)
 class Night:
     """The night that ends on the morning of its date (UTC instants)."""
@@ -49,9 +48,9 @@ class Night:
     phone_wake: datetime
 
 
-def night(seed: int, wake_day: date, zone: ZoneInfo) -> Night:
+def night(seed: int, wake_day: date, timeline: Timeline) -> Night:
     r = rng(seed, wake_day, "night")
-    bed = local_midnight(wake_day, zone) + MINUTE * r.randint(*BED_MINUTES)
+    bed = timeline.day_start(wake_day) + MINUTE * r.randint(*BED_MINUTES)
     wake = bed + MINUTE * r.randint(*SLEEP_MINUTES)
     error = (-PHONE_SLEEP_ERROR, PHONE_SLEEP_ERROR)
     return Night(bed, wake, bed + MINUTE * r.randint(*error), wake + MINUTE * r.randint(*error))
@@ -98,17 +97,28 @@ class DayProfile:
         return total
 
 
+def _merge(spans: list[tuple[datetime, datetime]]) -> list[tuple[datetime, datetime]]:
+    """Nights of a short day (a move east) may overlap; a device never writes overlapping sleep."""
+    merged: list[tuple[datetime, datetime]] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
 def _clip(
     spans: list[tuple[datetime, datetime]], lo: datetime, hi: datetime
 ) -> list[tuple[datetime, datetime]]:
-    return [(max(s, lo), min(e, hi)) for s, e in spans if s < hi and e > lo]
+    return [(max(s, lo), min(e, hi)) for s, e in _merge(spans) if s < hi and e > lo]
 
 
-def plan_day(seed: int, day: date, zone: ZoneInfo) -> DayProfile:
-    start = local_midnight(day, zone)
-    end = local_midnight(day + timedelta(days=1), zone)
+def plan_day(seed: int, day: date, timeline: Timeline) -> DayProfile:
+    start = timeline.day_start(day)
+    end = timeline.day_start(day + timedelta(days=1))
     size = int((end - start).total_seconds() // 60)
-    nights = [night(seed, day, zone), night(seed, day + timedelta(days=1), zone)]
+    nights = [night(seed, day, timeline), night(seed, day + timedelta(days=1), timeline)]
 
     state = [LIGHT] * size
     for n in nights:
@@ -116,10 +126,13 @@ def plan_day(seed: int, day: date, zone: ZoneInfo) -> DayProfile:
             state[i] = SLEEP
 
     def at(hour: int, minute: int = 0) -> int:
-        return (datetime.combine(day, time(hour, minute), tzinfo=zone) - start) // MINUTE
+        """Minutes from the start of the window (wall clock time when the zone does not change)."""
+        return min(hour * 60 + minute, size)
 
     def place(r: random.Random, length: int, earliest: int, latest: int) -> range | None:
         """A free (LIGHT) block of `length` minutes starting in [earliest, latest - length]."""
+        if latest - length < earliest:
+            return None  # a short day of a move east
         for _ in range(PLACEMENT_TRIES):
             first = r.randint(earliest, latest - length)
             block = range(max(0, first - 1), min(size, first + length + 1))  # keep a gap
