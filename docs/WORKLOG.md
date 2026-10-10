@@ -413,3 +413,13 @@
   (`short-sleep`, `sedentary`, `high-rhr`, `irregular`, `worse-week`, `recovery`) от конца периода.
   Без новых опций вывод побайтно тот же, что на шаге 2.1. Документация — `docs/DATA_FORMAT.md`, ADR-029.
 - Порядок: тесты до кода (`xfail(strict=True)`) → стоп до «ок» → код.
+
+## 2026-10-10T23:03:58+06:00 — Шаг 2.2: тесты до кода — 15 xfailed
+- Коммит: 93d24b9 test(generator): … (red). `generator/tests/test_gaps_tz.py` (4 теста плана,
+  7 случаев), `generator/tests/test_scenarios.py` (6 тестов плана, 8 случаев), хелперы дневных метрик в `conftest.py`.
+- Красный прогон: `cd generator; uv run pytest -q` → `22 passed, 15 xfailed`. Причина у всех 15 (`--runxfail`):
+  `htgen: error: unrecognized arguments: --gap … / --gap-prob … / --tz … / --scenario …` — опций нет.
+- Сверх плана: `test_output_without_step_2_2_options_is_unchanged` (хеш вывода шага 2.1, зелёный сразу).
+- Проблемы: прогон части «без сценария» на текущем коде показал ошибки в самих тестах (последний вечер периода
+  считался сессией сна следующей даты; у обычного дня бывает < 15 активных минут); исправлены до коммита.
+- Остановка: жду «ок» пользователя перед кодом.
