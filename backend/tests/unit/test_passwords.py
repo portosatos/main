@@ -1,8 +1,4 @@
-import pytest
-
 from app.auth.passwords import hash_password, verify_password
-
-pytestmark = pytest.mark.xfail(strict=True, reason="step 1.2: not implemented")
 
 
 def test_hash_is_argon2id() -> None:
