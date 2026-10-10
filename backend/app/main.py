@@ -4,20 +4,27 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api import health
 from app.config import Settings
-from app.db import create_engine
+from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    sessionmaker: async_sessionmaker[AsyncSession] | None = None,
+) -> FastAPI:
+    """`sessionmaker` overrides the default one (tests bind it to a rolled-back connection)."""
     settings = settings or Settings()
     configure_logging()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.engine = create_engine(settings)
+        app.state.sessionmaker = sessionmaker or create_sessionmaker(app.state.engine)
         try:
             yield
         finally:
