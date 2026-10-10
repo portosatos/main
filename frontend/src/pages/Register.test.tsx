@@ -14,7 +14,7 @@ const routes = [
 
 afterEach(() => vi.restoreAllMocks());
 
-test.fails("sends browser timezone", async () => {
+test("sends browser timezone", async () => {
   // A zone that is neither the machine's nor UTC, so a hardcoded value cannot pass.
   const real = new Intl.DateTimeFormat().resolvedOptions();
   vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({
@@ -46,7 +46,7 @@ test.fails("sends browser timezone", async () => {
   });
 });
 
-test.fails("rejects a password shorter than 8 characters", async () => {
+test("rejects a password shorter than 8 characters", async () => {
   const user = userEvent.setup();
   renderRoutes(routes, ["/register"]);
 

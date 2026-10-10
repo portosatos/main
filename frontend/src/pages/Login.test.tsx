@@ -18,7 +18,7 @@ const demo = {
   notify_email: null,
 };
 
-test.fails("shows validation errors in Russian", async () => {
+test("shows validation errors in Russian", async () => {
   const user = userEvent.setup();
   renderRoutes(routes, ["/login"]);
 
@@ -31,7 +31,7 @@ test.fails("shows validation errors in Russian", async () => {
   expect(await screen.findByText("Некорректный email")).toBeInTheDocument();
 });
 
-test.fails("navigates to / after successful login", async () => {
+test("navigates to / after successful login", async () => {
   let body: unknown;
   server.use(
     http.post("/api/auth/login", async ({ request }) => {
@@ -50,7 +50,7 @@ test.fails("navigates to / after successful login", async () => {
   expect(body).toEqual({ email: "demo@example.com", password: "demo12345" });
 });
 
-test.fails("shows the server message on wrong password", async () => {
+test("shows the server message on wrong password", async () => {
   server.use(
     http.post("/api/auth/login", () =>
       HttpResponse.json({ detail: "Неверный email или пароль" }, { status: 401 }),
