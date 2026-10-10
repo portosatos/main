@@ -17,8 +17,6 @@ from app.services.ingest.parser import (
     parse_lines,
 )
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 3.1: not implemented")
-
 META = {
     "type": "meta",
     "schema": "ht.v1",
