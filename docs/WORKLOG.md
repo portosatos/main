@@ -42,3 +42,13 @@
   `parents=True` для вложенных репозиториев). В красном прогоне её скрыла более ранняя положительная проверка.
   Исправлено в том же коммите, логика проверок в тестах не менялась.
 - Вывод переключён на UTF-8: иначе на Windows кириллица в сообщениях через pipe шла в cp1251.
+
+## 2026-10-10T17:40:09+06:00 — Шаг 0.1 завершён
+- Коммиты: fc4030b docs: add spec and agent rules; 27fc72b chore: gitattributes & gitignore;
+  8eb26fe docs: apply approved plan decisions; fff1d2f docs(decisions): ADRs from spec and agent-session readme;
+  9c69435 test(process): check_process tests (red); 158b18e feat(process): check_process.py;
+  e7ce997 docs(claude): add process check commands; этот коммит — запись о завершении.
+- Тесты: 8 xfailed → 8 passed. 18 ADR. origin: https://github.com/portosatos/main.git.
+- Не выполнено на шаге: scripts/test.ps1 ещё не существует (шаг 0.2); ruff не запускался (uv и ruff не
+  установлены, backend/generator не трогали).
+- Ждёт ручной проверки пользователя: diff коммита 8eb26fe «docs: apply approved plan decisions».
