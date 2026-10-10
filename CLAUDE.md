@@ -109,6 +109,12 @@
 - Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend
   и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
   `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
+- Миграции (Alembic, `backend/alembic/`): применяются сами при старте api; текущая ревизия —
+  `docker compose exec api alembic current` → `(head)`. Локально: `cd backend; uv run alembic upgrade head`
+  (нужен `DATABASE_URL`), новая миграция — `uv run alembic revision --autogenerate -m "..."`, проверка, что
+  модели и миграции совпадают, — `uv run alembic check`.
+- Dev-время (только `APP_ENV=dev`): `GET /api/dev/clock`, `POST /api/dev/clock` с `{"offset_seconds": 86400}`
+  (сдвиг; 0 — сброс). При `APP_ENV=prod` → 404.
 - Только backend: `cd backend; uv run pytest`. Линтер: `uv run --project backend ruff check .` и
   `uv run --project backend ruff format --check .`
 - Frontend (Node 22+): `npm ci --prefix frontend` (один раз), `npm --prefix frontend run check` (typecheck +
