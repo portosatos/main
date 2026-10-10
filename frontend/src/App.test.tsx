@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 
 import App from "./App";
 
-test.fails("renders app shell with title «Трекер здоровья»", () => {
+test("renders app shell with title «Трекер здоровья»", () => {
   render(<App />);
 
   expect(screen.getByRole("banner")).toBeInTheDocument();
