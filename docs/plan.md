@@ -209,6 +209,13 @@ Node 22 в Docker и CI (ADR-023); MSW 2 вместо 3 — peer `@vitest/mocker
 ### Шаг 1.1 — Alembic, тестовая БД, Clock
 **Этап SPEC:** 1 · **Зависит от:** 0.2 · **Критерии §9:** вклад в #20
 
+**Статус:** [x] закрыт 2026-10-10T20:37:40+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-10T20:18:24+06:00.
+Заметки: async `Clock.now()`/`read()` с кешем сдвига 1 с, сдвиг только при `APP_ENV=dev`, `|offset| ≤ 10 лет`,
+миграции командой контейнера api, воркер ждёт healthy api (ADR-025); интеграционные тесты в транзакции с откатом,
+тест «воркер и api» коммитит и чистит `dev_clock`; сверх плана — 4 теста (UTC при чужом поясе, кеш, 422, регэксп).
+Исправлена ошибка шага 0.3: nginx держал старый IP api после пересоздания контейнера → 502 (`82bddcc`).
+На шаге 1.2: `POST /api/dev/clock` должен попасть под CSRF.
+
 **Цель:** миграции, изоляция тестов и единый источник времени.
 
 **Объём:** async engine, Alembic (первая миграция — `dev_clock`), фикстуры (мигрированная тестовая БД, откат
@@ -227,8 +234,8 @@ Node 22 в Docker и CI (ADR-023); MSW 2 вместо 3 — peer `@vitest/mocker
 - `integration/test_migrations.py::test_upgrade_downgrade_upgrade_head`
 
 **Done When:**
-- [ ] `docker compose exec api alembic current` → `(head)`.
-- [ ] `curl -X POST :8000/api/dev/clock` с `APP_ENV=prod` → 404.
+- [x] `docker compose exec api alembic current` → `(head)`.
+- [x] `curl -X POST :8000/api/dev/clock` с `APP_ENV=prod` → 404.
 
 **Не делаем на этом шаге:** пользователи, UI dev-панели.
 
