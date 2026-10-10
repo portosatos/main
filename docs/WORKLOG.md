@@ -467,3 +467,13 @@
   (`btree_gist`, `devices`, минимальная `ingest_jobs`, `steps_raw` с exclusion constraint, `sleep_raw`, `hr_point`) →
   потоковый парсер NDJSON → автосоздание устройств, staging через `COPY`, классификация SQL-запросом.
 - Не делаем: HTTP-загрузка, воркер, минутные таблицы, сводки.
+
+## 2026-10-10T23:35:48+06:00 — Шаг 3.1: тесты до кода, 50 xfailed
+- 5fe844b refactor(ingest): заглушки `parse_lines`, `create_ingest_job`, `ingest_records`/`Counts` (`NotImplementedError`).
+- 600873d test(ingest) (red): `unit/test_parser.py` (7 тестов плана, 36 случаев с параметрами),
+  `integration/test_classify.py` (10 тестов плана + 2 сверх плана: строки `invalid` с номерами в отчёте, устройства
+  и записи у каждого пользователя свои), `integration/test_generator_contract.py` (htgen 3 дня: `--unaligned`,
+  смена пояса, случайные пропуски).
+- Красный прогон: backend `37 passed, 50 xfailed`. С `--runxfail` все 50 падают с `NotImplementedError: step 3.1`
+  (36 — в `parse_lines`, 14 — в `create_ingest_job`); htgen в контрактном тесте запускается и пишет файл.
+- Остановка: жду «ок» пользователя перед кодом.
