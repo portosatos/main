@@ -57,3 +57,11 @@
 - Со слов пользователя: «принято» (diff 8eb26fe прочитан). Шаг закрыт, в docs/plan.md отмечен [x].
 - По указанию пользователя команда проверки xfail-маркеров исключает docs/ (ADR-019, коммит a5cb23c).
 - Следующий шаг: 0.2 (нужен установленный uv).
+
+## 2026-10-10T18:04:39+06:00 — Шаг 0.2 начат: скелет backend и docker compose
+- План: backend/ на uv (FastAPI, pydantic-settings, GET /api/health с проверкой БД), заглушка воркера
+  `python -m app.worker`, Dockerfile, docker-compose.yml (postgres 16, mailpit, api, worker), .env.example,
+  маркеры pytest unit/integration/mailpit, фикстура тестовой БД, scripts/dev|test|smoke.{ps1,sh}.
+- Окружение: uv 0.13.0, Docker 29.8.2 + Compose v5.5.1, системный Python 3.14 (backend — на 3.12 через uv).
+- Проблема: порт 5432 на машине занят локальным postgres (PID 5500). Допущение: postgres из compose
+  публикуется на хост-порт 5433 (переопределяется `POSTGRES_HOST_PORT`), внутри сети compose — 5432.
