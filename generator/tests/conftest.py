@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import math
+import statistics
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -91,3 +93,74 @@ def runs(
         else:
             result.append([item])
     return result
+
+
+# --- daily metrics as the backend will compute them (SPEC F5, F7), for the scenario tests --------
+
+SESSION_JOIN = timedelta(minutes=30)  # sleep records with a smaller break form one session
+ACTIVE_STEPS = 100  # steps per minute of an active minute
+
+
+def sleep_sessions(
+    out: Output, first: date, last: date, device: str = "watch-1"
+) -> dict[date, tuple[datetime, datetime]]:
+    """Main (longest) sleep session per local wake date; sessions cut by the period are skipped."""
+    lo, hi = local_midnight(first), local_midnight(last + timedelta(days=1))
+    sessions: list[tuple[datetime, datetime]] = []
+    for start, end, _ in intervals(out.of("sleep", device)):
+        if sessions and start - sessions[-1][1] <= SESSION_JOIN:
+            sessions[-1] = (sessions[-1][0], max(sessions[-1][1], end))
+        else:
+            sessions.append((start, end))
+    by_day: dict[date, tuple[datetime, datetime]] = {}
+    for start, end in sessions:
+        if start <= lo or end >= hi:
+            continue
+        day = end.astimezone(MSK).date()
+        if day not in by_day or end - start > by_day[day][1] - by_day[day][0]:
+            by_day[day] = (start, end)
+    return by_day
+
+
+def daily_steps(out: Output, device: str) -> dict[date, int]:
+    totals: dict[date, int] = {}
+    for record in out.of("steps", device):
+        day = ts(record["start"]).astimezone(MSK).date()
+        totals[day] = totals.get(day, 0) + record["count"]
+    return totals
+
+
+def active_minutes(out: Output, day: date) -> int:
+    """Watch minutes with >= 100 steps (aligned output: one watch interval is one minute)."""
+    return sum(
+        1
+        for r in out.of("steps", "watch-1")
+        if r["count"] >= ACTIVE_STEPS and ts(r["start"]).astimezone(MSK).date() == day
+    )
+
+
+def resting_hr(out: Output, day: date) -> float | None:
+    """10th percentile of the watch pulse in minutes without steps; None below 60 such minutes."""
+    moving = {
+        ts(r["start"]).replace(second=0) for r in out.of("steps", "watch-1") if r["count"] > 0
+    }
+    points: dict[datetime, list[int]] = {}
+    for r in out.of("hr", "watch-1"):
+        moment = ts(r["ts"])
+        minute = moment.replace(second=0)
+        if moment.astimezone(MSK).date() == day and minute not in moving:
+            points.setdefault(minute, []).append(r["bpm"])
+    if len(points) < 60:
+        return None
+    return statistics.quantiles([bpm for values in points.values() for bpm in values], n=10)[0]
+
+
+def circular_stdev_minutes(moments: list[datetime]) -> float:
+    """Stdev of the local time of day on the 24 h circle: 23:30 and 00:30 are 60 min apart."""
+    angles = [
+        2 * math.pi * (m.astimezone(MSK).hour * 60 + m.astimezone(MSK).minute) / 1440
+        for m in moments
+    ]
+    c = sum(math.cos(a) for a in angles) / len(angles)
+    s = sum(math.sin(a) for a in angles) / len(angles)
+    return math.sqrt(-2 * math.log(math.hypot(c, s))) * 1440 / (2 * math.pi)

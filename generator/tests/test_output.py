@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import tempfile
@@ -227,3 +228,10 @@ def test_phone_sleep_within_20_minutes_of_watch(htgen) -> None:
         assert abs(pe - we) <= tolerance, ((ws, we), (ps, pe))
         matched.append((ps, pe))
     assert watch != matched, "the phone is less accurate than the watch"
+
+
+def test_output_without_step_2_2_options_is_unchanged(htgen) -> None:
+    """Gaps, zones and scenarios are opt-in: without them the file is byte-identical to step 2.1."""
+    out = htgen("--start", "2026-10-01", "--days", "2", "--seed", "42", "--unaligned", *FAST)
+    digest = hashlib.sha256(out.path.read_bytes()).hexdigest()
+    assert digest == "d6357c8b455bd45fa908d08f2b046d93f7ba0785edfc2da8a4eace9ca9a93375"
