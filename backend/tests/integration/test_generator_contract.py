@@ -14,8 +14,6 @@ from app.services.ingest.jobs import create_ingest_job
 from app.services.ingest.parser import parse_lines
 from tests.integration.ingest import NOW, make_user
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 3.1: not implemented")
-
 GENERATOR_DIR = Path(__file__).resolve().parents[3] / "generator"
 # Unaligned steps, a time zone change in the middle of a day and random gaps: the hardest
 # inputs htgen makes. Three days keep the test fast (~50 thousand records).
