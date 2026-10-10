@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import io
+import os
 import sys
 from collections.abc import Iterator, Sequence
 from datetime import date, datetime, timedelta
@@ -119,9 +121,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     # LF and UTF-8 on every OS: the same seed gives byte-identical files on Windows and Linux.
     if args.out == "-":
-        stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n")
-        _write(generate(config), stdout)
-        stdout.detach()
+        try:
+            stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n")
+            _write(generate(config), stdout)
+            stdout.detach()
+        except OSError as error:
+            # Windows reports a closed pipe as EINVAL, POSIX as BrokenPipeError.
+            if not isinstance(error, BrokenPipeError) and error.errno != errno.EINVAL:
+                raise
+            # The reader stopped early (htgen ... | head) - not an error. Send the rest of the
+            # buffered output to devnull, so the final flush at exit does not fail again.
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
     else:
         with open(args.out, "w", encoding="utf-8", newline="\n") as out:
             _write(generate(config), out)

@@ -1,5 +1,7 @@
 """Period options: --start / --end / --days (inclusive local dates)."""
 
+import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -48,3 +50,17 @@ def test_bad_period_is_a_usage_error(tmp_path: Path) -> None:
         main(["--start", "2026-10-05", "--end", "2026-10-01", "--out", str(out)])
     assert exc.value.code == 2
     assert not out.exists()
+
+
+def test_closed_stdout_pipe_is_not_an_error() -> None:
+    """htgen ... | head: the reader closes the pipe early (regression test, added after code)."""
+    args = ["--start", "2026-10-01", "--days", "3", "--hr-interval", "5"]
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "htgen", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    assert proc.stdout is not None and proc.stderr is not None
+    assert proc.stdout.readline().startswith(b'{"type":"meta"')
+    proc.stdout.close()
+    stderr = proc.stderr.read()
+    assert proc.wait(timeout=60) == 0
+    assert stderr == b""
