@@ -758,3 +758,17 @@
   `daily_summaries` (миграция 0006); «грязные» даты при загрузке: считаются после каждой пачки, хранятся в задаче
   вместе с контрольной точкой, сброс в сводки не реже раза в ~2 с и в конце задачи; сводки в `htadmin rebuild`.
 - Сначала тесты из «Тесты до кода» (11 по плану), красный прогон, остановка до «ок» пользователя.
+
+## 2026-10-11T08:51:43+06:00 — Тесты до кода: 21 xfailed
+- Коммиты: 89028bc refactor(summaries): заглушки `services/sleep.py`, `merge.merge_sleep`, `services/summaries.py`
+  (NotImplementedError), модель и миграция 0006 (`daily_summaries`, `ingest_jobs.dirty_dates`), хук воркера
+  `on_batch` (пауза после пачки k) и `summary_flush_s`, `make_user(tz=…)` в тестовых помощниках;
+  85aad07 test(summaries) (red): `unit/test_sleep.py` (6 тестов, 16 случаев) и `integration/test_summaries.py` (5).
+- Красный прогон: `21 xfailed`; с `--runxfail` 19 падают с `NotImplementedError: step 4.3`, 2 — на `assert set() == …`
+  (грязные даты и сводки ещё не считаются при загрузке; маркер `raises=(NotImplementedError, AssertionError)`).
+  Весь backend: `133 passed, 21 xfailed`. ruff check и format --check → exit 0.
+- Допущения в тестах (ждут подтверждения): длина сессии — минуты сна без разрывов; дата сессии — дата её последней
+  минуты сна; при равенстве основная — более поздняя; день без сессий — сон `null`, `night_valid = false`;
+  `night_valid` — в окне [начало − 60 мин, конец + 60 мин) нет пропуска данных длиннее 30 мин; день `no_data` строки
+  в `daily_summaries` не имеет.
+- Ждёт подтверждения пользователя («ок»).
