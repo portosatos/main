@@ -1379,3 +1379,11 @@
 - Красный прогон: `scripts/test.sh` → backend `253 passed, 17 xfailed`, generator `51 passed`, scripts `8 passed`.
 - Допущения шага (ждут ответа пользователя): `SendPlan` вместо `datetime`; сравнение `<=` с датой последнего
   дайджеста; `T = max(T, now)`; причина — последнее правило, сдвинувшее `T`; конец тихих часов — в поясе на момент `T`.
+
+## 2026-10-11T17:30:08+06:00 — Решения по допущениям; тесты поправлены до кода: 18 xfailed
+- Пользователь принял допущения 2–5; пункт 1 — нет: сигнатура `plan_send_time(...) → datetime` из SPEC остаётся
+  обёрткой, логика и причина — в `plan_send(...) → SendPlan(at, reason)`. Записано в ADR-049 и PROMPTS.
+- 58e0bd1 `chore(notify)`: заглушки `plan_send` и `plan_send_time` с сигнатурой SPEC.
+- 66294e9 `test(notify): … (red)`: тесты вызывают `plan_send`; новый `test_plan_send_time_returns_planned_time` (сверх
+  плана); в `test_overdue_plan_…` добавлен случай `max_delay` — ответ на вопрос пользователя о причине при сдвиге на now.
+- Красный прогон `unit/test_planner.py`: `18 xfailed`; с `--runxfail` все 18 падают на `NotImplementedError: step 9.1`.
