@@ -1,6 +1,6 @@
 # Checks every push to main and every pull request: lint and tests of backend, generator, scripts/
 # and frontend, the e2e scenarios on the e2e stack (Playwright), LF endings of *.sh, and the step
-# process (WORKLOG and commits, scripts/check_process.py).
+# process (WORKLOG and commits, scripts/check_process.py) and the docs (scripts/check_docs.py).
 name: CI
 
 on:
@@ -141,7 +141,7 @@ jobs:
           retention-days: 7
 
   process:
-    name: process (LF, check_process)
+    name: process (LF, check_process, check_docs)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -156,3 +156,5 @@ jobs:
           if [ -n "$bad" ]; then echo "not LF in the index:"; echo "$bad"; exit 1; fi
       - name: check_process.py --all
         run: python3 scripts/check_process.py --all
+      - name: check_docs.py
+        run: python3 scripts/check_docs.py

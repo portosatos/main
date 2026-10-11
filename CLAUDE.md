@@ -192,6 +192,8 @@
   (XHR-передача — `api/ingest.ts::sendFile`, её состояние — `lib/transfer.ts`). В тестах — фейки
   `test/fakeEventSource.ts` и `test/fakeXhr.ts`.
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
+- Проверка документов сдачи: `python scripts/check_docs.py` — разделы README, критерии 1–23 в `docs/STATUS.md`
+  (статус «работает / частично / нет» и доказательство), относительные ссылки в README и `docs/`, `docs/NEXT.md` не пуст.
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
 - Дашборд и устройства (ADR-041): `http://localhost:5173/?date=2026-10-07`, `/?view=week&week=2026-W41` (без параметров —
   `today` из `/api/auth/me` по `Clock`), `http://localhost:5173/devices`; API — `GET /api/devices`,
