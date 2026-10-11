@@ -105,7 +105,8 @@
   Порты на хосте: приложение **5173** (nginx, `/api` проксируется в api; ADR-024), api 8000 (`/docs`),
   Mailpit UI 8025 и SMTP 1025, postgres **5433** (ADR-020).
 - Smoke запущенного стека: `scripts/smoke.ps1` / `scripts/smoke.sh` (`/api/health`, Mailpit, frontend `:5173/`
-  и `:5173/api/health` через proxy → 200, вход демо-пользователя и `:5173/api/auth/me` → 200).
+  и `:5173/api/health` через proxy → 200, вход демо-пользователя и `:5173/api/auth/me` → 200, первое событие
+  `:5173/api/events` за ≤ 2 с — `SSE_FIRST_BYTE_SEC` / `-SseFirstByteSec`).
 - Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend,
   генератора и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
   `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
@@ -150,5 +151,9 @@
   `summary.updated {dates}`, `resync`; публикация — `services/events.py` (`NOTIFY user_events`). Посмотреть руками:
   `curl.exe -N -b "ht_session=<cookie>" http://localhost:5173/api/events`. Соединение LISTEN API в Postgres —
   `application_name = 'ht-events'` в `pg_stat_activity`.
+- Frontend и события (ADR-040): `hooks/useEvents.ts` (один EventSource на вкладку в `AppLayout`, таблица `handlers`
+  «событие → ключи»), ключи запросов — `lib/queryKeys.ts`. Страница «Загрузка» — `http://localhost:5173/upload`
+  (XHR-передача — `api/ingest.ts::sendFile`, её состояние — `lib/transfer.ts`). В тестах — фейки
+  `test/fakeEventSource.ts` и `test/fakeXhr.ts`.
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
