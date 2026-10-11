@@ -33,6 +33,9 @@ from app.worker.queue import JOBS_CHANNEL, STALE_AFTER, QueuedJob
 
 log = structlog.get_logger("app.worker")
 
+# SPEC F9: the rules are evaluated every hour as well, in case the local date has changed.
+RULES_TICK_S = 3600.0
+
 
 class SimulatedCrash(BaseException):
     """Test hook: the worker "dies" after batch k. A BaseException, so the job is not marked
@@ -78,6 +81,7 @@ class Worker:
         on_batch: Callable[[int], Awaitable[None]] | None = None,
         summary_flush_s: float = FLUSH_INTERVAL_S,
         progress_s: float = PROGRESS_INTERVAL_S,
+        rules_tick_s: float = RULES_TICK_S,
     ) -> None:
         self.engine = engine
         self.clock = clock
@@ -90,6 +94,7 @@ class Worker:
         self.on_batch = on_batch
         self.summary_flush_s = summary_flush_s
         self.progress_s = progress_s
+        self.rules_tick_s = rules_tick_s
         self.listening = asyncio.Event()
         self._sessionmaker = create_sessionmaker(engine)
         self._stop: asyncio.Event | None = None
@@ -104,6 +109,10 @@ class Worker:
         if requeued:
             log.warning("jobs_requeued", count=requeued)
         log.info("worker_tick", now=now.isoformat())
+
+    async def rules_tick(self) -> None:
+        """Evaluate the rules of the users with recent data: the anchors move with the day."""
+        raise NotImplementedError("step 8.2")
 
     async def claim(self) -> ClaimedJob | None:
         """The oldest queued job whose user is not busy with another job, or None."""

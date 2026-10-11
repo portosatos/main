@@ -12,7 +12,7 @@ steps 8.3 and 9.x.
 """
 
 import uuid
-from collections.abc import Collection, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
@@ -24,10 +24,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DailySummary, Recommendation, UserRule
 from app.models.rule import OPEN
-from app.services.goals import load_goal_book
-from app.services.localtime import load_tz_history
+from app.services.goals import GoalKind, load_goal_book
+from app.services.localtime import TzHistory, load_tz_history
 from app.services.rules import r1, r2
-from app.services.rules.base import Day, Facts, Rule
+from app.services.rules.base import Day, Facts, Rule, default_goal
 
 log = structlog.get_logger(__name__)
 
@@ -83,6 +83,21 @@ def day_of(summary: DailySummary) -> Day:
         resting_hr=summary.resting_hr,
         peak_hr=summary.peak_hr,
     )
+
+
+def make_facts(
+    days: Iterable[Day],
+    history: TzHistory,
+    now: datetime,
+    goal: Callable[[GoalKind, date], float] = default_goal,
+) -> Facts:
+    """The facts of `days`: today is the local date of `now` (Clock) by the user's zones."""
+    raise NotImplementedError("step 8.2")
+
+
+async def users_with_recent_data(session: AsyncSession, now: datetime) -> list[uuid.UUID]:
+    """The users with a daily summary the rules may read at `now` (the hourly evaluation)."""
+    raise NotImplementedError("step 8.2")
 
 
 async def load_facts(session: AsyncSession, user_id: uuid.UUID, now: datetime) -> Facts:
