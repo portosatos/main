@@ -972,3 +972,12 @@
   `pages/Devices.test.tsx::lists devices and renames one` (страница устройств входит в объём шага).
 - Полный прогон `scripts/test.sh` → backend `172 passed, 2 xfailed`, generator 51, scripts 8; ruff → exit 0.
 - Ждёт решения пользователя: какой день дашборд показывает по умолчанию (см. сообщение).
+
+## 2026-10-11T11:08:33+06:00 — Решение пользователя по шагу 6.1, дополнительные тесты до кода: 4 красных
+- Решение (PROMPTS): «сегодня» дашборда — поле `today` в `/api/auth/me` (по `Clock` и истории поясов); допущения
+  приняты, кроме одного: при переименовании устройства нужно событие `devices.changed` (SPEC F12, ≤ 2 с).
+- Коммит: 78b11da test(dashboard) (red): `test_auth.py::test_me_returns_today_by_clock_and_timezone` (без маркера —
+  `KeyError: 'today'`), `test_events.py::test_device_rename_reaches_other_tab_within_2s` (`PATCH` → 404),
+  `useEvents.test.ts::devices.changed invalidates the device list` (`[]` вместо `["devices"]`),
+  `Dashboard.test.tsx::opens today from /api/auth/me by default` (нет карточек).
+- Итого красных на шаге: backend 4 xfailed, frontend 9 expected fail.
