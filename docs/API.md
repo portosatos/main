@@ -17,7 +17,8 @@ SPEC §6.3. Разделы дополняются по мере появлени
 | `GET /api/summary/range?from=2026-10-01&to=2026-10-31` | массив дней, обе границы включительно |
 
 **День** (`DayOut`): `date, status (no_data|partial|complete), wear_minutes, steps, active_minutes, sleep_minutes,
-sleep_start, sleep_end, night_valid, resting_hr, peak_hr`. Пульс округлён до 0,1.
+sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс округлён до 0,1. `goals` — прогресс целей
+(раздел «Цели»).
 
 **Разница** (`delta`): по каждой из метрик `steps, active_minutes, sleep_minutes, resting_hr, peak_hr` —
 `{abs, pct}` или `null` («нет данных для сравнения»):
@@ -37,8 +38,9 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr`. Пульс округ
 | `resting_hr` | среднее | дни, где посчитан |
 | `peak_hr` | максимум | дни, где посчитан |
 
-Средние округлены до 0,1. `previous` — то же для предыдущей ISO-недели (`{week, start, end, metrics}`, без дней),
-`delta` — разница значений недели и предыдущей.
+Средние округлены до 0,1. `goals.{steps|sleep} = {achieved_days, of: 7}` — «цель выполнена N из 7 дней».
+`previous` — то же для предыдущей ISO-недели (`{week, start, end, metrics, goals}`, без дней), `delta` — разница
+значений недели и предыдущей.
 
 **Ошибки (422):** неделя не в формате `YYYY-Www` (`2026-w41`, `2026-41`, `2026-W5`), недели нет в году (`W00`,
 `W54`, `W53` 52-недельного года, например `2025-W53`); `from` позже `to`; диапазон длиннее 366 дней; параметр не
@@ -72,6 +74,33 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr`. Пульс округ
 - Имя обрезается по краям; пустое или длиннее 100 символов → 422. Чужое или несуществующее устройство → 404.
   Устройства создаёт загрузка (SPEC F2), тип и `external_id` не меняются.
 
+## Цели (`/api/goals`, SPEC F8, ADR-043)
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/goals` | `[{kind: "steps", target, valid_from}, {kind: "sleep", target, valid_from}]` — цели, действующие сейчас |
+| `PUT /api/goals` с `{steps, sleep}` | то же после изменения; событие `goal.changed {kinds}` |
+
+- `steps` — шагов в день, целое 100–100 000; `sleep` — часов сна, 1–16 (дробное, например 7.5). Оба поля обязательны,
+  иначе 422. По умолчанию 8000 и 8, `valid_from = null`.
+- Изменённая цель — новая версия с `valid_from` = «сейчас» по `Clock`; действует с локальной даты `valid_from`, прошлые
+  дни считаются по своей цели. Те же значения ещё раз — без новой версии и без события.
+- Прогресс дня в сводках: `goals.steps|sleep = {target, percent, achieved}`. `target` — цель того дня; `percent` —
+  процент от цели, округлён вниз, `null` без значения; `achieved` — значение ≥ цели. Сон — день пробуждения.
+- Достижение (первое выполнение цели за дату) создаётся при пересчёте сводок — по ходу загрузки, а не в конце — и
+  после `PUT`, изменившего цель, для сегодняшнего дня: уведомление и события `notification.created`, `goal.achieved`.
+  Повторно за ту же дату и вид — никогда.
+
+## Уведомления (`/api/notifications`, SPEC F8, ADR-043)
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/notifications?limit=50` | `{items: [{id, type, payload, created_at, read_at}], unread}` — новые сверху, `limit` 1–200; `unread` — все непрочитанные |
+| `POST /api/notifications/read` с `{ids: [...]}` или `{}` | `{unread}`; без `ids` — прочитаны все; событие `notifications.read` |
+
+- `type = "goal.achieved"`: `payload = {kind, local_date, target, value}` (`value` — шаги или часы с точностью 0,1).
+- `ids` — до 100; чужие и уже прочитанные игнорируются без ошибки.
+
 ## События (`GET /api/events`, SSE, SPEC F12, ADR-039)
 
 Поток Server-Sent Events пользователя сессии (без cookie → 401; API ещё не слушает БД → 503 через 5 с). Каждое
@@ -87,6 +116,10 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr`. Пульс округ
 | `ingest.done` | то же, `status` — `done` или `failed` | задача закончена |
 | `summary.updated` | `{dates: ["2026-10-01", …]}` | пересчитаны сводки этих локальных дат (по ходу загрузки, не реже раза в ~2 с); длинный список приходит несколькими событиями |
 | `devices.changed` | `{device_id}` | устройство переименовано (`PATCH /api/devices/{id}`) |
+| `goal.changed` | `{kinds: ["steps", "sleep"]}` | цели изменены (`PUT /api/goals`) |
+| `notification.created` | `{id, type}` | новое уведомление в колокольчике; приходит перед своим `goal.achieved` |
+| `goal.achieved` | `{kind, local_date, target, value, show_toast, notification_id}` | цель выполнена впервые за дату; тост — только при `show_toast` (дата — сегодня или вчера по `Clock`) |
+| `notifications.read` | `{ids: [...]}` или `{all: true}` | уведомления отмечены прочитанными |
 
 `counts = {new, duplicate, conflict, invalid}` — как в отчёте `GET /api/ingest/jobs/{id}`. Прогресс —
-`bytes_done / bytes_total`. Остальные события SPEC F12 (цели, правила, настройки) добавляются на своих шагах.
+`bytes_done / bytes_total`. Остальные события SPEC F12 (правила, настройки) добавляются на своих шагах.

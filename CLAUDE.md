@@ -161,3 +161,7 @@
   `today` из `/api/auth/me` по `Clock`), `http://localhost:5173/devices`; API — `GET /api/devices`,
   `PATCH /api/devices/{id}` `{"name": "…"}` (событие `devices.changed`). Компоненты — `SummaryCard`, `DaysChart`
   (Recharts), `GapBar` (пропуск — штриховка); подписи и форматы метрик — `lib/metrics.ts`.
+- Цели и уведомления (ADR-043, `docs/API.md`): `GET/PUT /api/goals` `{"steps": 10000, "sleep": 7.5}`, прогресс — поле
+  `goals` в `/api/summary/*`; `GET /api/notifications`, `POST /api/notifications/read` `{"ids": [...]}` (без `ids` — все).
+  Достижения пишет `services/goals.py::record_achievements` в конце каждого `recompute_dates`; события `goal.achieved`
+  (`show_toast`), `notification.created`, `notifications.read`, `goal.changed`.
