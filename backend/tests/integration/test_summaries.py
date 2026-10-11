@@ -27,6 +27,7 @@ from app.services.localtime import TzHistory
 from app.services.merge import merge_steps
 from app.services.metrics import DayMetrics, day_metrics
 from app.services.summaries import rebuild_summaries, recompute_dates
+from app.worker.main import SimulatedCrash
 from tests.integration.ingest import (
     NOW,
     coverage_minute_rows,
@@ -37,6 +38,7 @@ from tests.integration.ingest import (
     upload,
 )
 from tests.integration.test_ingest_jobs import (
+    MovableClock,
     days_file,
     get_job,
     make_worker,
@@ -373,6 +375,54 @@ async def test_summaries_exist_before_job_done(
     found = await committed_summaries(db_engine, user_id)
     assert set(found) == {date(2026, 10, d) for d in (1, 2, 3)}
     async with AsyncSession(db_engine) as session:
+        before = await summary_hash(session, user_id)
+        await rebuild_summaries(session, user_id, NOW)
+        assert await summary_hash(session, user_id) == before
+        await session.rollback()
+
+
+# Beyond the plan (written with the code): the flush interval and a crash between flushes.
+async def test_pending_dates_survive_worker_crash(
+    clean: None, settings: Settings, db_engine: AsyncEngine
+) -> None:
+    # The interval is an hour: batch 1 shows its summary at once, batches 2–3 leave their dates
+    # pending in the job; the worker dies after batch 3, the next one resumes and recomputes them.
+    async with user_client(settings, "pending") as client:
+        user_id = uuid.UUID((await client.get("/api/auth/me")).json()["id"])
+        job_id = await api_upload(client, days_file(0))
+        start = datetime.now(UTC)
+        clock = MovableClock(start)
+        dying = make_worker(
+            db_engine, clock, batch_size=10, crash_after_batch=3, summary_flush_s=3600
+        )
+        claimed = await dying.claim()
+        assert claimed is not None
+        with pytest.raises(SimulatedCrash):
+            await dying.process(claimed)
+
+        oct1 = date(2026, 10, 1)
+        stale = (await committed_summaries(db_engine, user_id))[oct1]
+        async with AsyncSession(db_engine) as session:
+            fresh = await day_metrics(session, user_id, oct1)
+            [(pending,)] = await rows(
+                session, "SELECT dirty_dates FROM ingest_jobs WHERE id = :j", j=job_id
+            )
+        assert 0 < stale["wear_minutes"] < fresh.wear_minutes
+        assert pending == [oct1]
+
+        clock.at = start + timedelta(minutes=5, seconds=1)
+        survivor = make_worker(db_engine, clock, batch_size=10, summary_flush_s=3600)
+        await survivor.tick()
+        assert await survivor.run_until_idle() == 1
+        assert (await get_job(client, job_id))["status"] == "done"
+
+    found = await committed_summaries(db_engine, user_id)
+    assert set(found) == {oct1, date(2026, 10, 2)}
+    async with AsyncSession(db_engine) as session:
+        [(pending,)] = await rows(
+            session, "SELECT dirty_dates FROM ingest_jobs WHERE id = :j", j=job_id
+        )
+        assert pending == []
         before = await summary_hash(session, user_id)
         await rebuild_summaries(session, user_id, NOW)
         assert await summary_hash(session, user_id) == before
