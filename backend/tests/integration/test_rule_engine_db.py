@@ -81,7 +81,6 @@ async def add_days(session: AsyncSession, user_id: uuid.UUID, *days: DailySummar
     await session.flush()
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 async def test_rules_seeded_r1_to_r6_with_params_from_code(session: AsyncSession) -> None:
     result = await session.execute(
         text("SELECT code, title, description, params, sort_order FROM rules ORDER BY sort_order")
@@ -92,7 +91,6 @@ async def test_rules_seeded_r1_to_r6_with_params_from_code(session: AsyncSession
     assert [r[0] for r in rows] == ["R1", "R2", "R3", "R4", "R5", "R6"]
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 async def test_partial_unique_index_prevents_two_open(session: AsyncSession) -> None:
     user_id = await make_user(session)
     other_id = await make_user(session, email="other@example.com")

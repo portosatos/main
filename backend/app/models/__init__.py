@@ -9,6 +9,7 @@ from app.models.ingest import HrPoint, IngestJob, SleepRaw, StepsRaw
 from app.models.jobs import Job, WorkerHeartbeat
 from app.models.minutes import CoverageMinute, SleepMinute, StepsMinute
 from app.models.notification import Notification
+from app.models.rule import Recommendation, Rule, UserRule
 from app.models.session import AuthSession
 from app.models.summary import DailySummary
 from app.models.user import User, UserTimezone
@@ -26,11 +27,14 @@ __all__ = [
     "IngestJob",
     "Job",
     "Notification",
+    "Recommendation",
+    "Rule",
     "SleepMinute",
     "SleepRaw",
     "StepsMinute",
     "StepsRaw",
     "User",
+    "UserRule",
     "UserTimezone",
     "WorkerHeartbeat",
 ]
