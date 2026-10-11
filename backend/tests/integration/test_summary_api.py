@@ -172,9 +172,14 @@ async def test_day_delta_null_when_previous_no_data(
         test_sessionmaker,
         day_row(user_id, WED, steps=10000, active_minutes=50, sleep_minutes=390,
                 night_valid=True, resting_hr=60.0, peak_hr=140.0),
-        # Fri has steps but no resting pulse and zero active minutes; Sat has all of them.
-        day_row(user_id, FRI, status="partial", steps=4000, active_minutes=0, peak_hr=130.0),
-        day_row(user_id, SAT, steps=6000, active_minutes=30, resting_hr=59.0, peak_hr=150.0),
+        # Fri has steps but no resting pulse, zero active minutes and an invalid night;
+        # Sat has all of them and a valid night; Sun has an invalid night again.
+        day_row(user_id, FRI, status="partial", steps=4000, active_minutes=0,
+                sleep_minutes=200, night_valid=False, peak_hr=130.0),
+        day_row(user_id, SAT, steps=6000, active_minutes=30, sleep_minutes=450,
+                night_valid=True, resting_hr=59.0, peak_hr=150.0),
+        day_row(user_id, SUN, steps=7500, active_minutes=30, sleep_minutes=300,
+                night_valid=False, resting_hr=59.0, peak_hr=150.0),
     )  # fmt: skip
     nothing = dict.fromkeys(METRICS)
 
@@ -190,14 +195,27 @@ async def test_day_delta_null_when_previous_no_data(
     assert body["previous"]["steps"] == 10000
     assert body["delta"] == nothing
 
-    # Per metric: a null on either side gives null; a previous 0 gives no per cent.
+    # Per metric: a null on either side gives null; a previous 0 gives no per cent. Sleep is
+    # compared only between valid nights (ADR-037): Fri's night is invalid.
     body = await get_ok(client, "/api/summary/day?date=2026-10-10")
+    assert (body["previous"]["sleep_minutes"], body["day"]["sleep_minutes"]) == (200, 450)
     assert body["delta"] == {
         "steps": {"abs": 2000, "pct": 50.0},
         "active_minutes": {"abs": 30, "pct": None},
         "sleep_minutes": None,
         "resting_hr": None,
         "peak_hr": {"abs": 20.0, "pct": 15.4},
+    }
+
+    # The other way round: a valid night before an invalid one. Steps still compare.
+    body = await get_ok(client, "/api/summary/day?date=2026-10-11")
+    assert (body["previous"]["sleep_minutes"], body["day"]["sleep_minutes"]) == (450, 300)
+    assert body["delta"] == {
+        "steps": {"abs": 1500, "pct": 25.0},
+        "active_minutes": {"abs": 0, "pct": 0.0},
+        "sleep_minutes": None,
+        "resting_hr": {"abs": 0.0, "pct": 0.0},
+        "peak_hr": {"abs": 0.0, "pct": 0.0},
     }
 
 
