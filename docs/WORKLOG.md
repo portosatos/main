@@ -1196,3 +1196,13 @@
   `rules81@example.com` (Asia/Almaty), `htgen --end 2026-10-11 --days 7 --seed 81 --scenario short-sleep`, `upload.sh` →
   done за 8 с; `recommendations`: одна R1 `open`, `anchor_date` 2026-10-11, ночи 287/305/328 мин; лог воркера
   `recommendation_opened`. Повторная загрузка того же файла → done, рекомендаций по-прежнему одна.
+
+## 2026-10-11T14:23:12+06:00 — Шаг 8.1 завершён
+- Коммиты шага: 78404f1 (docs), 93a3747 (chore, заглушки), adf5cf9 (test, red), c1b539e, 74b0225 (docs), 9d3cd94,
+  bd621f5, 77ab59f, a26a3bc, d51c843, 1257125 (feat), 594a306 (docs), 3 docs(worklog) в конце.
+- Тесты: красный `21 xfailed` → зелёный backend `207 passed`, generator `51 passed`, scripts `8 passed`.
+  `git grep -n "step 8.1: not implemented" -- ":!docs"` → пусто.
+- Done When: ruff check/format → exit 0; `scripts/test.ps1` и `scripts/test.sh` → exit 0 («OK: all tests passed»);
+  `scripts/smoke.ps1` и `smoke.sh` → exit 0. Frontend и generator не трогали.
+- Проверить вручную: загрузка `--scenario short-sleep` открывает одну R1 (SQL), повтор загрузки дубля не даёт; ночь ≥ 7 ч
+  на следующий день (dev clock +1 день) закрывает её с `resolve_reason = auto`.
