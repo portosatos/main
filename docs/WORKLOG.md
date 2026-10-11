@@ -721,3 +721,23 @@
   по `external_id`; (2) пульс минуты — медиана её точек, пульс в покое — 10-й перцентиль минутных медиан с линейной
   интерполяцией, «минута без шагов» — объединённое значение ровно 0; (3) минута относится к дате своего начала.
 - Ждёт подтверждения пользователя («ок»).
+
+## 2026-10-11T08:31:05+06:00 — Фичи готовы: объединение устройств и метрики дня
+- Коммиты: dcff735 feat(merge): `device_order`, `merge_steps`, `merge_hr`, маркеры `test_merge` сняты (5 passed);
+  5df8cce feat(metrics): `day_metrics` и чистая `summarize_day`, `localtime.load_tz_history`, маркеры
+  `test_day_metrics` сняты (10 passed); 05e7e6f docs(prompts); aba7c53 docs(merge): `docs/MERGE_RULES.md`, ADR-034.
+- Зелёный прогон: backend `133 passed` (15 новых). Дополнительно, без коммита: property-тест объединения на 5000
+  примерах → OK, 19 с; живой стек: `day_metrics` демо-пользователя за 1–7 октября — `complete`, 1440 минут, шаги
+  6911–18206, пульс в покое 51–57, пик 110–120.5.
+- Проблема (вне шага): `scripts/upload.sh` в Git Bash на Windows с абсолютным путём `/c/...` → `HTTP 000`; с
+  относительным путём и `upload.ps1` работает. Предложено отдельной задачей.
+
+## 2026-10-11T08:31:05+06:00 — Шаг 4.2 завершён
+- Коммиты: 6e40428 (docs), 4e81d57 (refactor, заглушки), 7953a96 (test, red), 5d8d6fc, 05e7e6f (docs),
+  dcff735 (feat merge), 5df8cce (feat metrics), aba7c53 (docs) и этот (docs).
+- Тесты: красный прогон `15 xfailed` (с `--runxfail` — 15 × `NotImplementedError`) → зелёный backend `133 passed`;
+  `scripts/test.ps1` и `scripts/test.sh` → exit 0, `OK: all tests passed` (backend 133, generator 51, scripts 8);
+  ruff check и format --check → exit 0; `git grep -n "step 4.2: not implemented" -- ":!docs"` → пусто.
+  Frontend, generator, миграции не менялись.
+- Done When шага: только общий DoD. §9 #4 закрыт тестами (property-инвариант и сценарий 5000).
+- Ждёт ручной проверки пользователя и чтения диффа.
