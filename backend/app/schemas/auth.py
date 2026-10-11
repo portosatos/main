@@ -1,8 +1,9 @@
 """Schemas of /api/auth/*."""
 
 import uuid
+from datetime import date
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.auth.accounts import is_valid_timezone
 
@@ -28,8 +29,8 @@ class LoginRequest(BaseModel):
 
 
 class UserOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: uuid.UUID
     email: str
     notify_email: str | None
+    # The user's local date now: Clock (dev offset included) and the zone history (SPEC F0, F5).
+    today: date

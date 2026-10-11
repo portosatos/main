@@ -318,7 +318,6 @@ async def test_swagger_ui_sends_csrf_header(migrated_database_url: str) -> None:
     assert "X-Requested-With" in docs.text
 
 
-@pytest.mark.xfail(strict=True, reason="step 6.1: not implemented")
 async def test_me_returns_today_by_clock_and_timezone(
     migrated_database_url: str, test_sessionmaker: Sessionmaker
 ) -> None:

@@ -1,6 +1,9 @@
 """/api/auth: register, login, logout, me (SPEC F1, §6.3)."""
 
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ClockDep, SessionDep
 from app.auth.accounts import EmailTakenError, authenticate, create_user
@@ -12,9 +15,19 @@ from app.auth.sessions import (
     delete_session,
     set_session_cookie,
 )
+from app.models import User
 from app.schemas.auth import LoginRequest, RegisterRequest, UserOut
+from app.services.localtime import load_tz_history
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+async def user_out(db: AsyncSession, user: User, now: datetime) -> UserOut:
+    """The user with today's local date by the zone history."""
+    history = await load_tz_history(db, user.id)
+    return UserOut(
+        id=user.id, email=user.email, notify_email=user.notify_email, today=history.local_date(now)
+    )
 
 
 def secure_cookies(request: Request) -> bool:
@@ -39,7 +52,7 @@ async def register(
     token = create_session(db, user.id, now)
     await db.commit()
     set_session_cookie(response, token, secure=secure_cookies(request))
-    return UserOut.model_validate(user)
+    return await user_out(db, user, now)
 
 
 @router.post("/login")
@@ -49,10 +62,11 @@ async def login(
     user = await authenticate(db, body.email, body.password)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
-    token = create_session(db, user.id, await clock.now())
+    now = await clock.now()
+    token = create_session(db, user.id, now)
     await db.commit()
     set_session_cookie(response, token, secure=secure_cookies(request))
-    return UserOut.model_validate(user)
+    return await user_out(db, user, now)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -67,5 +81,5 @@ async def logout(request: Request, db: SessionDep) -> Response:
 
 
 @router.get("/me")
-async def me(user: CurrentUserDep) -> UserOut:
-    return UserOut.model_validate(user)
+async def me(user: CurrentUserDep, db: SessionDep, clock: ClockDep) -> UserOut:
+    return await user_out(db, user, await clock.now())
