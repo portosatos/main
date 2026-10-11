@@ -171,37 +171,42 @@ function DigestQueue() {
       {items.length === 0 ? (
         <p>Очередь дайджестов пуста</p>
       ) : (
-        <table aria-label="Очередь дайджестов" className="w-full text-left">
-          <thead>
-            <tr>
-              <th className="pr-3 font-medium">Дайджест</th>
-              <th className="pr-3 font-medium">Время</th>
-              <th className="pr-3 font-medium">Причина</th>
-              <th className="font-medium">Рекомендаций</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((digest) => {
-              const at = digest.sent_at ?? digest.planned_at;
-              return (
-                <tr
-                  key={digest.id}
-                  title={digest.error ?? digest.subject ?? undefined}
-                >
-                  <td className="pr-3">
-                    {digest.status === "sent" ? "отправлен" : "запланирован"}
-                    {digest.error && " · ошибка отправки"}
-                  </td>
-                  <td className="pr-3">
-                    <time dateTime={at}>{dateTime.format(Date.parse(at))}</time>
-                  </td>
-                  <td className="pr-3">{PLAN_REASONS[digest.plan_reason]}</td>
-                  <td>{digest.recommendations}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        // On a phone the table scrolls inside its box, the page itself does not (SPEC §4).
+        <div className="overflow-x-auto">
+          <table aria-label="Очередь дайджестов" className="w-full text-left">
+            <thead>
+              <tr>
+                <th className="pr-3 font-medium">Дайджест</th>
+                <th className="pr-3 font-medium">Время</th>
+                <th className="pr-3 font-medium">Причина</th>
+                <th className="font-medium">Рекомендаций</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((digest) => {
+                const at = digest.sent_at ?? digest.planned_at;
+                return (
+                  <tr
+                    key={digest.id}
+                    title={digest.error ?? digest.subject ?? undefined}
+                  >
+                    <td className="pr-3">
+                      {digest.status === "sent" ? "отправлен" : "запланирован"}
+                      {digest.error && " · ошибка отправки"}
+                    </td>
+                    <td className="pr-3">
+                      <time dateTime={at}>
+                        {dateTime.format(Date.parse(at))}
+                      </time>
+                    </td>
+                    <td className="pr-3">{PLAN_REASONS[digest.plan_reason]}</td>
+                    <td>{digest.recommendations}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

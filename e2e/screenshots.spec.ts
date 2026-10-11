@@ -91,6 +91,13 @@ async function overflow(page: Page) {
     for (const element of Array.from(document.body.querySelectorAll<HTMLElement>("*"))) {
       const right = element.getBoundingClientRect().right;
       if (right <= width + 0.5) continue;
+      // Content of a box that scrolls or clips by itself does not widen the page; a positioned one
+      // may (its containing block can be outside the box, e.g. an sr-only label).
+      let clipped = false;
+      for (let up = element.parentElement; up && up !== document.body; up = up.parentElement) {
+        if (getComputedStyle(up).overflowX !== "visible") clipped = true;
+      }
+      if (clipped && getComputedStyle(element).position === "static") continue;
       // Only the outermost of a nested group: its parent fits.
       const parent = element.parentElement;
       if (parent && parent !== document.body && parent.getBoundingClientRect().right > width + 0.5) continue;
@@ -121,7 +128,6 @@ for (const shot of PAGES) {
     test.use({ storageState: shot.auth ? storageState : { cookies: [], origins: [] } });
 
     test(`no horizontal scroll at 375px: ${shot.name}`, async ({ page }) => {
-      test.fail(shot.auth, "step 13.1: not implemented");
       await page.setViewportSize({ width: 375, height: 812 });
       await open(page, shot);
       const result = await overflow(page);

@@ -59,7 +59,8 @@ export default function Devices() {
           </p>
         )}
         {devices.data && devices.data.length > 0 && (
-          <div className="overflow-x-auto">
+          // `relative`: the sr-only header (absolute) is clipped by the scrolling box too.
+          <div className="relative overflow-x-auto">
             <table aria-label="Устройства" className="w-full text-left text-sm">
               <thead className="text-muted-foreground">
                 <tr>

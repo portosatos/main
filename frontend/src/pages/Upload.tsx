@@ -208,8 +208,9 @@ function History({ jobs }: { jobs: ReturnType<typeof useIngestJobs> }) {
     return <p className="text-sm text-muted-foreground">Загрузок пока нет — загрузите файл.</p>;
   }
   return (
-    // On a phone the table scrolls inside its box, the page itself does not (SPEC §4).
-    <div className="overflow-x-auto">
+    // On a phone the table scrolls inside its box, the page itself does not (SPEC §4). `relative`:
+    // the sr-only header (absolute) is clipped by the box too.
+    <div className="relative overflow-x-auto">
       <table aria-label="История загрузок" className="w-full text-sm">
         <thead className="text-left text-muted-foreground">
           <tr className="border-b">

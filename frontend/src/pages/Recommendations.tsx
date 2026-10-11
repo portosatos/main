@@ -121,7 +121,12 @@ export default function Recommendations() {
       </CardHeader>
       <CardContent className="grid gap-4">
         <Disclaimer />
-        <Tabs.Root value={tab} onValueChange={(value) => setTab(value as RecommendationTab)}>
+        {/* min-w-0: the card's grid column is not widened by the filter's select. */}
+        <Tabs.Root
+          value={tab}
+          onValueChange={(value) => setTab(value as RecommendationTab)}
+          className="min-w-0"
+        >
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <Tabs.List aria-label="Рекомендации" className="flex gap-1">
               <Tabs.Trigger value="open" className={triggerClass}>
@@ -131,12 +136,13 @@ export default function Recommendations() {
                 История
               </Tabs.Trigger>
             </Tabs.List>
-            <label className="ml-auto flex items-center gap-2 text-sm">
+            {/* A select is as wide as its longest option: on a phone it shrinks with the row. */}
+            <label className="ml-auto flex min-w-0 max-w-full items-center gap-2 text-sm">
               Правило
               <select
                 value={rule ?? ""}
                 onChange={(event) => setRule(event.target.value || null)}
-                className="h-8 rounded-md border bg-background px-2 text-sm"
+                className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm"
               >
                 <option value="">Все правила</option>
                 {rules.data?.map((r) => (
