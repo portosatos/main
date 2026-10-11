@@ -860,3 +860,13 @@
   раздача по `user_id`), `/api/events` на sse-starlette (cookie, keep-alive), события воркера `ingest.progress`
   (не реже раза в 2 с), `ingest.done`, `summary.updated {dates}` с делением на части < 8 КБ; ADR, `docs/API.md`, CLAUDE.md.
 - Не делаем: UI, `useEvents`, nginx-smoke (шаг 5.2), события целей и правил.
+
+## 2026-10-11T09:48:19+06:00 — Тесты до кода: 7 xfailed
+- Коммиты: refactor(events) — заглушки `services/events.py` (`publish`, `publish_summary_updated` → NotImplementedError)
+  и `GET /api/events` (501), зависимость sse-starlette 3.5.0; test(events) — 7 тестов `integration/test_events.py`
+  со strict-xfail. API поднимается настоящим uvicorn на свободном порту: ASGI-транспорт httpx не отдаёт поток SSE.
+- Причина красного (прогон с `--runxfail`): все 7 падают на `501 == 200` / `501 == 401` — сервер, регистрация и cookie
+  в тестах работают. Весь backend: `165 passed, 7 xfailed`.
+- Допущения в тестах (ждут подтверждения): при подключении поток шлёт событие `ready`; после восстановления LISTEN —
+  `resync` (вкладка перезапрашивает всё); `ingest.done` несёт `status` и `counts`; `ingest.progress` — `bytes_done`,
+  `bytes_total`; данные события в SSE — JSON без `user_id`.
