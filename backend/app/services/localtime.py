@@ -11,6 +11,7 @@ when the clock jumps over midnight (America/Santiago, 00:00 → 01:00).
 `TzHistory` is pure; `load_tz_history` reads a user's history from user_timezones.
 """
 
+import itertools
 import uuid
 from bisect import bisect_right
 from collections.abc import Iterable
@@ -77,6 +78,21 @@ class TzHistory:
             else:
                 ranges.append((start, end))
         return ranges
+
+    def dates_between(self, start: datetime, end: datetime) -> set[date]:
+        """Local dates of the instants in [start, end)."""
+        start, end = _aware(start, "start"), _aware(end, "end")
+        dates: set[date] = set()
+        # Cut the range at the moves; inside one zone the date never goes back (ADR-033).
+        cuts = [start, *(s for s in self._starts if start < s < end), end]
+        for piece_start, piece_end in itertools.pairwise(cuts):
+            if piece_start >= piece_end:
+                continue
+            zone = self.zone_at(piece_start)
+            first = piece_start.astimezone(zone).date()
+            last = (piece_end - timedelta(microseconds=1)).astimezone(zone).date()
+            dates.update(first + timedelta(days=i) for i in range((last - first).days + 1))
+        return dates
 
 
 async def load_tz_history(session: AsyncSession, user_id: uuid.UUID) -> TzHistory:

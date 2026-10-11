@@ -45,12 +45,6 @@ from tests.integration.test_ingest_jobs import (
 )
 from tests.integration.test_ingest_jobs import upload as api_upload
 
-RED = pytest.mark.xfail(strict=True, raises=NotImplementedError, reason="step 4.3: not implemented")
-# Not wired into the ingest yet: no dirty dates, no summaries — an assertion fails first.
-RED_ASSERT = pytest.mark.xfail(
-    strict=True, raises=(NotImplementedError, AssertionError), reason="step 4.3: not implemented"
-)
-
 MSK = timezone(timedelta(hours=3))
 MINUTE = timedelta(minutes=1)
 DAY = date(2026, 10, 5)
@@ -150,7 +144,6 @@ def as_metrics(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@RED
 async def test_night_valid_on_partial_day(session: AsyncSession) -> None:
     # SPEC F6, §8 stage 4: the night is recorded whole (sleep 23:40–07:10, data 22:00–08:30), the
     # watch is off for the rest of the day: the day is partial, the night is valid.
@@ -181,7 +174,6 @@ async def test_night_valid_on_partial_day(session: AsyncSession) -> None:
     assert (evening["sleep_minutes"], evening["night_valid"]) == (None, False)
 
 
-@RED
 async def test_tz_move_period_sum_equals_sum_of_merged_minutes(session: AsyncSession) -> None:
     # SPEC F5, §8 stage 4, §9 #18: Moscow → New York on Oct 3 at 12:00Z (Oct 3 lasts 31 hours)
     # and back on Oct 6 at 00:00Z (Oct 5 lasts 20 hours, Oct 6 — 21). The days' steps and wear
@@ -229,7 +221,6 @@ async def test_tz_move_period_sum_equals_sum_of_merged_minutes(session: AsyncSes
     assert found[date(2026, 10, 3)]["wear_minutes"] > found[date(2026, 10, 2)]["wear_minutes"]
 
 
-@RED_ASSERT
 async def test_only_dirty_dates_recomputed(session: AsyncSession) -> None:
     # SPEC F3, F7: an upload recomputes only the dates its records can change. A walk on each of
     # Oct 1–5 and the night of Oct 3 → 4 (asleep 21:30–07:00, pulse 20:00–08:00).
@@ -284,7 +275,6 @@ def htgen_file(tmp_path_factory: pytest.TempPathFactory) -> bytes:
     return out.read_bytes()
 
 
-@RED
 async def test_rebuild_reproduces_summaries(
     session: AsyncSession,
     test_sessionmaker: async_sessionmaker[AsyncSession],
@@ -302,13 +292,14 @@ async def test_rebuild_reproduces_summaries(
     assert len(found) >= 3
     assert any(day["night_valid"] for day in found.values())
     assert any(day["sleep_minutes"] for day in found.values())
+    # The rows are gone: `htadmin rebuild` restores them from the minutes alone.
+    await session.execute(text("DELETE FROM daily_summaries WHERE user_id = :u"), {"u": user_id})
     await session.commit()
 
     assert await cli.run(["rebuild", "--user", "rebuild@example.com"], test_sessionmaker) == 0
 
     assert await summary_hash(session, user_id) == incremental
-    # The rows are gone: the rebuild restores them from the minutes alone.
-    await session.execute(text("DELETE FROM daily_summaries WHERE user_id = :u"), {"u": user_id})
+    # A rebuild over the rows in place gives them again.
     assert await rebuild_summaries(session, user_id, NOW) == len(found)
     assert await summary_hash(session, user_id) == incremental
     assert await summary_hash(session, other_id) == other
@@ -353,7 +344,6 @@ async def committed_summaries(engine: AsyncEngine, user_id: uuid.UUID) -> dict[d
         return await summary_rows(session, user_id)
 
 
-@RED_ASSERT
 async def test_summaries_exist_before_job_done(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

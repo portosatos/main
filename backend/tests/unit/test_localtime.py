@@ -229,6 +229,31 @@ def test_ranges_for_date_roundtrip(data: tuple[list[Rec], datetime], offset_s: i
         assert h.local_date(end) != day
 
 
+# Beyond the plan (step 4.3, written with the code): the dates of a range, for dirty dates.
+@settings(deadline=None, max_examples=300)
+@given(
+    data=histories(),
+    start_s=st.integers(0, SPAN_S),
+    length_s=st.integers(1, 3 * 24 * 3600),
+)
+def test_dates_between_are_dates_whose_ranges_meet_the_window(
+    data: tuple[list[Rec], datetime], start_s: int, length_s: int
+) -> None:
+    records, base = data
+    h = TzHistory(records)
+    start = base + timedelta(seconds=start_s)
+    end = start + timedelta(seconds=length_s)
+
+    dates = h.dates_between(start, end)
+
+    around = h.local_date(start)
+    candidates = [around + timedelta(days=i) for i in range(-3, 6)]
+    expected = {
+        d for d in candidates if any(a < end and b > start for a, b in h.ranges_for_date(d))
+    }
+    assert dates == expected
+
+
 def test_before_first_record_first_tz_applies() -> None:
     """Допущение: data from before registration (the first record) is dated in the first zone."""
     h = history(MSK)

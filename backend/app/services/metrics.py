@@ -119,8 +119,8 @@ async def compute_day(
     if not ranges or not device_ids:
         return summarize_day(day, {}, {})
     window = [(ranges[0][0] - SLEEP_LOOKBACK, ranges[-1][1] + SLEEP_LOOKAHEAD)]
-    coverage = await _minutes(session, CoverageMinute, device_ids, window)
-    asleep = await _minutes(session, SleepMinute, device_ids, window)
+    coverage = await load_minutes(session, CoverageMinute, device_ids, window)
+    asleep = await load_minutes(session, SleepMinute, device_ids, window)
 
     steps: dict[uuid.UUID, dict[datetime, float]] = {d: {} for d in device_ids}
     query = select(StepsMinute.device_id, StepsMinute.minute_utc, StepsMinute.steps).where(
@@ -156,7 +156,7 @@ async def compute_day(
     return summarize_day(day, merge_steps(order, day_coverage, steps), merge_hr(order, hr), sleep)
 
 
-async def _minutes(
+async def load_minutes(
     session: AsyncSession,
     model: type[CoverageMinute | SleepMinute],
     device_ids: list[uuid.UUID],

@@ -5,7 +5,8 @@ stored raw records by one SQL query per record type; then records inside the bat
 with each other in line order; only `new` records are inserted. On a conflict the first loaded
 record wins: stored records first, then earlier lines of the file (ADR-030). The result does not
 depend on the batch size. After every batch the derived minutes its new records touch are
-recomputed in the same transaction (services/minutes.py, ADR-032).
+recomputed in the same transaction (services/minutes.py, ADR-032), and the local dates whose
+summaries may have changed are added to `Counts.dirty_dates` (services/summaries.py).
 """
 
 import bisect
@@ -21,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.ingest.devices import DeviceResolver
 from app.services.ingest.parser import HeartRate, Invalid, Line, Meta, Sleep, Steps
 from app.services.minutes import DirtyMinutes, recompute
+from app.services.summaries import affected_dates
 
 BATCH_SIZE = 5000
 # Errors (invalid and conflicting lines) kept in the report; the counters count all of them.
@@ -80,6 +82,7 @@ async def ingest_records(
             counts.warnings.extend(warnings)
             dirty = await writer.write(batch, ids, counts)
             await recompute(session, dirty)
+            counts.dirty_dates |= await affected_dates(session, user_id, dirty)
             batch.clear()
 
     for line in lines:

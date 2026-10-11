@@ -3,14 +3,21 @@
 Every batch is one transaction: its records, the job counters and the checkpoint (byte offset
 and line number after the batch) are committed together. A resumed job starts right after the
 last committed batch, so the result equals an uninterrupted run (ADR-031).
+
+The local dates a batch makes stale are committed with the checkpoint too; their summaries are
+recomputed in the batch transaction after the first batch, then at least every
+`summary_flush_s` seconds, and the rest in the transaction that finishes the job — so the
+summaries fill in while the file is processed and a resumed job loses no date (ADR-036).
 """
 
 import asyncio
 import itertools
+import math
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +29,7 @@ from app.models import IngestJob
 from app.services.ingest.classify import ERRORS_LIMIT, Counts, ingest_records
 from app.services.ingest.jobs import INGEST_FILE
 from app.services.ingest.parser import Line, parse_lines
+from app.services.summaries import recompute_dates
 from app.worker.queue import QueuedJob
 
 
@@ -51,6 +59,7 @@ class Progress:
     invalid: int
     errors: list[dict[str, Any]]
     warnings: list[str] = field(default_factory=list)
+    dirty_dates: set[date] = field(default_factory=set)
 
     @classmethod
     def of(cls, job: IngestJob) -> "Progress":
@@ -63,6 +72,7 @@ class Progress:
             job.records_invalid,
             list(job.errors),
             list(job.warnings),
+            set(job.dirty_dates),
         )
 
     def add(self, counts: Counts, last: Line) -> None:
@@ -77,6 +87,7 @@ class Progress:
         ]
         self.errors = sorted(errors, key=lambda e: e["line"])[:ERRORS_LIMIT]
         self.warnings += [w for w in counts.warnings if w not in self.warnings]
+        self.dirty_dates |= counts.dirty_dates
 
     def values(self) -> dict[str, Any]:
         return {
@@ -89,6 +100,7 @@ class Progress:
             "records_invalid": self.invalid,
             "errors": self.errors,
             "warnings": self.warnings,
+            "dirty_dates": sorted(self.dirty_dates),
         }
 
 
@@ -108,6 +120,13 @@ async def ingest_file(ctx: JobContext) -> None:
             await session.commit()
     progress = Progress.of(ingest)
     path = Path(ingest.file_path or "")
+    flushed_at = -math.inf  # the first batch shows its summaries at once
+
+    async def flush_summaries(session: AsyncSession, now: datetime) -> None:
+        nonlocal flushed_at
+        await recompute_dates(session, ingest.user_id, progress.dirty_dates, now)
+        progress.dirty_dates.clear()
+        flushed_at = time.monotonic()
 
     # The worker is a process of its own: reading the file in the loop blocks nobody else.
     with await asyncio.to_thread(path.open, "rb") as stream:
@@ -127,6 +146,8 @@ async def ingest_file(ctx: JobContext) -> None:
                     batch_size=ctx.batch_size,
                 )
                 progress.add(counts, batch[-1])
+                if time.monotonic() - flushed_at >= ctx.summary_flush_s:
+                    await flush_summaries(session, now)
                 await session.execute(
                     update(IngestJob).where(IngestJob.id == job_id).values(**progress.values())
                 )
@@ -135,13 +156,16 @@ async def ingest_file(ctx: JobContext) -> None:
             await ctx.after_batch(number)
 
     async with ctx.sessionmaker() as session:
+        now = await ctx.clock.now()
+        await flush_summaries(session, now)
         await session.execute(
             update(IngestJob)
             .where(IngestJob.id == job_id)
             .values(
                 status="done",
+                dirty_dates=[],
                 bytes_done=ingest.bytes_total,  # trailing blank lines yield no batch
-                finished_at=await ctx.clock.now(),
+                finished_at=now,
             )
         )
         await session.commit()
