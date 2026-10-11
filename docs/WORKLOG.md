@@ -1454,3 +1454,33 @@
 - 4c599b2 `fix(notify)`: конец тихих часов — первый не тихий момент после `at` (fold 0/1, при пропущенном времени —
   поиск момента скачка часов с точностью до секунды). Маркеры сняты. `unit/test_planner.py` → `22 passed`
   (property-тест ещё 3 раза — passed), `-m unit` → `144 passed`.
+
+## 2026-10-11T18:16:39+06:00 — Фичи шага 9.2 готовы; живая проверка на стеке
+- Тесты на условия пользователя по допущению 5 (до кода): 55a3f7f `chore(notify)` — параметр `timeout_s` в заглушке
+  `SmtpMailer`; 0ea8dad `test(notify): … (red)` — `test_smtp_failure_rolls_back_send_and_keeps_error`,
+  `test_hanging_smtp_cut_off_by_timeout` (сверх списка плана). Красный: `test_dispatcher.py` → `8 xfailed`, причины —
+  `NotImplementedError: step 9.2`.
+- c241f90 `feat(notify)` — миграция 0011 (`email_outbox`, `email_digests`, `uq_email_digests_sent`,
+  `uq_email_digests_planned`), `outbox.enqueue` из `engine.notify_opened`. Снят маркер `test_outbox.py`. `alembic check`
+  → «No new upgrade operations detected.», downgrade 0010 → upgrade head проходит.
+- e42c58a `feat(notify)` — диспетчер (план / отправка / ошибка отдельной транзакцией), письмо текст + HTML
+  (`digest.py`), `SmtpMailer` (aiosmtplib, общий таймаут 10 с), `Worker.digest_tick` в цикле воркера, настройки
+  и compose (`SMTP_HOST: mailpit`, `APP_URL`, `DIGEST_*`), `scripts/test.*` поднимают mailpit. Сняты маркеры 6 тестов
+  диспетчера и `test_mailpit.py`: `7 passed` с первого запуска.
+- a1d340d `feat(notify)` — `GET /api/digests`; сняты 2 последних маркера: `test_dispatcher.py` → `8 passed`.
+- 24cb529 `feat(devpanel)` — таблица «Очередь дайджестов», `api/digests.ts`, `digest.sent` в `useEvents`, общий
+  msw-обработчик `/api/digests` в `test/handlers.ts` (иначе старые тесты dev-панели падали бы на незамоканном запросе).
+  Правка красного теста при снятии `test.fails`: подпись причины `window` — «окно» вместо «окно 15 мин» (окно задаётся
+  env, число в подписи было бы неверным при `DIGEST_WINDOW_MINUTES=1`). Vitest `47 passed`.
+- 5f29a0b `docs(notify)` — ADR-050, `docs/EMAIL.md`, `docs/API.md`, заметка к шагу 10.1 в plan.md, CLAUDE.md §6.
+- Проблемы / как решили: python-однострочники в bash съедали текст в обратных кавычках (подстановка команд) в двух
+  docstring — замечено сразу, исправлено до коммитов; дальше файлы правились через Edit/Write.
+- Живая проверка (стек пересобран, `alembic current` → `0011 (head)`, dev clock до проверки `offset_seconds: 0`):
+  пользователь `digest92@example.com` (Asia/Almaty), `htgen --end 2026-10-11 --days 7 --seed 92 --scenario short-sleep`,
+  `upload.sh` → done за 8 с. R1 `open`, outbox `pending` 12:10:56Z, план 12:25:56Z `window`; `GET /api/digests` →
+  `planned`, `pending: 1`. Сдвиг +1 ч → в Mailpit одно письмо «Трекер здоровья: 1 новая рекомендация», `digest.sent`,
+  лог `digest_sent`. R1 выключено и включено (новая рекомендация в те же сутки) → план 19:00Z (00:00 12.10 по Алматы)
+  `daily_limit`; сдвиг +2 ч → писем по-прежнему 1. Сдвиг +8 ч (следующие местные сутки) → второе письмо, `local_date`
+  2026-10-12. Dev-панель в браузере: таблица с двумя строками «отправлен», причины «окно» и «1 письмо в сутки».
+- Dev clock после проверки: сдвиг был 28800 с (мой), сброшен — `POST /api/dev/clock {"offset_seconds": 0}`,
+  `GET /api/dev/clock` → `offset_seconds: 0`.
