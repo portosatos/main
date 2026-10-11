@@ -274,7 +274,6 @@ async def test_put_creates_new_version_past_days_use_old_target(
         }
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_achievement_created_once_when_data_crosses_threshold_mid_ingest(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -317,7 +316,6 @@ async def test_achievement_created_once_when_data_crosses_threshold_mid_ingest(
     assert of_type(after, "notification.created") == []
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_reupload_does_not_create_second_achievement(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -341,7 +339,6 @@ async def test_reupload_does_not_create_second_achievement(
         assert feed["unread"] == 1
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_toast_flag_only_for_today_and_yesterday_by_clock(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -367,7 +364,6 @@ async def test_toast_flag_only_for_today_and_yesterday_by_clock(
     assert sorted(n["payload"]["local_date"] for n in feed["items"]) == sorted(toasts)
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_sleep_goal_counted_on_wake_day(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -427,7 +423,6 @@ async def test_week_progress_n_of_7(
     assert [d["goals"]["steps"]["target"] for d in week["days"]] == [8000, 8000] + [12000] * 5
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_notifications_list_mark_read_and_isolation(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -475,7 +470,6 @@ async def test_notifications_list_mark_read_and_isolation(
 # is met at once, and the targets are validated.
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_lowering_goal_below_today_value_creates_achievement(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

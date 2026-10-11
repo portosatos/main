@@ -1,7 +1,8 @@
 """Goal routes (SPEC F8, §6.3): the current goals and changing them.
 
 PUT adds a version for every kind whose target changed, in effect from now (Clock) on: the past
-days keep their goals (ADR-043). The user's tabs hear of it with `goal.changed`.
+days keep their goals (ADR-043). The user's tabs hear of it with `goal.changed`. A goal lowered
+to today's value or below is met at once: today's achievements are recorded as after a recompute.
 """
 
 from fastapi import APIRouter
@@ -11,7 +12,8 @@ from app.auth.deps import CurrentUserDep
 from app.models import Goal
 from app.schemas.goals import GoalOut, GoalsIn
 from app.services import events
-from app.services.goals import KINDS, GoalBook, load_goal_book
+from app.services.goals import KINDS, GoalBook, load_goal_book, record_achievements
+from app.services.localtime import load_tz_history
 
 router = APIRouter(prefix="/api/goals", tags=["goals"])
 
@@ -42,6 +44,8 @@ async def put_goals(
         )
         await session.flush()
         await events.publish(session, user.id, "goal.changed", {"kinds": changed})
+        history = await load_tz_history(session, user.id)
+        await record_achievements(session, user.id, [history.local_date(now)], now, history)
         await session.commit()
         book = await load_goal_book(session, user.id)
     return _out(book)

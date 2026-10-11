@@ -2,7 +2,8 @@
 
 A summary row is derived like the minute tables: `recompute_dates` computes the given local
 dates from the minutes (services/metrics.py) and replaces their rows; a no_data date has no row.
-`rebuild_summaries` recomputes every date of a user (`htadmin rebuild`).
+`rebuild_summaries` recomputes every date of a user (`htadmin rebuild`). Every recompute ends
+with the goals met on its dates (services/goals.py: achievements, notifications, events).
 
 `affected_dates` turns the minutes a batch changed into the local dates whose summary may have
 changed. A changed minute m changes the metrics of its own date and, through sleep, the dates of
@@ -22,6 +23,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CoverageMinute, DailySummary, Device, SleepMinute
+from app.services.goals import record_achievements
 from app.services.localtime import TzHistory, UtcRange, load_tz_history
 from app.services.merge import device_order, merge_sleep
 from app.services.metrics import SLEEP_LOOKBACK, DayMetrics, compute_day, load_minutes
@@ -66,8 +68,8 @@ async def affected_dates(
 async def recompute_dates(
     session: AsyncSession, user_id: uuid.UUID, dates: Iterable[date], now: datetime
 ) -> None:
-    """Compute the user's summaries of `dates` and replace their rows; `now` (from Clock)
-    becomes `computed_at`."""
+    """Compute the user's summaries of `dates` and replace their rows, then record the goals
+    newly met on them; `now` (from Clock) becomes `computed_at`."""
     days = sorted(set(dates))
     if not days:
         return
@@ -89,6 +91,8 @@ async def recompute_dates(
         await session.execute(
             query.on_conflict_do_update(index_elements=["user_id", "local_date"], set_=updated)
         )
+        dates_with_data = [row["local_date"] for row in rows]
+        await record_achievements(session, user_id, dates_with_data, now, history)
 
 
 async def rebuild_summaries(session: AsyncSession, user_id: uuid.UUID, now: datetime) -> int:
