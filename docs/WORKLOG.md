@@ -962,3 +962,13 @@
   `coverage_minute`), страница «Устройства», дашборд «День / Неделя» с `SummaryCard`, графики Recharts с `GapBar`
   (нет данных — штриховка, неполные — пометка). Ключи сводок — `summaryKeys`, перезапрос по `summary.updated` уже в
   `useEvents` (5.2).
+
+## 2026-10-11T11:03:22+06:00 — Тесты до кода: 2 xfailed (backend) + 5 expected fail (frontend)
+- Коммиты: 19f3853 refactor(dashboard) — типы сводок и устройств, заглушки `Dashboard`, `Devices`, `GapBar`;
+  7919a53 test(dashboard) (red).
+- Красный прогон: `test_devices_api.py` → `2 xfailed` (без маркера: `GET /api/devices` → 404, маршрута нет);
+  frontend `20 passed | 7 expected fail` (без `test.fails`: нет карточек `region` «Сон»/«Шаги», нет текста «неполные
+  данные (носили 5 ч)», нет таблицы «Устройства», `GapBar` не рисует штриховку). Сверх плана добавлен
+  `pages/Devices.test.tsx::lists devices and renames one` (страница устройств входит в объём шага).
+- Полный прогон `scripts/test.sh` → backend `172 passed, 2 xfailed`, generator 51, scripts 8; ruff → exit 0.
+- Ждёт решения пользователя: какой день дашборд показывает по умолчанию (см. сообщение).
