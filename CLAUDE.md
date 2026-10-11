@@ -184,3 +184,6 @@
   /api/recommendations/{id}/feedback` `{"value": "useful"}`. Открытие рекомендации — уведомление и события в
   `engine.evaluate_user` (`notify_opened`). Страницы `http://localhost:5173/rules`, `/recommendations`; пороги словами и
   снимок значений — `lib/rules.ts`, дисклеймер — `components/Disclaimer.tsx`.
+- Планировщик дайджеста (ADR-049): `services/notify/planner.py` — `plan_send(...) → SendPlan(at, reason)` (окно 15 мин,
+  потолок 60 мин, лимит по местной дате, тихие часы), `plan_send_time` — сигнатура SPEC F10, обёртка. Тесты —
+  `cd backend; uv run pytest tests/unit/test_planner.py`.
