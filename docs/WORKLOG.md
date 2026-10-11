@@ -1923,3 +1923,32 @@
   с `-DefaultPorts` при остановленном dev-стеке.
 - B: разрешено стереть dev-БД — `demo.ps1 -Reset` (`docker compose down -v`).
 - Генератор демо: `--tz` пояса демо-пользователя, `--days` (по вчера), явный `--gap` без `@device`.
+
+## 2026-10-11T23:00:03+06:00 — Фичи шага 13.1 готовы: вёрстка 375 px, скриншоты, замер, демо, проверка чистого клона
+- 432b0ae feat(frontend): нет горизонтального скролла при 375 px — таблица очереди дайджестов dev-панели в
+  `overflow-x-auto`; `select` фильтра правил больше не расширяет карточку «Рекомендации» (`min-w-0` у `Tabs.Root`);
+  `sr-only`-заголовки (absolute) таблиц «Загрузки» и «Устройств» вылезали из прокручиваемого блока — блоку `relative`.
+  Маркеры `test.fail` сняты. Отчёт теста о виновниках учитывает обрезку блоками с `overflow` (кроме absolute).
+- 504aaff docs(screenshots): 20 PNG (10 страниц × 1280/375), `npx playwright test screenshots.spec.ts -u` 22:28 → 20 passed.
+- b97da34 feat(scripts): `bench_ingest.{ps1,sh}`. `.ps1` 22:40–22:44:32 → exit 0: 197,4 МБ, 2 699 219 строк, обработка 236,9 с,
+  всего 237,5 с (≤ 300 с); пик памяти воркера 66 MiB (до 64), postgres 2 038 MiB (до 1 902); p95 `/api/summary/day` во время
+  обработки 19 мс. `.sh` 22:35–22:39:59 → exit 0, 253,7 с. Первый прогон `.ps1` 22:34:22 — 245,3 с (без замера postgres).
+- 1689fa8 feat(scripts): `demo.{ps1,sh}`. `demo.ps1 -Reset` → exit 0 (dev-БД стёрта, разрешение пользователя): 536 211 записей,
+  R1 открыта (ночи 08–10.10), 05.10 — `no_data`, письмо в очереди; `demo.sh --no-open` (повтор) → exit 0, все записи — дубли.
+- 7af5ec0 feat(scripts): `fresh_clone_check.{ps1,sh}`. Проблема на первом прогоне: клон собирал образы под именами
+  dev-стека (`health-tracker-*:dev`) и перебивал их теги кодом `origin` → `IMAGE_PREFIX` в `docker-compose.yml`, у клона
+  `health-tracker-fresh-*`, в конце удаляются; dev-образы пересобраны. `.ps1 -DefaultPorts` при остановленном dev-стеке
+  22:50:34 → exit 0 (коммит клона 5bea529, LF у 11 файлов, up --build 24 с, smoke 7/7 на :5173 с входом demo); `.sh` на
+  других портах → exit 0 (в scratch-файл). После — `docker compose up -d --build --wait` dev-стека.
+- 5bea529 ADR-055, CLAUDE.md §6; 97e77f8 STATUS (проверка клона).
+- Тест после кода не добавлялся. Dev clock: `offset_seconds: 0` на e2e (8001) и dev (8000), 22:59:46.
+
+## 2026-10-11T23:00:03+06:00 — Шаг 13.1 завершён
+- Общий Done When: ruff «All checks passed!», «194 files already formatted»; `scripts/test.ps1 -All` 22:51:54–22:59:37 → exit 0
+  (backend 321 passed, generator 54, scripts 8, e2e 40 passed = 20 сценариев и хелперов + 20 скриншотных);
+  `git grep "step 13.1: not implemented" -- ":!docs"` → пусто; `npm --prefix frontend run check` → 0 (19 файлов, 51 тест);
+  CI 38157045568 (коммит 5bea529) → success.
+- Done When шага: bench 237,5 с ≤ 300 с → STATUS; fresh clone `-DefaultPorts` → exit 0 → STATUS; `demo.ps1 -Reset` → exit 0;
+  скриншоты → 20 passed, 20 файлов в `docs/screenshots/`.
+- Проверить вручную: загрузить ~200 МБ через UI и пользоваться приложением во время обработки; сравнить с STATUS;
+  `scripts/demo.ps1` с нуля; скриншоты в `docs/screenshots/`.
