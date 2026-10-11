@@ -22,6 +22,8 @@ coverage/
 playwright-report/
 test-results/
 blob-report/
+# htgen files of the e2e scenarios (e2e/lib/htgen.ts)
+e2e/.fixtures/
 
 # Generated telemetry samples
 *.ndjson
