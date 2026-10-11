@@ -9,6 +9,8 @@ export type User = {
   notify_email: string | null;
   // The user's local date now by the server's Clock and zone history (YYYY-MM-DD).
   today: string;
+  // The zone in effect now by the history (SPEC F5).
+  timezone: string;
 };
 
 export type Credentials = { email: string; password: string };

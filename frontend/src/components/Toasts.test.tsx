@@ -13,7 +13,13 @@ import Toasts from "./Toasts";
 // server says so (`show_toast` — today or yesterday by its Clock), so a history import does not
 // flood the screen. The bell still gets the notification either way.
 
-const ME: User = { id: "u", email: "demo@example.com", notify_email: null, today: "2026-10-11" };
+const ME: User = {
+  id: "u",
+  email: "demo@example.com",
+  notify_email: null,
+  today: "2026-10-11",
+  timezone: "Europe/Moscow",
+};
 
 function TabWithToasts() {
   useEvents();
