@@ -63,3 +63,29 @@ test("lists devices and renames one", async () => {
   );
   expect(patch).toEqual({ id: WATCH.id, body: { name: "Мои часы" }, csrf: "ht" });
 });
+
+// Beyond the plan's list (step 10.1, a note of step 6.1): the time of the last data is in the
+// user's zone from the history, not in the browser's (the tests run in UTC).
+test.fails("shows last data in the user's time zone", async () => {
+  server.use(
+    http.get("/api/auth/me", () =>
+      HttpResponse.json({
+        id: "u",
+        email: "demo@example.com",
+        notify_email: null,
+        today: "2026-10-08",
+        timezone: "Europe/Moscow",
+      }),
+    ),
+    http.get("/api/devices", () => HttpResponse.json([WATCH, PHONE])),
+  );
+  renderRoutes([{ path: "/devices", element: <Devices /> }], ["/devices"]);
+
+  const table = await screen.findByRole("table", { name: "Устройства" });
+  // 21:59Z on Oct 7 is 00:59 on Oct 8 in Moscow.
+  await waitFor(() =>
+    expect(within(table).getByRole("row", { name: /watch-1/ })).toHaveTextContent(
+      "08.10.2026, 00:59",
+    ),
+  );
+});

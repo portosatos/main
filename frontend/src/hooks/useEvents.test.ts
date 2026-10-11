@@ -42,6 +42,9 @@ const keys: Record<string, QueryKey> = {
   rules: ["rules"],
   recsOpen: ["recommendations", "open", "all"],
   recsHistoryR1: ["recommendations", "history", "R1"],
+  settings: ["settings"],
+  timezones: ["settings", "timezones"],
+  digests: ["digests"],
 };
 
 function setup() {
@@ -201,6 +204,21 @@ test("rule and recommendation events invalidate their keys", () => {
   for (const type of ["recommendation.opened", "recommendation.resolved", "recommendation.feedback"]) {
     source.emit(type, { id: "r1", rule_code: "R1" });
     expect(invalidated(queryClient)).toEqual(["recsHistoryR1", "recsOpen"]);
+    reset(queryClient);
+  }
+});
+
+// Beyond the plan's list (step 10.1): settings changed in another tab.
+test.fails("settings.changed invalidates settings, zones, me and digests", () => {
+  const queryClient = setup();
+  const source = FakeEventSource.last;
+  source.emit("ready");
+
+  // The form, the zone history, today and the zone of /api/auth/me, and the next digest (its time
+  // moves with quiet hours and the zone). The summaries come with summary.updated from the worker.
+  for (const fields of [["quiet_enabled"], ["timezone"]]) {
+    source.emit("settings.changed", { fields });
+    expect(invalidated(queryClient)).toEqual(["digests", "me", "settings", "timezones"]);
     reset(queryClient);
   }
 });
