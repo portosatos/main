@@ -11,7 +11,6 @@ from app.services.rules.base import Facts, Rule, Verdict, VerdictKind
 from app.services.rules.engine import Action, plan_actions
 
 TODAY = date(2026, 10, 10)
-NOT_IMPLEMENTED = "step 8.1: not implemented"
 
 
 class FakeRule:
@@ -37,14 +36,12 @@ def run(fake: FakeRule, *, open_codes: set[str], today: date = TODAY) -> list[Ac
     )
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_opens_when_condition_true() -> None:
     actions = run(FakeRule("fire"), open_codes=set())
 
     assert actions == [Action("RX", "open", TODAY, {"at": "2026-10-10"})]
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_no_duplicate_while_still_true_next_day() -> None:
     fake = FakeRule("fire")
     assert [a.kind for a in run(fake, open_codes=set())] == ["open"]
@@ -55,7 +52,6 @@ def test_no_duplicate_while_still_true_next_day() -> None:
     assert [a.kind for a in run(fake, open_codes={"RY"})] == ["open"]
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_resolves_on_close_condition() -> None:
     fake = FakeRule("close")
 
@@ -64,7 +60,6 @@ def test_resolves_on_close_condition() -> None:
     assert run(fake, open_codes=set()) == []
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 @pytest.mark.parametrize("kind", ["unknown", "hold"])
 def test_unknown_leaves_state_unchanged(kind: VerdictKind) -> None:
     fake = FakeRule(kind)
@@ -74,7 +69,6 @@ def test_unknown_leaves_state_unchanged(kind: VerdictKind) -> None:
     assert fake.calls > 0
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_disabled_rule_not_evaluated() -> None:
     off = FakeRule("fire", code="RX")
     on = FakeRule("fire", code="RY")

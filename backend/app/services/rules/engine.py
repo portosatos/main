@@ -32,7 +32,21 @@ def plan_actions(
     enabled: Collection[str],
     open_codes: Collection[str],
 ) -> list[Action]:
-    raise NotImplementedError("step 8.1")
+    """The actions of the enabled `rules` on `facts`; `open_codes` — the rules with an open
+    recommendation. A disabled rule is not evaluated at all."""
+    actions = []
+    for rule in rules:
+        if rule.code not in enabled:
+            continue
+        at = rule.anchor(facts)
+        verdict = rule.evaluate(facts, at)
+        is_open = rule.code in open_codes
+        if verdict.kind == "fire" and not is_open:
+            actions.append(Action(rule.code, "open", at, verdict.context))
+        elif verdict.kind == "close" and is_open:
+            actions.append(Action(rule.code, "resolve", at, verdict.context))
+        # fire with an open one, close with none, hold, unknown: nothing changes (SPEC F6, F9)
+    return actions
 
 
 async def evaluate_user(session: AsyncSession, user_id: uuid.UUID, now: datetime) -> list[Action]:
