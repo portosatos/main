@@ -24,6 +24,7 @@ from app.config import Settings
 from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
 from app.services.ingest.classify import BATCH_SIZE
+from app.services.ingest.jobs import PROGRESS_INTERVAL_S
 from app.services.summaries import FLUSH_INTERVAL_S
 from app.worker import queue
 from app.worker.handlers import HANDLERS, JobContext
@@ -76,6 +77,7 @@ class Worker:
         crash_after_batch: int | None = None,
         on_batch: Callable[[int], Awaitable[None]] | None = None,
         summary_flush_s: float = FLUSH_INTERVAL_S,
+        progress_s: float = PROGRESS_INTERVAL_S,
     ) -> None:
         self.engine = engine
         self.clock = clock
@@ -87,6 +89,7 @@ class Worker:
         # Test hook: awaited after every committed batch, e.g. to pause the job after batch k.
         self.on_batch = on_batch
         self.summary_flush_s = summary_flush_s
+        self.progress_s = progress_s
         self.listening = asyncio.Event()
         self._sessionmaker = create_sessionmaker(engine)
         self._stop: asyncio.Event | None = None
@@ -197,6 +200,7 @@ class Worker:
             checkpoint,
             after_batch,
             self.summary_flush_s,
+            self.progress_s,
         )
 
     def _stopping(self) -> bool:

@@ -215,7 +215,6 @@ async def test_two_sse_clients_same_user_both_receive_within_2s(
         assert event.at - sent <= DELIVERY_S
 
 
-@pytest.mark.xfail(strict=True, reason="step 5.1: not implemented")
 async def test_other_user_does_not_receive_events(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:
@@ -236,7 +235,6 @@ async def test_other_user_does_not_receive_events(
             assert (event.type, event.data) == ("goal.changed", {"goal_id": 2})
 
 
-@pytest.mark.xfail(strict=True, reason="step 5.1: not implemented")
 async def test_ingest_emits_progress_at_least_every_2s_and_done(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:
@@ -266,7 +264,6 @@ async def test_ingest_emits_progress_at_least_every_2s_and_done(
     assert done.data["counts"] == {"new": 144, "duplicate": 0, "conflict": 0, "invalid": 0}
 
 
-@pytest.mark.xfail(strict=True, reason="step 5.1: not implemented")
 async def test_summary_updated_contains_dates(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:
