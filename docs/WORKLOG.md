@@ -1314,3 +1314,14 @@
   уведомления и события `recommendation.*` в `evaluate_user` → страницы, колокольчик, `handlers` → `docs/RULES.md`,
   ADR, `docs/API.md`, CLAUDE.md §6.
 - Не делаем: письма и `email_outbox` (9.x), оценка при смене пояса (10.1), потоковый дебаунс (11.1).
+
+## 2026-10-11T15:45:20+06:00 — Тесты до кода: backend 9 xfailed, frontend 6 expected fail
+- Коммиты: 37dc231 `chore(rules)` (типы API и заглушки страниц), 9f66074 `test(rules)` (red).
+- Красный прогон: `scripts/test.sh` → backend `244 passed, 9 xfailed`, generator `51 passed`, scripts `8 passed`;
+  `npm --prefix frontend run check` → exit 0, vitest `40 passed | 6 expected fail`.
+- Причина красного (без маркеров, `--runxfail` / `test.fails` → `test`): все 9 backend-тестов — `404 == 200`
+  (маршрутов `/api/rules`, `/api/recommendations` нет; R1 при этом открывается движком из 8.1–8.2); страницы —
+  «Unable to find role="article" / "tab" / "note"» (заглушки); `useEvents` — `expected [] to deeply equal [...]`;
+  колокольчик — нет текста «Новая рекомендация».
+- Сверх плана: `useEvents.test.ts::rule and recommendation events invalidate their keys`,
+  `Bell.test.tsx::describes a recommendation notification`.
