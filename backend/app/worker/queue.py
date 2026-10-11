@@ -107,6 +107,14 @@ async def lock_user(session: AsyncSession, user_id: uuid.UUID) -> None:
     )
 
 
+async def try_lock_user(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Like `lock_user`, but without waiting: False if a job of the user is running."""
+    locked = await session.scalar(
+        select(func.pg_try_advisory_xact_lock(USER_LOCK_NAMESPACE, func.hashtext(str(user_id))))
+    )
+    return bool(locked)
+
+
 async def unlock_users(conn: AsyncConnection) -> None:
     """Release the user locks taken by `claim` on this connection."""
     await conn.execute(select(func.pg_advisory_unlock_all()))

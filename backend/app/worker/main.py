@@ -4,6 +4,9 @@ Takes jobs from the queue in Postgres and runs them. Wakes on NOTIFY from `enque
 fallback, every WORKER_TICK_S seconds; every tick records a heartbeat and returns stale jobs to
 the queue. Jobs of one user run one at a time (advisory lock), jobs of different users in
 parallel when several workers run.
+
+At start and then every RULES_TICK_S seconds (an hour) the worker evaluates the rules of the
+users with recent data: the anchor dates move with the local date even without uploads (SPEC F9).
 """
 
 import asyncio
@@ -25,6 +28,7 @@ from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
 from app.services.ingest.classify import BATCH_SIZE
 from app.services.ingest.jobs import PROGRESS_INTERVAL_S
+from app.services.rules.engine import evaluate_user, users_with_recent_data
 from app.services.summaries import FLUSH_INTERVAL_S
 from app.worker import queue
 from app.worker.handlers import HANDLERS, JobContext
@@ -111,8 +115,28 @@ class Worker:
         log.info("worker_tick", now=now.isoformat())
 
     async def rules_tick(self) -> None:
-        """Evaluate the rules of the users with recent data: the anchors move with the day."""
-        raise NotImplementedError("step 8.2")
+        """Evaluate the rules of the users with recent data: the anchors move with the day.
+
+        Each user in a transaction of its own under the user's lock; a user whose job is running
+        is skipped, not waited for: the job evaluates the rules when it is done."""
+        now = await self.clock.now()
+        async with self._sessionmaker() as session:
+            users = await users_with_recent_data(session, now)
+        evaluated = busy = changed = 0
+        for user_id in users:
+            if self._stopping():
+                break
+            try:
+                async with self._sessionmaker() as session:
+                    if not await queue.try_lock_user(session, user_id):
+                        busy += 1
+                        continue
+                    changed += len(await evaluate_user(session, user_id, now))
+                    await session.commit()
+                evaluated += 1
+            except Exception as exc:  # one user's failure must not stop the others
+                log.warning("rules_evaluation_failed", user_id=str(user_id), error=repr(exc))
+        log.info("rules_tick", now=now.isoformat(), evaluated=evaluated, busy=busy, changed=changed)
 
     async def claim(self) -> ClaimedJob | None:
         """The oldest queued job whose user is not busy with another job, or None."""
@@ -174,15 +198,24 @@ class Worker:
             driver = (await listener.get_raw_connection()).driver_connection
             await driver.add_listener(JOBS_CHANNEL, lambda *_: wake.set())
             self.listening.set()
-            log.info("worker_started", worker_id=self.worker_id, tick_s=self.tick_s)
-            next_tick = 0.0
+            log.info(
+                "worker_started",
+                worker_id=self.worker_id,
+                tick_s=self.tick_s,
+                rules_tick_s=self.rules_tick_s,
+            )
+            next_tick = next_rules_tick = 0.0
             while not stop.is_set():
                 if time.monotonic() >= next_tick:
                     next_tick = time.monotonic() + self.tick_s
                     await self._guarded(self.tick())
+                if time.monotonic() >= next_rules_tick:
+                    next_rules_tick = time.monotonic() + self.rules_tick_s
+                    await self._guarded(self.rules_tick())
                 wake.clear()
                 await self._guarded(self.run_until_idle())
-                await _wait_any(wake, stop, seconds=max(next_tick - time.monotonic(), 0))
+                wait = min(next_tick, next_rules_tick) - time.monotonic()
+                await _wait_any(wake, stop, seconds=max(wait, 0))
         finally:
             self.listening.clear()
             await listener.close()
@@ -250,7 +283,7 @@ async def worker_context(settings: Settings) -> AsyncIterator[WorkerContext]:
         await engine.dispose()
 
 
-async def run(settings: Settings, tick_s: float) -> None:
+async def run(settings: Settings, tick_s: float, rules_tick_s: float = RULES_TICK_S) -> None:
     async with worker_context(settings) as ctx:
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()
@@ -263,6 +296,7 @@ async def run(settings: Settings, tick_s: float) -> None:
             ctx.clock,
             worker_id=f"{socket.gethostname()}-{os.getpid()}",
             tick_s=tick_s,
+            rules_tick_s=rules_tick_s,
         )
         log.info("worker_starting", app_env=settings.app_env)
         await worker.run(stop)
@@ -271,6 +305,8 @@ async def run(settings: Settings, tick_s: float) -> None:
 def main() -> None:
     configure_logging()
     try:
-        asyncio.run(run(Settings(), float(os.environ.get("WORKER_TICK_S", "30"))))
+        tick_s = float(os.environ.get("WORKER_TICK_S", "30"))
+        rules_tick_s = float(os.environ.get("RULES_TICK_S", RULES_TICK_S))
+        asyncio.run(run(Settings(), tick_s, rules_tick_s))
     except KeyboardInterrupt:
         log.info("worker_stopped")

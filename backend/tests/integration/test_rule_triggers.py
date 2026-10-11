@@ -123,7 +123,6 @@ async def test_evaluated_after_ingest_done(
     assert opened["opened_at"] == finished_at
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 async def test_hourly_tick_evaluates_on_day_change(
     clean: None,
     db_engine: AsyncEngine,
@@ -161,7 +160,6 @@ async def test_hourly_tick_evaluates_on_day_change(
     assert make_worker(db_engine).rules_tick_s == RULES_TICK_S == 3600
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 async def test_hourly_tick_skips_user_with_running_job(
     clean: None,
     db_engine: AsyncEngine,

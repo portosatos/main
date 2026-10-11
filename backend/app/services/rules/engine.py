@@ -102,8 +102,14 @@ def make_facts(
 
 
 async def users_with_recent_data(session: AsyncSession, now: datetime) -> list[uuid.UUID]:
-    """The users with a daily summary the rules may read at `now` (the hourly evaluation)."""
-    raise NotImplementedError("step 8.2")
+    """The users with a daily summary the rules may read at `now` (the hourly evaluation); the
+    others have nothing to evaluate: every rule is unknown without data (SPEC F6). A local date
+    is at most a day away from the UTC date of `now`."""
+    since = now.date() - LOOKBACK - timedelta(days=1)
+    found = await session.scalars(
+        select(DailySummary.user_id).where(DailySummary.local_date >= since).distinct()
+    )
+    return list(found)
 
 
 async def load_facts(session: AsyncSession, user_id: uuid.UUID, now: datetime) -> Facts:
