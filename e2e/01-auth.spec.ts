@@ -11,8 +11,11 @@ test("регистрация, вход и выход", async ({ page }) => {
   await page.goto("/upload");
   await expect(page).toHaveURL(/\/login$/);
 
+  // React Router renders a navigation in a transition: the URL changes before the new form is
+  // mounted, so the fields are filled only once the page's heading is there.
   await page.getByRole("link", { name: "Зарегистрироваться" }).click();
   await expect(page).toHaveURL(/\/register$/);
+  await expect(page.getByRole("heading", { name: "Регистрация" })).toBeVisible();
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Пароль").fill(PASSWORD);
   await page.getByRole("button", { name: "Зарегистрироваться" }).click();
@@ -30,6 +33,7 @@ test("регистрация, вход и выход", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/upload");
   await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "Вход" })).toBeVisible();
 
   // A wrong password is refused with a message, the right one lets the user in.
   await page.getByLabel("Email").fill(email);
