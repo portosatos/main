@@ -111,7 +111,7 @@
 - Smoke запущенного стека: `scripts/smoke.ps1` / `scripts/smoke.sh` (`/api/health`, Mailpit, frontend `:5173/`
   и `:5173/api/health` через proxy → 200, вход демо-пользователя и `:5173/api/auth/me` → 200, первое событие
   `:5173/api/events` за ≤ 2 с — `SSE_FIRST_BYTE_SEC` / `-SseFirstByteSec`).
-- Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres из compose, запускают pytest backend,
+- Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres и mailpit из compose, запускают pytest backend,
   генератора и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
   `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
 - Миграции (Alembic, `backend/alembic/`): применяются сами при старте api; текущая ревизия —
@@ -187,3 +187,10 @@
 - Планировщик дайджеста (ADR-049): `services/notify/planner.py` — `plan_send(...) → SendPlan(at, reason)` (окно 15 мин,
   потолок 60 мин, лимит по местной дате, тихие часы), `plan_send_time` — сигнатура SPEC F10, обёртка. Тесты —
   `cd backend; uv run pytest tests/unit/test_planner.py`.
+- Письма (ADR-050, `docs/EMAIL.md`): outbox пишет `engine.notify_opened`; диспетчер — `services/notify/dispatcher.py`,
+  тик воркера раз в 30 с (`DIGEST_TICK_S`), лог `digest_sent` / `digest_send_failed`. SMTP — Mailpit (`SMTP_HOST`, в compose
+  `mailpit`; таймаут `SMTP_TIMEOUT_S` 10 с), окно и потолок — `DIGEST_WINDOW_MINUTES` / `DIGEST_MAX_DELAY_MINUTES`.
+  Очередь — `GET /api/digests` (`warning: "no_notify_email"` без почты) и таблица на dev-панели; событие `digest.sent`.
+  Письма в Mailpit: `http://localhost:8025`, API — `curl "http://localhost:8025/api/v1/search?query=to:demo@example.com"`.
+  Тест с настоящим Mailpit — `scripts/test.ps1 -m mailpit` / `scripts/test.sh -m mailpit` (скрипты тестов поднимают
+  postgres и mailpit).

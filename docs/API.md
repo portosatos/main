@@ -128,6 +128,21 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 - Отзыв можно поставить на любую рекомендацию. Та же отметка ещё раз — без изменений и без события. Чужая или
   несуществующая рекомендация → 404.
 
+## Дайджесты (`/api/digests`, SPEC F10, ADR-050, `docs/EMAIL.md`)
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/digests?limit=20` | `{notify_email, warning, pending, items: [{id, status, local_date, planned_at, plan_reason, sent_at, to_email, subject, recommendations, error}]}` — сначала запланированный, потом отправленные (новые сверху); `limit` 1–100 |
+
+- `status`: `planned` — запланирован (у пользователя не больше одного), `sent` — отправлен. План пересчитывает диспетчер
+  воркера раз в 30 с: новая рекомендация попадает в запланированный дайджест в пределах тика.
+- `plan_reason`: `window` (15 мин после последней рекомендации), `max_delay` (60 мин после первой), `daily_limit`
+  (дайджест за эти местные сутки уже был — 00:00 следующих), `quiet_hours` (конец тихих часов).
+- `local_date` — местная дата времени плана (у отправленного — дата отправки); `recommendations` — ожидающие записи
+  (у запланированного) или рекомендации в письме (у отправленного). `to_email` и `subject` — после отправки.
+- `error` — последняя неудачная отправка (SMTP недоступен, таймаут 10 с); следующий тик повторяет, успех очищает.
+- `warning: "no_notify_email"` — почта для писем не указана: письма не планируются и не отправляются, записи ждут.
+
 ## События (`GET /api/events`, SSE, SPEC F12, ADR-039)
 
 Поток Server-Sent Events пользователя сессии (без cookie → 401; API ещё не слушает БД → 503 через 5 с). Каждое
@@ -151,6 +166,7 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 | `recommendation.resolved` | `{id, rule_code, status}` | рекомендация закрыта: `status` — `resolved` (условием правила) или `closed_rule_disabled` |
 | `recommendation.feedback` | `{id, feedback}` | отзыв поставлен, изменён или снят (`null`) |
 | `rule.toggled` | `{code, enabled}` | правило включено или выключено |
+| `digest.sent` | `{id, local_date, count}` | дайджест отправлен (`count` — рекомендаций в письме) |
 
 `counts = {new, duplicate, conflict, invalid}` — как в отчёте `GET /api/ingest/jobs/{id}`. Прогресс —
-`bytes_done / bytes_total`. Остальные события SPEC F12 (настройки, письма) добавляются на своих шагах.
+`bytes_done / bytes_total`. Остальные события SPEC F12 (настройки) добавляются на своих шагах.

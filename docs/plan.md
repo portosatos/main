@@ -965,6 +965,10 @@ HTML-виде, `GET /api/digests`, событие `digest.sent`, очередь 
 ### Шаг 10.1 — Настройки и смена пояса
 **Этап SPEC:** 10 · **Зависит от:** 9.2, 8.2, 4.3 · **Критерии §9:** **закрывает #18**, вклад в #15
 
+Заметки: **Для 10.1: предупреждение в UI, если notify_email пуст** (SPEC F10; указание пользователя на шаге 9.2,
+ADR-050). Флаг уже есть: `GET /api/digests` → `warning: "no_notify_email"`. Ближайший дайджест — тот же ответ
+(элемент со `status: "planned"`).
+
 **Объём:** `GET/PATCH /api/settings`, `GET/POST /api/settings/timezones` (`valid_from`), задача `tz_changed`
 (пересчёт затронутых дат и правил), событие `settings.changed`, страница «Настройки», ближайший дайджест,
 `docs/TIMEZONES.md`.
