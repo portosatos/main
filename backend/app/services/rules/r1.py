@@ -4,15 +4,9 @@ day's status (SPEC F6)."""
 
 from datetime import date, timedelta
 
-from app.services.rules.base import Day, Facts, Rule, Verdict
+from app.services.rules.base import Day, Facts, Rule, Verdict, last_night
 
 PARAMS = {"nights": 3, "short_hours": 6, "close_hours": 7}
-
-
-def anchor(facts: Facts) -> date:
-    """Today if last night is valid, else yesterday (SPEC F9)."""
-    today = facts.today
-    return today if is_known(facts.day(today)) else today - timedelta(days=1)
 
 
 def is_known(day: Day) -> bool:
@@ -44,4 +38,4 @@ def evaluate(facts: Facts, at: date) -> Verdict:
     return Verdict("hold", context)
 
 
-RULE = Rule("R1", window_days=PARAMS["nights"], anchor=anchor, evaluate=evaluate)
+RULE = Rule("R1", window_days=PARAMS["nights"], anchor=last_night, evaluate=evaluate)

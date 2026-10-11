@@ -41,7 +41,6 @@ def complete_day(day: date, *, night_valid: bool = True) -> Day:
     )
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 @pytest.mark.parametrize("rule", [r2.RULE, r3.RULE, r6.RULE], ids=lambda r: r.code)
 async def test_r2_r3_r6_anchor_yesterday_by_clock(rule: Rule) -> None:
     # 21:30 UTC on 10.10 is 00:30 on 11.10 in Moscow: there today is 11.10, in UTC — 10.10.
@@ -58,17 +57,7 @@ async def test_r2_r3_r6_anchor_yesterday_by_clock(rule: Rule) -> None:
     assert rule.anchor(make_facts([], TzHistory([Zone("UTC", now)]), now)) == date(2026, 10, 9)
 
 
-@pytest.mark.parametrize(
-    "rule",
-    [
-        pytest.param(r1.RULE, id="R1"),
-        pytest.param(
-            r5.RULE,
-            id="R5",
-            marks=pytest.mark.xfail(strict=True, reason="step 8.2: not implemented"),
-        ),
-    ],
-)
+@pytest.mark.parametrize("rule", [r1.RULE, r5.RULE], ids=lambda r: r.code)
 def test_r1_r5_anchor_today_if_valid_night(rule: Rule) -> None:
     today = date(2026, 10, 10)
     yesterday = today - timedelta(days=1)
@@ -81,7 +70,6 @@ def test_r1_r5_anchor_today_if_valid_night(rule: Rule) -> None:
     assert rule.anchor(Facts([no_night], today)) == yesterday
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 @pytest.mark.parametrize(
     ("today", "sunday"),
     [

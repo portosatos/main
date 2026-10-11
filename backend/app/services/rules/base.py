@@ -13,7 +13,7 @@ an instant by the user's time zone history. It returns a
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
 from app.services.goals import DEFAULT_TARGETS, GoalKind
@@ -64,6 +64,21 @@ class Facts:
 
     def day(self, local_date: date) -> Day:
         return self._days.get(local_date) or Day(local_date)
+
+
+def yesterday(facts: Facts) -> date:
+    """The anchor of the rules about whole days: today is not over yet (SPEC F9)."""
+    return facts.today - timedelta(days=1)
+
+
+def has_night(day: Day) -> bool:
+    """A valid night with its main session (SPEC F6): its sleep and bedtime are known."""
+    return day.night_valid and day.sleep_minutes is not None and day.sleep_start is not None
+
+
+def last_night(facts: Facts) -> date:
+    """The anchor of the rules about nights: today if last night is valid, else yesterday."""
+    return facts.today if has_night(facts.day(facts.today)) else yesterday(facts)
 
 
 @dataclass(frozen=True)

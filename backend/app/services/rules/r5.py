@@ -5,7 +5,7 @@ wall-clock times on the circle of the day: 23:30 and 00:30 are 60 min apart, not
 from collections.abc import Sequence
 from datetime import date
 
-from app.services.rules.base import Facts, Rule, Verdict
+from app.services.rules.base import Facts, Rule, Verdict, last_night
 
 PARAMS = {"nights": 7, "min_nights": 5, "stdev_minutes": 90, "close_minutes": 60}
 
@@ -20,13 +20,9 @@ def circular_stdev(minutes: Sequence[float]) -> float:
     raise NotImplementedError("step 8.2")
 
 
-def anchor(facts: Facts) -> date:
-    raise NotImplementedError("step 8.2")
-
-
 def evaluate(facts: Facts, at: date) -> Verdict:
     raise NotImplementedError("step 8.2")
 
 
 # Anchor today or yesterday, the 7 nights end with it.
-RULE = Rule("R5", window_days=1 + PARAMS["nights"] - 1, anchor=anchor, evaluate=evaluate)
+RULE = Rule("R5", window_days=1 + PARAMS["nights"] - 1, anchor=last_night, evaluate=evaluate)

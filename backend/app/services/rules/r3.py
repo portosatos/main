@@ -4,13 +4,9 @@ resting pulse is under the baseline + 4 (hysteresis)."""
 
 from datetime import date
 
-from app.services.rules.base import Facts, Rule, Verdict
+from app.services.rules.base import Facts, Rule, Verdict, yesterday
 
 PARAMS = {"days": 2, "baseline_days": 14, "baseline_min_values": 7, "rise_bpm": 7, "close_bpm": 4}
-
-
-def anchor(facts: Facts) -> date:
-    raise NotImplementedError("step 8.2")
 
 
 def evaluate(facts: Facts, at: date) -> Verdict:
@@ -21,6 +17,6 @@ def evaluate(facts: Facts, at: date) -> Verdict:
 RULE = Rule(
     "R3",
     window_days=1 + PARAMS["days"] + PARAMS["baseline_days"] - 1,
-    anchor=anchor,
+    anchor=yesterday,
     evaluate=evaluate,
 )

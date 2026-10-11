@@ -91,8 +91,14 @@ def make_facts(
     now: datetime,
     goal: Callable[[GoalKind, date], float] = default_goal,
 ) -> Facts:
-    """The facts of `days`: today is the local date of `now` (Clock) by the user's zones."""
-    raise NotImplementedError("step 8.2")
+    """The facts of `days`: today is the local date of `now` (Clock) by the user's zones, and
+    local times are in the zone in effect at each instant."""
+    return Facts(
+        days,
+        history.local_date(now),
+        goal,
+        local_time=lambda ts: ts.astimezone(history.zone_at(ts)),
+    )
 
 
 async def users_with_recent_data(session: AsyncSession, now: datetime) -> list[uuid.UUID]:
@@ -112,7 +118,7 @@ async def load_facts(session: AsyncSession, user_id: uuid.UUID, now: datetime) -
             DailySummary.local_date.between(today - LOOKBACK, today),
         )
     )
-    return Facts([day_of(s) for s in summaries], today, book.target)
+    return make_facts([day_of(s) for s in summaries], history, now, book.target)
 
 
 async def evaluate_user(session: AsyncSession, user_id: uuid.UUID, now: datetime) -> list[Action]:

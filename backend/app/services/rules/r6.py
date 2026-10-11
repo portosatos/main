@@ -3,13 +3,9 @@ a complete day with at least 15 active minutes."""
 
 from datetime import date
 
-from app.services.rules.base import Facts, Rule, Verdict
+from app.services.rules.base import Facts, Rule, Verdict, yesterday
 
 PARAMS = {"days": 5, "active_minutes": 15}
-
-
-def anchor(facts: Facts) -> date:
-    raise NotImplementedError("step 8.2")
 
 
 def evaluate(facts: Facts, at: date) -> Verdict:
@@ -17,4 +13,4 @@ def evaluate(facts: Facts, at: date) -> Verdict:
 
 
 # Anchor yesterday, the 5 days end with it.
-RULE = Rule("R6", window_days=PARAMS["days"], anchor=anchor, evaluate=evaluate)
+RULE = Rule("R6", window_days=PARAMS["days"], anchor=yesterday, evaluate=evaluate)

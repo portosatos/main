@@ -3,14 +3,9 @@ effect on that day; closes on a complete day with the steps goal met."""
 
 from datetime import date, timedelta
 
-from app.services.rules.base import Day, Facts, Rule, Verdict
+from app.services.rules.base import Day, Facts, Rule, Verdict, yesterday
 
 PARAMS = {"days": 3, "goal_share": 0.5}
-
-
-def anchor(facts: Facts) -> date:
-    """Yesterday: today is not over yet (SPEC F9)."""
-    return facts.today - timedelta(days=1)
 
 
 def is_known(day: Day) -> bool:
@@ -42,4 +37,4 @@ def evaluate(facts: Facts, at: date) -> Verdict:
     return Verdict("hold", context)
 
 
-RULE = Rule("R2", window_days=PARAMS["days"], anchor=anchor, evaluate=evaluate)
+RULE = Rule("R2", window_days=PARAMS["days"], anchor=yesterday, evaluate=evaluate)
