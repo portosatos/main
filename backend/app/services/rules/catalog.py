@@ -69,3 +69,6 @@ CATALOG: tuple[RuleInfo, ...] = (
         6,
     ),
 )
+
+# The title of each rule by its code (notifications, the recommendations API).
+TITLES: dict[str, str] = {info.code: info.title for info in CATALOG}

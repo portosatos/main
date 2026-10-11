@@ -7,8 +7,9 @@ everything else changes nothing. `evaluate_user` loads the facts and applies the
 caller's transaction (the worker's, which holds the user lock); the partial unique index on open
 recommendations stops a second open one even if two evaluations race.
 
-Step 8.1 writes the recommendations only: the bell, the events and the e-mail outbox come with
-steps 8.3 and 9.x.
+An opened recommendation goes to the bell (a notification, `notification.created`) and to the
+tabs (`recommendation.opened`); a resolved one only to the tabs (`recommendation.resolved`). The
+events are sent when the caller commits (ADR-048). The e-mail outbox comes with step 9.2.
 """
 
 import uuid
@@ -22,12 +23,14 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DailySummary, Recommendation, UserRule
+from app.models import DailySummary, Notification, Recommendation, UserRule
 from app.models.rule import OPEN
+from app.services import events
 from app.services.goals import GoalKind, load_goal_book
 from app.services.localtime import TzHistory, load_tz_history
 from app.services.rules import r1, r2, r3, r4, r5, r6
 from app.services.rules.base import Day, Facts, Rule, default_goal
+from app.services.rules.catalog import TITLES
 
 log = structlog.get_logger(__name__)
 
@@ -35,6 +38,9 @@ log = structlog.get_logger(__name__)
 RULES: tuple[Rule, ...] = (r1.RULE, r2.RULE, r3.RULE, r4.RULE, r5.RULE, r6.RULE)
 # The dates the rules may read start this far before today (R4: two weeks before a Sunday).
 LOOKBACK = timedelta(days=max(rule.window_days for rule in RULES))
+# The notification type of an opened recommendation, as its event.
+RECOMMENDATION_OPENED = "recommendation.opened"
+RECOMMENDATION_RESOLVED = "recommendation.resolved"
 
 
 @dataclass(frozen=True)
@@ -176,6 +182,10 @@ async def evaluate_user(session: AsyncSession, user_id: uuid.UUID, now: datetime
             )
         if changed is not None:  # else a concurrent evaluation got there first
             applied.append(action)
+            if action.kind == "open":
+                await notify_opened(session, user_id, changed, action, now)
+            else:
+                await publish_resolved(session, user_id, changed, action.code, "resolved")
             log.info(
                 "recommendation_" + ("opened" if action.kind == "open" else "resolved"),
                 user_id=str(user_id),
@@ -184,3 +194,49 @@ async def evaluate_user(session: AsyncSession, user_id: uuid.UUID, now: datetime
                 recommendation_id=str(changed),
             )
     return applied
+
+
+async def notify_opened(
+    session: AsyncSession, user_id: uuid.UUID, rec_id: uuid.UUID, action: Action, now: datetime
+) -> None:
+    """The bell's notification of an opened recommendation; `notification.created` goes first,
+    as with goals, so a tab hearing `recommendation.opened` already finds it in the feed."""
+    anchor = action.anchor_date.isoformat()
+    notification = Notification(
+        user_id=user_id,
+        type=RECOMMENDATION_OPENED,
+        payload={
+            "recommendation_id": str(rec_id),
+            "rule_code": action.code,
+            "title": TITLES[action.code],
+            "anchor_date": anchor,
+        },
+        created_at=now,
+    )
+    session.add(notification)
+    await session.flush()
+    await events.publish(
+        session,
+        user_id,
+        "notification.created",
+        {"id": str(notification.id), "type": RECOMMENDATION_OPENED},
+    )
+    await events.publish(
+        session,
+        user_id,
+        RECOMMENDATION_OPENED,
+        {"id": str(rec_id), "rule_code": action.code, "anchor_date": anchor},
+    )
+
+
+async def publish_resolved(
+    session: AsyncSession, user_id: uuid.UUID, rec_id: uuid.UUID, code: str, status: str
+) -> None:
+    """`recommendation.resolved`: closed by the rule ('resolved') or by turning the rule off
+    ('closed_rule_disabled')."""
+    await events.publish(
+        session,
+        user_id,
+        RECOMMENDATION_RESOLVED,
+        {"id": str(rec_id), "rule_code": code, "status": status},
+    )

@@ -23,8 +23,6 @@ from app.services.rules.engine import evaluate_user
 from tests.integration.test_goals import api_user, listen, of_type
 from tests.integration.test_ingest_jobs import wipe
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 8.3: not implemented")
-
 D = date(2026, 10, 10)
 # 09:00 on D in Moscow.
 MORNING = datetime(2026, 10, 10, 6, 0, tzinfo=UTC)
@@ -156,6 +154,7 @@ async def test_disable_closes_open_as_closed_rule_disabled(
         ]
 
 
+@pytest.mark.xfail(strict=True, reason="step 8.3: not implemented")
 async def test_history_preserved_after_disable(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -209,9 +208,10 @@ async def test_reenable_triggers_evaluation(
         assert of_type(found, "recommendation.opened") == [
             {"id": str(new["id"]), "rule_code": "R1", "anchor_date": D.isoformat()}
         ]
+        # The first opening (before the rule was turned off) has its own notification.
         feed = (await client.get("/api/notifications")).json()
-        assert feed["unread"] == 1
-        [item] = feed["items"]
+        assert feed["unread"] == 2
+        item = feed["items"][0]
         assert (item["id"], item["type"]) == (created["id"], "recommendation.opened")
         assert item["payload"] == {
             "recommendation_id": str(new["id"]),

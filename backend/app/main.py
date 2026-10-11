@@ -16,6 +16,7 @@ from app.api import (
     health,
     ingest,
     notifications,
+    rules,
     summary,
 )
 from app.auth.csrf import CsrfHeaderMiddleware
@@ -60,6 +61,7 @@ def create_app(
     app.include_router(devices.router)
     app.include_router(goals.router)
     app.include_router(notifications.router)
+    app.include_router(rules.router)
     app.include_router(events.router)
     if settings.app_env == "dev":
         app.include_router(dev.router)
