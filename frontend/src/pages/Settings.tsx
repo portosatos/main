@@ -295,7 +295,10 @@ function TimezoneCard() {
 // The next planned digest (ADR-050): the dispatcher's plan, moved every 30 s.
 function NextDigest({ timeZone }: { timeZone: string }) {
   const digests = useDigests();
-  const planned = digests.data?.items.find((digest) => digest.status === "planned");
+  // Without an address no letter goes, whatever plan the dispatcher has not dropped yet.
+  const planned = digests.data?.warning
+    ? undefined
+    : digests.data?.items.find((digest) => digest.status === "planned");
 
   return (
     <Card>
