@@ -454,7 +454,6 @@ async def test_cleared_address_drops_planned_digest(
         assert mailer.sent == []
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_digest_sent_on_time_while_queue_busy(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

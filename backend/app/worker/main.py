@@ -17,7 +17,6 @@ import asyncio
 import os
 import signal
 import socket
-import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
@@ -215,15 +214,17 @@ class Worker:
             processed += 1
         return processed
 
-    async def until_next_due(self) -> float | None:
-        """Seconds until the earliest delayed job is due, by Clock; None without one."""
-        now = await self.clock.now()
+    async def until_next_due(self, since: datetime) -> float | None:
+        """Seconds until the earliest delayed job due after `since` (when the last round of
+        claims began) is due, by Clock: 0 for one that fell due during the round; None without
+        one."""
         async with self._sessionmaker() as session:
-            due = await queue.next_run_after(session, now=now)
-        return None if due is None else (due - now).total_seconds()
+            due = await queue.next_run_after(session, after=since)
+        return None if due is None else (due - await self.clock.now()).total_seconds()
 
     async def run(self, stop: asyncio.Event) -> None:
-        """The worker loop: wakes on NOTIFY or every tick_s, until `stop` is set."""
+        """The worker loop until `stop` is set: the queue (woken by NOTIFY, a due delayed job
+        or every tick_s) and, beside it, the heartbeat, rules and digest ticks."""
         self._stop = stop
         wake = asyncio.Event()
         listener = await self.engine.connect()
@@ -237,30 +238,43 @@ class Worker:
                 tick_s=self.tick_s,
                 rules_tick_s=self.rules_tick_s,
             )
-            next_tick = next_rules_tick = next_digest_tick = 0.0
-            while not stop.is_set():
-                if time.monotonic() >= next_tick:
-                    next_tick = time.monotonic() + self.tick_s
-                    await self._guarded(self.tick())
-                if time.monotonic() >= next_rules_tick:
-                    next_rules_tick = time.monotonic() + self.rules_tick_s
-                    await self._guarded(self.rules_tick())
-                if time.monotonic() >= next_digest_tick:
-                    next_digest_tick = time.monotonic() + self.digest_tick_s
-                    await self._guarded(self.digest_tick())
-                wake.clear()
-                await self._guarded(self.run_until_idle())
-                wait = min(next_tick, next_rules_tick, next_digest_tick) - time.monotonic()
-                try:
-                    if (due := await self.until_next_due()) is not None:
-                        wait = min(wait, due)
-                except Exception as exc:  # the database is away: the next tick tries again
-                    log.warning("worker_step_failed", error=repr(exc))
-                await _wait_any(wake, stop, seconds=max(wait, 0))
+            # The ticks run beside the queue: a long queue of uploads does not hold back the
+            # heartbeat, the hourly rules or a due digest (ADR-050, ADR-052).
+            ticks = [
+                asyncio.create_task(self._every(self.tick_s, lambda: self.tick())),
+                asyncio.create_task(self._every(self.rules_tick_s, lambda: self.rules_tick())),
+                asyncio.create_task(self._every(self.digest_tick_s, lambda: self.digest_tick())),
+            ]
+            try:
+                await self._queue_loop(wake, stop)
+            finally:
+                stop.set()  # the ticks end after their current step
+                await asyncio.gather(*ticks, return_exceptions=True)
         finally:
             self.listening.clear()
             await listener.close()
             log.info("worker_stopped", worker_id=self.worker_id)
+
+    async def _queue_loop(self, wake: asyncio.Event, stop: asyncio.Event) -> None:
+        """Run the queued jobs; then sleep until NOTIFY, the earliest delayed job or tick_s."""
+        while not stop.is_set():
+            wake.clear()
+            wait = self.tick_s
+            try:
+                since = await self.clock.now()
+                await self._guarded(self.run_until_idle())
+                if (due := await self.until_next_due(since)) is not None:
+                    wait = min(wait, due)
+            except Exception as exc:  # the database is away: the next round tries again
+                log.warning("worker_step_failed", error=repr(exc))
+            await _wait_any(wake, stop, seconds=max(wait, 0))
+
+    async def _every(self, seconds: float, step: Callable[[], Awaitable[object]]) -> None:
+        """Run `step` now and then every `seconds` until the worker stops."""
+        assert self._stop is not None
+        while not self._stop.is_set():
+            await self._guarded(step())
+            await _wait_any(self._stop, seconds=seconds)
 
     def _context(self, job: QueuedJob) -> JobContext:
         async def checkpoint(session: AsyncSession, now: datetime) -> None:

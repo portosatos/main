@@ -81,10 +81,11 @@ async def enqueue_once(
     return inserted is not None
 
 
-async def next_run_after(session: AsyncSession, *, now: datetime) -> datetime | None:
-    """The earliest time a queued job waits for that is still ahead of `now`, or None."""
+async def next_run_after(session: AsyncSession, *, after: datetime) -> datetime | None:
+    """The earliest time after `after` that a queued job waits for, or None. Jobs due by `after`
+    and still queued wait for a busy user; NOTIFY or the tick brings them."""
     return await session.scalar(
-        select(func.min(Job.run_after)).where(Job.status == "queued", Job.run_after > now)
+        select(func.min(Job.run_after)).where(Job.status == "queued", Job.run_after > after)
     )
 
 
