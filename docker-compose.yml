@@ -4,7 +4,9 @@ name: health-tracker
 
 x-backend: &backend
   build: ./backend
-  image: health-tracker-backend:dev
+  # IMAGE_PREFIX: scripts/fresh_clone_check.* builds a clone under other names, so the images of
+  # this stack are not replaced by the clone's code.
+  image: ${IMAGE_PREFIX:-health-tracker}-backend:dev
   init: true  # PID 1 forwards SIGTERM, so `docker compose stop` is instant
   environment:
     APP_ENV: ${APP_ENV:-dev}
@@ -44,7 +46,7 @@ services:
 
   frontend:
     build: ./frontend
-    image: health-tracker-frontend:dev
+    image: ${IMAGE_PREFIX:-health-tracker}-frontend:dev
     ports:
       - "${FRONTEND_PORT:-5173}:80"
     depends_on:
