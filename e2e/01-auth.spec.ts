@@ -3,8 +3,6 @@ import { expect, test } from "./test";
 
 // SPEC §8 stage 12, scenario 1: registration, login, logout (F1).
 
-test.fail();
-
 test("регистрация, вход и выход", async ({ page }) => {
   const email = uniqueEmail("auth");
   const header = page.getByRole("banner");

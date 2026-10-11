@@ -7,8 +7,6 @@ import { expect, test } from "./test";
 // SPEC §8 stage 12, scenario 2 (§9 #6, #7): while a file is processed the progress bar moves, the
 // user can open another page, and the summary shows up before the processing ends.
 
-test.fail();
-
 test("загрузка: прогресс меняется, можно уйти на другую страницу, сводка раньше ingest.done", async ({
   page,
 }) => {

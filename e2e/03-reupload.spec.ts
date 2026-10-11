@@ -8,8 +8,6 @@ import { expect, test } from "./test";
 // SPEC §8 stage 12, scenario 3 (§9 #8): the same file uploaded again changes nothing — the report
 // has 0 new records, all of them duplicates, and the summaries stay the same.
 
-test.fail();
-
 const COLUMNS = ["file", "uploaded", "status", "total", "new", "duplicate", "conflict", "invalid"] as const;
 
 // The rows of «История загрузок», newest first, as numbers where the column is a count.
@@ -56,8 +54,9 @@ test("повторная загрузка того же файла: 0 новых
 
   const before = await (await page.request.get(range)).json();
   await page.goto(`/?date=${to}`);
-  const stepsBefore = await steps.innerText();
-  expect(stepsBefore).toMatch(/\d/);
+  // The card's text as toHaveText reads it (textContent): value, difference and goal.
+  await expect(steps).toContainText(/\d/);
+  const stepsBefore = (await steps.textContent()) ?? "";
 
   await page.goto("/upload");
   await uploadInUi(page, file, 2);
