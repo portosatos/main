@@ -9,10 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 SCRIPT = Path(__file__).resolve().parents[1] / "check_docs.py"
-XFAIL = pytest.mark.xfail(strict=True, reason="step 13.2: not implemented")
 
 README = """# Проект
 
@@ -118,7 +115,6 @@ def assert_error(root: Path, code: str) -> str:
     return result.stdout
 
 
-@XFAIL
 def test_readme_has_required_sections(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     assert_ok(root)
@@ -135,7 +131,6 @@ def test_readme_has_required_sections(tmp_path: Path) -> None:
     assert "Чем делали" in out
 
 
-@XFAIL
 def test_status_lists_every_criterion_1_to_23_with_status_and_evidence(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     assert_ok(root)
@@ -153,7 +148,6 @@ def test_status_lists_every_criterion_1_to_23_with_status_and_evidence(tmp_path:
     assert_error(root, "STATUS_DUPLICATE_CRITERION")
 
 
-@XFAIL
 def test_status_values_restricted_to_works_partial_broken(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     rows = [(n, ("работает", "частично", "нет")[n % 3], e) for n, _, e in CRITERIA]
@@ -166,7 +160,6 @@ def test_status_values_restricted_to_works_partial_broken(tmp_path: Path) -> Non
     assert "готово" in out
 
 
-@XFAIL
 def test_relative_links_in_docs_resolve(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     write(root, "docs/API.md", "# API\n\n[Код](../backend/app/main.py:12), [SPEC](SPEC.md)\n")
@@ -184,7 +177,6 @@ def test_relative_links_in_docs_resolve(tmp_path: Path) -> None:
     assert "README.md" in out
 
 
-@XFAIL
 def test_next_md_not_empty(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     assert_ok(root)
