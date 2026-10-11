@@ -877,6 +877,13 @@ lifespan, переподключение 0,2 → 5 с, после него `resy
 ### Шаг 8.3 — API и UI правил и рекомендаций, отзывы
 **Этап SPEC:** 8 · **Зависит от:** 8.2, 7.2 · **Критерии §9:** **закрывает #12 (backend/UI)**, вклад в #16
 
+**Статус:** [x] закрыт 2026-10-11T17:08:47+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-11T15:36:55+06:00.
+Заметки: ADR-048 (допущения 1–7), `docs/RULES.md`. Отключение — `closed_rule_disabled`, включение — `evaluate_user` в
+транзакции `PATCH`; уведомление и события открытия — одна точка `engine.notify_opened`, закрытия — `engine.publish_resolved`.
+Сверх плана: `useEvents.test.ts::rule and recommendation events…`, `Bell.test.tsx::describes a recommendation notification`.
+Записи о фичах в WORKLOG восстановлены по `git log` после сжатия контекста. **Для 9.x:** запись в `email_outbox` (SPEC F9, F10)
+делать в `engine.notify_opened`, чтобы её давали все три пути открытия (загрузка, таймер, включение правила).
+
 **Объём:** `GET/PATCH /api/rules`, `GET /api/recommendations`, `PUT/DELETE …/feedback`, события
 `rule.toggled`, `recommendation.*`, страницы «Правила» и «Рекомендации», `docs/RULES.md`, дисклеймер.
 
