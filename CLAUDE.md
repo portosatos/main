@@ -114,6 +114,7 @@
 - Тесты: `scripts/test.ps1` / `scripts/test.sh` — поднимают postgres и mailpit из compose, запускают pytest backend,
   генератора и `scripts/tests`. Аргументы уходят в pytest backend (`-m unit`, `-m integration`). Тестовая БД —
   `TEST_DATABASE_URL` из окружения (по умолчанию `health_tracker_test` на `localhost:5433`), создаётся сама.
+  Всё вместе с e2e: `scripts/test.ps1 -All` / `scripts/test.sh --all` (после остальных тестов — `scripts/e2e.*`).
 - Миграции (Alembic, `backend/alembic/`): применяются сами при старте api; текущая ревизия —
   `docker compose exec api alembic current` → `(head)`. Локально: `cd backend; uv run alembic upgrade head`
   (нужен `DATABASE_URL`), новая миграция — `uv run alembic revision --autogenerate -m "..."`, проверка, что
@@ -133,14 +134,15 @@
   `ref`, переписать на `forwardRef`, ADR-027). Часть тестов: `cd frontend; npx vitest run src/pages`.
 - CI: `.github/workflows/ci.yml` на каждый push в `main` и PR; последний прогон —
   `gh run list --branch main --limit 1`, логи упавшего — `gh run view <id> --log-failed`.
-- E2E (Playwright, `e2e/`, ADR-053): `scripts/e2e.ps1` / `scripts/e2e.sh` — поднимает отдельный стек
+- E2E (Playwright, `e2e/`, ADR-053, ADR-054): `scripts/e2e.ps1` / `scripts/e2e.sh` — поднимает отдельный стек
   `health-tracker-e2e` (`docker-compose.yml` + `docker-compose.e2e.yml`: приложение **5174**, api 8001, Mailpit 8026/1026,
-  postgres 5434, `APP_ENV=dev`, `DIGEST_WINDOW_MINUTES=1`; dev-стек при этом работает), ставит `e2e/node_modules` и
+  postgres 5434, `APP_ENV=dev`, `DIGEST_WINDOW_MINUTES=1`, `DIGEST_TICK_S=5`; dev-стек при этом работает), ставит `e2e/node_modules` и
   Chromium, запускает сценарии; аргументы — в `playwright test` (`scripts/e2e.sh 02-upload --headed`), `-Down` /
   `--down` гасит стек. Вручную: `cd e2e; npx playwright test --headed`, отчёт — `npx playwright show-report`, типы —
   `npm --prefix e2e run typecheck`. Хелперы — `e2e/lib/` (`newUser`, `genFixture` — htgen с `--end` по `today` сервера,
-  кэш `e2e/.fixtures/`; `clockOf`, `mailpit.messages`, `uploadAndWait`); `test` из `e2e/test.ts` сам сбрасывает dev clock
-  в 0 после каждого теста. В CI — job `e2e`.
+  кэш `e2e/.fixtures/`; `clockOf` с `toLocal("12:00")` / `advance(s)`, `mailpit.messages/message/waitFor`, `uploadAndWait`,
+  `lib/account.ts` — правила, рекомендации, цели, дайджесты по API); `test` из `e2e/test.ts` сам сбрасывает dev clock
+  в 0 после каждого теста. Сценарии 01–10; с письмами (06–08) ставят часы на 12:00 МСК. В CI — job `e2e`.
 - Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
 - Генератор (`generator/`, формат — `docs/DATA_FORMAT.md`, ADR-028, ADR-029): `uv run --project generator htgen --help`;
   пример — `uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson` (`*.ndjson` в `.gitignore`,
