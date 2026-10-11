@@ -1730,3 +1730,19 @@
 ## 2026-10-11T20:06:21+06:00 — Шаг 11.1 закрыт
 - Шаг отмечен [x] в docs/plan.md с заметками для 12.x и 13.1. Следующий шаг по плану: 12.1 (инфраструктура e2e и
   сценарии 1–5), в новой сессии агента.
+
+## 2026-10-11T20:12:10+06:00 — Шаг 12.1 начат: инфраструктура e2e и сценарии 1–5
+- План: `e2e/` (Playwright 1.63.0, TypeScript, только Chromium), `docker-compose.e2e.yml` — отдельный стек
+  `health-tracker-e2e` на своих портах (frontend 5174, api 8001, Mailpit 8026/1026, postgres 5434) и своих томах,
+  `APP_ENV=dev`, `DIGEST_WINDOW_MINUTES=1`; хелперы `newUser`, `genFixture` (htgen через `uv run`), `clock.set`
+  (сброс в 0 после каждого теста), `mailpit.messages`; `scripts/e2e.{ps1,sh}`; job `e2e` в CI.
+- Тесты до кода: `e2e/01-auth` … `05-gap` с `test.fail()`; хелперы — заглушки, которые бросают
+  «step 12.1: not implemented». Сверх плана — `e2e/00-helpers.spec.ts` (проверка самих хелперов).
+
+## 2026-10-11T20:17:19+06:00 — Тесты до кода: 10 xfailed (e2e, Playwright `test.fail()`)
+- Коммит: 3548acc test(e2e): playwright project, helper stubs, scenarios 1-5 (red)
+- Красный прогон 20:16:48–20:16:50 против dev-стека (`E2E_BASE_URL=http://localhost:5173`, e2e-стека ещё нет):
+  «10 passed» = 10 ожидаемых падений, `unexpected 0`. Причина у всех 10 — `Error: step 12.1: not implemented`
+  в `e2e/lib/clock.ts` (автоматическая фикстура `clock` проверяет часы в начале каждого теста), то есть падают на
+  не реализованной инфраструктуре, а не на ошибке в самих тестах; `npm run typecheck` (tsc) — без ошибок.
+- Playwright 1.63.0 (выпуск 2026-09-04; 1.64.0 вышел 2026-10-07 — моложе двух недель, не берём), Chromium.
