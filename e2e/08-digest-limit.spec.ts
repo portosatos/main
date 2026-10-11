@@ -11,6 +11,9 @@ import { expect, test } from "./test";
 // the day's letter waits for the next day; moving the Clock there brings the second letter; Mailpit
 // never has two letters of one local day.
 
+// The user's data lie ahead of real time: its rules go off after the test (e2e/test.ts).
+test.use({ rulesOffAfter: true });
+
 test("лимит дайджестов: второе срабатывание в те же сутки без письма, на следующие сутки — второе письмо", async ({
   page,
   clock,

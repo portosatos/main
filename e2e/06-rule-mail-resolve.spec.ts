@@ -11,6 +11,9 @@ import { expect, test } from "./test";
 // recommendations page, its digest comes to Mailpit after the window (1 min in the e2e stack),
 // and the `recovery` night closes R1 by itself — without a second letter.
 
+// The user's data lie ahead of real time: its rules go off after the test (e2e/test.ts).
+test.use({ rulesOffAfter: true });
+
 test("short-sleep → R1 в интерфейсе → письмо в Mailpit → recovery → рекомендация закрыта", async ({
   page,
   clock,

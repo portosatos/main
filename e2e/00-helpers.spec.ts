@@ -4,7 +4,8 @@ import { digests, recommendations, setGoals, setRule } from "./lib/account";
 import { addDays, localDate, localTime } from "./lib/dates";
 import { genFixture } from "./lib/htgen";
 import { mailpit } from "./lib/mailpit";
-import { newUser, uniqueEmail } from "./lib/users";
+import { CSRF_HEADERS } from "./lib/env";
+import { newUser, PASSWORD, uniqueEmail } from "./lib/users";
 import { expect, test } from "./test";
 
 // The helpers of the scenarios themselves (beyond the plan): a broken helper should fail here with
@@ -75,4 +76,29 @@ test("the account helpers read and change the session user's data", async ({ pag
   await setRule(page, "R3", false);
   const rules = (await (await page.request.get("/api/rules")).json()) as { code: string; enabled: boolean }[];
   expect(rules.find((rule) => rule.code === "R3")?.enabled).toBe(false);
+});
+
+// rulesOffAfter (e2e/test.ts): the user of a test with the option has every rule off afterwards.
+let ruledUser = "";
+
+test.describe("with rulesOffAfter", () => {
+  test.use({ rulesOffAfter: true });
+
+  test("a test with rulesOffAfter starts with its rules on", async ({ page }) => {
+    ruledUser = (await newUser(page)).email;
+    const rules = (await (await page.request.get("/api/rules")).json()) as { enabled: boolean }[];
+    expect(rules.length).toBeGreaterThan(0);
+    expect(rules.every((rule) => rule.enabled)).toBe(true);
+  });
+});
+
+test("after it, the rules of its user are off", async ({ page }) => {
+  expect(ruledUser, "the previous test registers the user").not.toBe("");
+  const login = await page.request.post("/api/auth/login", {
+    data: { email: ruledUser, password: PASSWORD },
+    headers: CSRF_HEADERS,
+  });
+  expect(login.status(), await login.text()).toBe(200);
+  const rules = (await (await page.request.get("/api/rules")).json()) as { code: string; enabled: boolean }[];
+  expect(rules.filter((rule) => rule.enabled)).toEqual([]);
 });

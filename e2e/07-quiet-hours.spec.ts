@@ -10,6 +10,9 @@ import { expect, test } from "./test";
 // SPEC §8 stage 12, scenario 7 (§9 #15, F10): a digest that falls into quiet hours waits for their
 // end — no letter while they last, the letter right after.
 
+// The user's data lie ahead of real time: its rules go off after the test (e2e/test.ts).
+test.use({ rulesOffAfter: true });
+
 test("тихие часы: письма нет, после их окончания приходит", async ({ page, clock }) => {
   test.setTimeout(180_000);
   await clock.toLocal("12:00");
