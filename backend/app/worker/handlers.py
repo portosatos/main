@@ -12,6 +12,9 @@ summaries fill in while the file is processed and a resumed job loses no date (A
 The user's tabs hear of it in the same transactions (ADR-039): `ingest.progress` when the job
 starts and after a batch at most every `progress_s` seconds, `summary.updated` with the dates of
 every flush, `ingest.done` when the job is done or has failed.
+
+The transaction that finishes the job also evaluates the user's rules on the fresh summaries
+(SPEC F9, services/rules/engine.py).
 """
 
 import asyncio
@@ -34,6 +37,7 @@ from app.services.events import publish_summary_updated
 from app.services.ingest.classify import ERRORS_LIMIT, Counts, ingest_records
 from app.services.ingest.jobs import INGEST_FILE, JobStatus, job_counts, publish_job_event
 from app.services.ingest.parser import Line, parse_lines
+from app.services.rules.engine import evaluate_user
 from app.services.summaries import recompute_dates
 from app.worker.queue import QueuedJob
 
@@ -200,6 +204,7 @@ async def ingest_file(ctx: JobContext) -> None:
     async with ctx.sessionmaker() as session:
         now = await ctx.clock.now()
         await flush_summaries(session, now)
+        await evaluate_user(session, ingest.user_id, now)
         progress.bytes_done = ingest.bytes_total  # trailing blank lines yield no batch
         await report(session, "done")
         await session.execute(
