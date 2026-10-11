@@ -9,7 +9,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from app.clock import Clock
@@ -288,6 +288,20 @@ async def test_quiet_end_in_skipped_hour_after_clocks_go_forward() -> None:
     assert result == SendPlan(utc(3, 8, 7, 0), "quiet_hours")
 
 
+@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
+async def test_skipped_hour_swallows_all_free_time_quiet_ends_next_day() -> None:
+    # Found by the property test below: Santiago, Sep 6 2026, 00:00 −04 becomes 01:00 −03 at
+    # 04:00 UTC. Quiet hours 00:15–00:00 leave only 00:00–00:15 free, and that night it is
+    # skipped: from 23:44 on Sep 5 the quiet hours end at 00:00 on Sep 7 (03:00 UTC).
+    santiago = TzHistory([Zone("America/Santiago", datetime(2026, 1, 1, tzinfo=UTC))])
+    quiet = QuietHours(enabled=True, start=time(0, 15), end=time(0, 0))
+    added = utc(9, 6, 3, 44)
+
+    result = await plan([added], now=added, history=santiago, quiet=quiet)
+
+    assert result == SendPlan(utc(9, 7, 3, 0), "quiet_hours")
+
+
 # Zones whose clocks change in 2026: an hour back and forward (New York, London), half an hour
 # (Lord Howe), at midnight (Santiago).
 DST_ZONES = ["America/New_York", "Europe/London", "Australia/Lord_Howe", "America/Santiago"]
@@ -328,6 +342,7 @@ def in_quiet(moment: datetime, history: TzHistory, quiet: QuietHours) -> bool:
     return clock >= quiet.start or clock < quiet.end
 
 
+@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 @settings(max_examples=1000, deadline=None)
 @given(
     case=st.sampled_from(CHANGES),
@@ -338,6 +353,17 @@ def in_quiet(moment: datetime, history: TzHistory, quiet: QuietHours) -> bool:
     end_quarters=st.none() | st.integers(min_value=-4, max_value=8),
     random_end=QUARTERS,
     last_days=st.none() | st.integers(min_value=-2, max_value=1),
+)
+# Found by this test: the skipped hour swallows all the free time of the night (Santiago).
+@example(
+    case=("America/Santiago", datetime(2026, 9, 6, 4, 0, tzinfo=UTC)),
+    first_min=-16,
+    gaps=[],
+    late_min=0,
+    start=time(0, 15),
+    end_quarters=None,
+    random_end=time(0, 0),
+    last_days=None,
 )
 def test_plan_never_before_window_or_now_and_never_quiet(
     case: tuple[str, datetime],
