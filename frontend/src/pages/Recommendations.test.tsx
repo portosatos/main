@@ -71,7 +71,7 @@ function renderPage() {
   return renderRoutes([{ path: "/recommendations", element: <Recommendations /> }], ["/recommendations"]);
 }
 
-test.fails("active and history tabs", async () => {
+test("active and history tabs", async () => {
   const requests = serve(() => [ACTIVE, AUTO, DISABLED]);
   const user = userEvent.setup();
   renderPage();
@@ -104,7 +104,7 @@ test.fails("active and history tabs", async () => {
   expect(requests).toContain("status=resolved&status=closed_rule_disabled&rule=R3");
 });
 
-test.fails("feedback buttons reflect saved value", async () => {
+test("feedback buttons reflect saved value", async () => {
   let current = ACTIVE;
   const calls: { method: string; body: unknown; csrf: string | null }[] = [];
   serve(() => [current]);
@@ -147,7 +147,7 @@ test.fails("feedback buttons reflect saved value", async () => {
   ]);
 });
 
-test.fails("disclaimer is shown", async () => {
+test("disclaimer is shown", async () => {
   serve(() => []);
   renderPage();
 

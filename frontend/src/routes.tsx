@@ -9,6 +9,7 @@ import Devices from "@/pages/Devices";
 import Goals from "@/pages/Goals";
 import Login from "@/pages/Login";
 import Placeholder from "@/pages/Placeholder";
+import Recommendations from "@/pages/Recommendations";
 import Register from "@/pages/Register";
 import Rules from "@/pages/Rules";
 import Upload from "@/pages/Upload";
@@ -19,6 +20,7 @@ const pages: Partial<Record<string, ReactNode>> = {
   "/upload": <Upload />,
   "/devices": <Devices />,
   "/goals": <Goals />,
+  "/recommendations": <Recommendations />,
   "/rules": <Rules />,
 };
 
