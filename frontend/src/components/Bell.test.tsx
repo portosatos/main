@@ -94,3 +94,18 @@ test("lists notifications and marks all read", async () => {
   );
   expect(reads).toEqual([{ body: {}, csrf: "ht" }]);
 });
+
+test("the list is anchored to the bell", async () => {
+  server.use(
+    http.get("/api/notifications", () => HttpResponse.json({ items: [ACHIEVED], unread: 1 })),
+  );
+  const user = userEvent.setup();
+  renderBell();
+
+  await user.click(await screen.findByRole("button", { name: "Уведомления, непрочитанных: 1" }));
+  const list = await screen.findByRole("list", { name: "Уведомления" });
+  // Without the button as its anchor the popper never places the list: it stays off screen at
+  // translate(0, -200%) (found in the live check: Button did not forward its ref, ADR-027).
+  const wrapper = list.closest<HTMLElement>("[data-radix-popper-content-wrapper]");
+  await waitFor(() => expect(wrapper?.style.transform).not.toContain("-200%"));
+});
