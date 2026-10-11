@@ -8,7 +8,7 @@ mailer; test_mailpit.py sends a real one.
 
 import asyncio
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, time, timedelta
 from email.message import EmailMessage
 from pathlib import Path
@@ -25,9 +25,16 @@ from app.models import Recommendation
 from app.services.notify import outbox
 from app.services.notify.mailer import SmtpMailer
 from app.services.rules.catalog import TITLES
-from tests.integration.ingest import make_user
+from tests.integration.ingest import make_user, ndjson
 from tests.integration.test_goals import api_user, listen, of_type
-from tests.integration.test_ingest_jobs import MovableClock, make_worker, wipe
+from tests.integration.test_ingest_jobs import (
+    META,
+    MovableClock,
+    day_records,
+    make_worker,
+    wait_until,
+    wipe,
+)
 
 T = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 APP_URL = "http://localhost:5173"
@@ -445,3 +452,58 @@ async def test_cleared_address_drops_planned_digest(
         await tick(db_engine, T + timedelta(minutes=3), mailer)
         assert [i["status"] for i in (await digest_list(client))["items"]] == ["planned"]
         assert mailer.sent == []
+
+
+@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
+async def test_digest_sent_on_time_while_queue_busy(
+    clean: None, settings: Settings, db_engine: AsyncEngine
+) -> None:
+    # Plan step 11.1 (ADR-050, "known limitation"): the digest tick must not wait until the
+    # worker has emptied the queue — a stream of batches keeps it busy for a long time.
+    user_id, _email = await committed_user(db_engine, "digest-busy")
+    await open_rec(db_engine, user_id, "R1", T)  # due at T+15 min
+    mailer = FakeMailer()
+    busy = asyncio.Event()
+
+    async def slow_batch(_number: int) -> None:
+        busy.set()
+        await asyncio.sleep(0.1)
+
+    async with api_user(settings, "queue-busy", at=T) as (client, clock, other_id):
+        for day in (0, 1):  # two jobs of another user, 15 one-record batches each
+            data = ndjson(META, *day_records(day)[:15])
+            uploaded = await client.post(
+                "/api/ingest/files", files={"file": ("busy.ndjson", data, "application/x-ndjson")}
+            )
+            assert uploaded.status_code == 202, uploaded.text
+        worker = make_worker(
+            db_engine, clock, mailer=mailer, batch_size=1, on_batch=slow_batch, digest_tick_s=0.2
+        )
+        stop = asyncio.Event()
+        loop_task = asyncio.create_task(worker.run(stop))
+        try:
+
+            async def check(condition: Callable[[], bool]) -> bool:
+                if loop_task.done():
+                    loop_task.result()  # re-raise the loop's error
+                return condition()
+
+            assert await wait_until(lambda: check(busy.is_set), timeout_s=5)
+            clock.at = T + timedelta(minutes=16)  # the digest is due now
+            assert await wait_until(lambda: check(lambda: bool(mailer.sent)), timeout_s=1.5), (
+                "the digest waited for the job queue"
+            )
+            async with db_engine.connect() as conn:
+                unfinished = await conn.scalar(
+                    text(
+                        "SELECT count(*) FROM ingest_jobs WHERE user_id = :u AND status <> 'done'"
+                    ),
+                    {"u": other_id},
+                )
+            assert unfinished > 0, "the queue was still busy when the digest went"
+        finally:
+            stop.set()
+            await asyncio.wait_for(loop_task, timeout=10)
+
+    [letter] = mailer.sent
+    assert letter["Subject"] == "Трекер здоровья: 1 новая рекомендация"
