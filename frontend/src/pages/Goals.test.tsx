@@ -81,7 +81,7 @@ const DEFAULT_GOALS: Goal[] = [
   { kind: "sleep", target: 8, valid_from: null },
 ];
 
-test.fails("validates and saves goals", async () => {
+test("validates and saves goals", async () => {
   let goals = DEFAULT_GOALS;
   const puts: { body: unknown; csrf: string | null }[] = [];
   server.use(

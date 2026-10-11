@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { sections } from "@/lib/sections";
 import Dashboard from "@/pages/Dashboard";
 import Devices from "@/pages/Devices";
+import Goals from "@/pages/Goals";
 import Login from "@/pages/Login";
 import Placeholder from "@/pages/Placeholder";
 import Register from "@/pages/Register";
@@ -16,6 +17,7 @@ const pages: Partial<Record<string, ReactNode>> = {
   "/": <Dashboard />,
   "/upload": <Upload />,
   "/devices": <Devices />,
+  "/goals": <Goals />,
 };
 
 export const routes: RouteObject[] = [

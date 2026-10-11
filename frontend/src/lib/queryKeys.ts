@@ -2,6 +2,8 @@
 // (SPEC F12). Summary keys come with the dashboard (step 6.1) in this shape.
 export const ingestJobsKey = ["ingest", "jobs"] as const;
 export const devicesKey = ["devices"] as const;
+export const goalsKey = ["goals"] as const;
+export const notificationsKey = ["notifications"] as const;
 
 export const summaryKeys = {
   all: ["summary"] as const,

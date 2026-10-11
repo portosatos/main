@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { meQueryKey } from "@/api/auth";
 import type { IngestEvent, IngestJob } from "@/api/ingest";
 import { isoWeek } from "@/lib/dates";
-import { devicesKey, ingestJobsKey, summaryKeys } from "@/lib/queryKeys";
+import { devicesKey, goalsKey, ingestJobsKey, summaryKeys } from "@/lib/queryKeys";
 
 // The tab's subscription to GET /api/events (SPEC F12, ADR-039, docs/API.md): each event marks
 // the queries it changes as stale, and the active ones are fetched again.
@@ -38,6 +38,11 @@ const handlers: Record<string, Handler> = {
   // A device renamed in another tab.
   "devices.changed": (queryClient) => {
     void queryClient.invalidateQueries({ queryKey: devicesKey });
+  },
+  // Goals changed (ADR-043): the form and the progress in every summary.
+  "goal.changed": (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: goalsKey });
+    void queryClient.invalidateQueries({ queryKey: summaryKeys.all });
   },
 };
 
