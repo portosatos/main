@@ -139,3 +139,13 @@ test("refetches everything after reconnect", () => {
   second.emit("ready");
   expect(invalidated(queryClient)).toEqual(Object.keys(keys).sort());
 });
+
+test.fails("devices.changed invalidates the device list", () => {
+  const queryClient = setup();
+  const source = FakeEventSource.last;
+  source.emit("ready");
+
+  // A device was renamed in another tab (SPEC F12): only the device list is fetched again.
+  source.emit("devices.changed", { device_id: "5d1f4c1e-0000-4000-8000-000000000001" });
+  expect(invalidated(queryClient)).toEqual(["devices"]);
+});

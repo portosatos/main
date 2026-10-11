@@ -350,3 +350,28 @@ async def test_listener_recovers_after_db_connection_drop(
             event = await tab.next_of("goal.changed")
     assert event.data == {"goal_id": 3}
     assert event.at - sent <= DELIVERY_S
+
+
+@pytest.mark.xfail(strict=True, reason="step 6.1: not implemented")
+async def test_device_rename_reaches_other_tab_within_2s(
+    clean: None, server: str, db_engine: AsyncEngine
+) -> None:
+    # SPEC F12: a rename in one tab shows in the other: `devices.changed` with the device id.
+    async with http(server) as first:
+        user_id = await register(first, "devices")
+        async with AsyncSession(db_engine) as session:
+            device_id = await session.scalar(
+                text(
+                    "INSERT INTO devices (id, user_id, external_id, kind, name, created_at) "
+                    "VALUES (gen_random_uuid(), :u, 'watch-1', 'watch', 'Часы', now()) RETURNING id"
+                ),
+                {"u": user_id},
+            )
+            await session.commit()
+        async with http(server, first.cookies) as second, SseStream(second) as tab:
+            sent = asyncio.get_running_loop().time()
+            response = await first.patch(f"/api/devices/{device_id}", json={"name": "Мои часы"})
+            assert response.status_code == 200, response.text
+            event = await tab.next_of("devices.changed")
+    assert event.data == {"device_id": str(device_id)}
+    assert event.at - sent <= DELIVERY_S

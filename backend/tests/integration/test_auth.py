@@ -1,6 +1,7 @@
 import hashlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -8,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.clock import Clock
+from app.models import UserTimezone
 from app.seed import seed_demo_user
 from tests.integration.client import CSRF_HEADERS, api_client
 
@@ -314,3 +316,55 @@ async def test_swagger_ui_sends_csrf_header(migrated_database_url: str) -> None:
     assert docs.status_code == 200
     assert "requestInterceptor" in docs.text
     assert "X-Requested-With" in docs.text
+
+
+@pytest.mark.xfail(strict=True, reason="step 6.1: not implemented")
+async def test_me_returns_today_by_clock_and_timezone(
+    migrated_database_url: str, test_sessionmaker: Sessionmaker
+) -> None:
+    """`today` — the user's local date now: Clock (with the dev offset) and the zone history
+    (SPEC F0, F5). The dashboard opens on it."""
+    kiritimati, pago_pago = ZoneInfo("Pacific/Kiritimati"), ZoneInfo("Pacific/Pago_Pago")
+
+    async def clock_now(client: httpx.AsyncClient) -> datetime:
+        return datetime.fromisoformat((await client.get("/api/dev/clock")).json()["now"])
+
+    def dates(before: datetime, after: datetime, zone: ZoneInfo) -> set[str]:
+        # Midnight may pass between the requests: either date is right.
+        return {
+            before.astimezone(zone).date().isoformat(),
+            after.astimezone(zone).date().isoformat(),
+        }
+
+    async with api_client(migrated_database_url, sessionmaker=test_sessionmaker) as client:
+        before = await clock_now(client)
+        registered = await register(client, timezone="Pacific/Kiritimati")
+        me = await client.get("/api/auth/me")
+        after = await clock_now(client)
+        assert registered.json()["today"] in dates(before, after, kiritimati)
+        assert me.json()["today"] in dates(before, after, kiritimati)
+        assert (await login(client)).json()["today"] in dates(before, after, kiritimati)
+
+        # A day later by the dev clock.
+        assert (await client.post("/api/dev/clock", json={"offset_seconds": 86400})).is_success
+        before = await clock_now(client)
+        me = await client.get("/api/auth/me")
+        after = await clock_now(client)
+        assert me.json()["today"] in dates(before, after, kiritimati)
+
+        # Moved an hour ago from UTC+14 to UTC−11: the date of the new zone.
+        user_id = await scalar(test_sessionmaker, "SELECT id FROM users")
+        async with test_sessionmaker() as session:
+            session.add(
+                UserTimezone(
+                    user_id=user_id,
+                    tz="Pacific/Pago_Pago",
+                    valid_from=before - timedelta(hours=1),
+                    created_at=before,
+                )
+            )
+            await session.commit()
+        me = await client.get("/api/auth/me")
+        after = await clock_now(client)
+        assert me.json()["today"] in dates(before, after, pago_pago)
+        assert me.json()["today"] not in dates(before, after, kiritimati)

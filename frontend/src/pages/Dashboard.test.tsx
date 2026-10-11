@@ -214,3 +214,24 @@ test.fails("refetches on summary.updated", async () => {
   FakeEventSource.last.emit("summary.updated", { dates: ["2026-10-07"] });
   await waitFor(() => expect(within(screen.getByRole("region", { name: "Шаги" })).getByText("5 000")).toBeInTheDocument());
 });
+
+test.fails("opens today from /api/auth/me by default", async () => {
+  // `today` is the user's local date by the server Clock (dev offset included), not the browser's.
+  server.use(
+    http.get("/api/auth/me", () =>
+      HttpResponse.json({ id: "u", email: "demo@example.com", notify_email: null, today: "2026-10-07" }),
+    ),
+  );
+  serveDay({ day: complete("2026-10-07", { steps: 4321 }), previous: noData("2026-10-06"), delta: NO_DELTA });
+  const { router } = renderDashboard("/");
+  expect(within(await card("Шаги")).getByText("4 321")).toBeInTheDocument();
+
+  // The week view without a week in the URL: the ISO week of today.
+  server.use(
+    http.get("/api/summary/week", ({ request }) =>
+      HttpResponse.json({ detail: new URL(request.url).searchParams.get("week") }, { status: 500 }),
+    ),
+  );
+  await router.navigate("/?view=week");
+  expect(await screen.findByText("2026-W41", { exact: false })).toBeInTheDocument();
+});
