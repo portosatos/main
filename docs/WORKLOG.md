@@ -1899,3 +1899,17 @@
   `scripts/bench_ingest.{ps1,sh}` (~200 МБ, время и пиковая память воркера по `docker stats` → `docs/STATUS.md`),
   `scripts/demo.{ps1,sh}`, `scripts/fresh_clone_check.{ps1,sh}` (вывод → `docs/STATUS.md`).
 - Тесты до кода: `e2e/screenshots.spec.ts::no horizontal scroll at 375px` для каждой страницы.
+
+## 2026-10-11T22:17:49+06:00 — Тесты до кода: 8 xfailed (e2e, Playwright `test.fail()`)
+- Коммит: ab13123 test(e2e): screenshots of the pages and no horizontal scroll at 375px (red)
+- Красный прогон 22:17:04 против e2e-стека (5174), `npx playwright test screenshots.spec.ts -g 375px` с JSON-отчётом:
+  expected 10, unexpected 0. Вход и регистрация — зелёные (вёрстка уже держит 375 px). У 8 страниц после входа
+  причина одна и правильная — `the page scrolls sideways` (scrollWidth > 375): dev-панель (таблица очереди
+  дайджестов, 383 px) на всех; таблица истории загрузок (781 px); таблица устройств (436 px); дисклеймер и фильтр
+  рекомендаций (386 px). Полный файл (вместе со скриншотами 1280): «20 passed», из них 8 ожидаемых падений.
+- По ходу: пропуск в данных сдвинут на `today-6` (ночь рядом с пропуском невалидна, R1 нужны 3 ночи подряд); тест
+  ждёт план дайджеста и строку «Ждут письма» dev-панели — без этого результат зависел от того, успела ли панель
+  загрузить очередь.
+- Скриншоты пишутся в `docs/screenshots/` только с `-u` (`--update-snapshots`), иначе — в `test-results/`:
+  прогон сценариев (`scripts/e2e.*`, CI) не меняет `docs/`. Допущение, вынесено пользователю.
+- Dev clock: `offset_seconds: 0` на e2e-стеке (8001), 22:17:40.
