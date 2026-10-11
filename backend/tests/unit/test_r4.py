@@ -6,8 +6,6 @@ The means are over valid nights only, whatever the day's status.
 
 from datetime import date, timedelta
 
-import pytest
-
 from app.services.rules import r4
 from app.services.rules.base import Day, Facts
 
@@ -38,7 +36,6 @@ def facts(last: list[Day], before: list[Day]) -> Facts:
 PREVIOUS = week(SUNDAY - timedelta(days=7), *[480] * 7)
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_requires_5_valid_nights_each_week() -> None:
     four_last = week(SUNDAY, 300, 300, 300, 300, None, None, None)
     assert r4.evaluate(facts(four_last, PREVIOUS), SUNDAY).kind == "unknown"
@@ -58,7 +55,6 @@ def test_requires_5_valid_nights_each_week() -> None:
     ]
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_fires_on_drop_ge_60() -> None:
     fired = r4.evaluate(facts(week(SUNDAY, *[420] * 7), PREVIOUS), SUNDAY)
 
@@ -68,7 +64,6 @@ def test_fires_on_drop_ge_60() -> None:
     assert r4.evaluate(facts(week(SUNDAY, *[421] * 7), PREVIOUS), SUNDAY).kind == "hold"
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_closes_under_30() -> None:
     assert r4.evaluate(facts(week(SUNDAY, *[451] * 7), PREVIOUS), SUNDAY).kind == "close"
     # Sleeping more than the week before closes as well.
