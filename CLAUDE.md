@@ -146,5 +146,9 @@
   (локально — `cd backend; uv run python -m app.cli rebuild --user …`); неизвестный email → exit 1.
 - API сводок (ADR-038, правила — `docs/API.md`): `GET /api/summary/day?date=2026-10-07`, `/api/summary/week?week=2026-W41`,
   `/api/summary/range?from=…&to=…` (≤ 366 дней); дата без строки в `daily_summaries` — `no_data` с `null`.
+- События (SSE, ADR-039, `docs/API.md`): `GET /api/events` — поток `ready`, `ingest.progress`, `ingest.done`,
+  `summary.updated {dates}`, `resync`; публикация — `services/events.py` (`NOTIFY user_events`). Посмотреть руками:
+  `curl.exe -N -b "ht_session=<cookie>" http://localhost:5173/api/events`. Соединение LISTEN API в Postgres —
+  `application_name = 'ht-events'` в `pg_stat_activity`.
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
