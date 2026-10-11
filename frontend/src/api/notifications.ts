@@ -15,6 +15,14 @@ export type GoalAchievedPayload = {
   value: number;
 };
 
+// A recommendation opened by a rule (ADR-048).
+export type RecommendationOpenedPayload = {
+  recommendation_id: string;
+  rule_code: string;
+  title: string;
+  anchor_date: string;
+};
+
 export type Notification = {
   id: string;
   type: string;

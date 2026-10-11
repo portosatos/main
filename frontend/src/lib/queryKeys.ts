@@ -4,6 +4,16 @@ export const ingestJobsKey = ["ingest", "jobs"] as const;
 export const devicesKey = ["devices"] as const;
 export const goalsKey = ["goals"] as const;
 export const notificationsKey = ["notifications"] as const;
+export const rulesKey = ["rules"] as const;
+
+// The tabs of the recommendations page: open ones, and the closed ones.
+export type RecommendationTab = "open" | "history";
+
+export const recommendationKeys = {
+  all: ["recommendations"] as const,
+  list: (tab: RecommendationTab, rule: string | null) =>
+    ["recommendations", tab, rule ?? "all"] as const,
+};
 
 export const summaryKeys = {
   all: ["summary"] as const,

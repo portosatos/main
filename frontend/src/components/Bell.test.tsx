@@ -114,7 +114,7 @@ test("the list is anchored to the bell", async () => {
 });
 
 // Beyond the plan's list (step 8.3): an opened recommendation in the feed (SPEC F9).
-test.fails("describes a recommendation notification", async () => {
+test("describes a recommendation notification", async () => {
   const opened: Notification = {
     id: "7a1c2e0b-0000-4000-8000-000000000003",
     type: "recommendation.opened",

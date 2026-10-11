@@ -10,6 +10,8 @@ import {
   goalsKey,
   ingestJobsKey,
   notificationsKey,
+  recommendationKeys,
+  rulesKey,
   summaryKeys,
 } from "@/lib/queryKeys";
 import { showGoalToast } from "@/lib/toasts";
@@ -22,6 +24,10 @@ const RETRY_MIN_MS = 1000;
 const RETRY_MAX_MS = 30_000;
 
 type Handler = (queryClient: QueryClient, data: unknown) => void;
+
+function invalidateRecommendations(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: recommendationKeys.all });
+}
 
 const handlers: Record<string, Handler> = {
   "summary.updated": (queryClient, data) => {
@@ -59,6 +65,15 @@ const handlers: Record<string, Handler> = {
   "notifications.read": (queryClient) => {
     void queryClient.invalidateQueries({ queryKey: notificationsKey });
   },
+  // Rules and recommendations (ADR-048): a switch in another tab may close or open one; the worker
+  // opens and resolves them; feedback given in another tab.
+  "rule.toggled": (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: rulesKey });
+    void queryClient.invalidateQueries({ queryKey: recommendationKeys.all });
+  },
+  "recommendation.opened": invalidateRecommendations,
+  "recommendation.resolved": invalidateRecommendations,
+  "recommendation.feedback": invalidateRecommendations,
   // A goal met: a toast only; its data come with summary.updated and notification.created.
   "goal.achieved": (queryClient, data) => showGoalToast(queryClient, data as GoalAchievedEvent),
 };

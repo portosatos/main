@@ -188,7 +188,7 @@ test("goal and notification events invalidate their keys", () => {
 });
 
 // Beyond the plan's list (step 8.3): the rules and the recommendations of other tabs and the worker.
-test.fails("rule and recommendation events invalidate their keys", () => {
+test("rule and recommendation events invalidate their keys", () => {
   const queryClient = setup();
   const source = FakeEventSource.last;
   source.emit("ready");

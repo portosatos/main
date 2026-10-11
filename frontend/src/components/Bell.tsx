@@ -1,19 +1,21 @@
 import { Bell as BellIcon } from "lucide-react";
 import { Popover } from "radix-ui";
+import { Link } from "react-router";
 
 import {
   useMarkAllRead,
   useNotifications,
   type GoalAchievedPayload,
   type Notification,
+  type RecommendationOpenedPayload,
 } from "@/api/notifications";
 import { Button } from "@/components/ui/button";
 import { formatGoalMet, GOAL_TITLES } from "@/lib/metrics";
 
-// The bell in the header (SPEC §6.4, F8): the unread count of GET /api/notifications and the
-// newest notifications. useEvents asks for them again on `notification.created` and
-// `notifications.read`, so every open tab shows the same count. Opening the list does not mark
-// it read: «Прочитать все» does.
+// The bell in the header (SPEC §6.4, F8, F9): the unread count of GET /api/notifications and the
+// newest notifications; an opened recommendation links to its page. useEvents asks for them
+// again on `notification.created` and `notifications.read`, so every open tab shows the same
+// count. Opening the list does not mark it read: «Прочитать все» does.
 
 // "2026-10-11" → "11.10.2026": a local date as it is.
 function formatDate(date: string): string {
@@ -21,12 +23,20 @@ function formatDate(date: string): string {
   return `${day}.${month}.${year}`;
 }
 
-function describe(notification: Notification): { text: string; date?: string } {
+function describe(notification: Notification): { text: string; date?: string; to?: string } {
   if (notification.type === "goal.achieved") {
     const { kind, local_date, target, value } = notification.payload as GoalAchievedPayload;
     return {
       text: `${GOAL_TITLES[kind]} выполнена: ${formatGoalMet(kind, value, target)}`,
       date: formatDate(local_date),
+    };
+  }
+  if (notification.type === "recommendation.opened") {
+    const { title, anchor_date } = notification.payload as RecommendationOpenedPayload;
+    return {
+      text: `Новая рекомендация: ${title}`,
+      date: formatDate(anchor_date),
+      to: "/recommendations",
     };
   }
   return { text: notification.type };
@@ -87,14 +97,24 @@ export default function Bell() {
           {items.length > 0 && (
             <ul aria-label="Уведомления" className="grid max-h-80 gap-1 overflow-y-auto">
               {items.map((notification) => {
-                const { text, date } = describe(notification);
+                const { text, date, to } = describe(notification);
                 const isUnread = notification.read_at === null;
                 return (
                   <li
                     key={notification.id}
                     className={`rounded-md px-2 py-1.5 text-sm ${isUnread ? "bg-accent font-medium" : ""}`}
                   >
-                    <div>{text}</div>
+                    <div>
+                      {to ? (
+                        <Popover.Close asChild>
+                          <Link to={to} className="underline-offset-4 hover:underline">
+                            {text}
+                          </Link>
+                        </Popover.Close>
+                      ) : (
+                        text
+                      )}
+                    </div>
                     {date && <div className="text-xs text-muted-foreground">за {date}</div>}
                   </li>
                 );
