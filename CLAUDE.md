@@ -144,7 +144,22 @@
   `lib/account.ts` — правила, рекомендации, цели, дайджесты по API); `test` из `e2e/test.ts` сам сбрасывает dev clock
   в 0 после каждого теста. Сценарии 01–10; с письмами (06–08) ставят часы на 12:00 МСК и объявляют
   `test.use({ rulesOffAfter: true })` — после теста правила их пользователя выключаются (фикстура `rulesOff`). В CI — job `e2e`.
-- Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
+- Демо (ADR-055): `scripts/demo.ps1` / `scripts/demo.sh` — `compose up --build --wait`, htgen в поясе демо-пользователя
+  (`--tz` из `/api/auth/me`, `--days 30` по вчера, `--gap` на весь день шесть дней назад, `short-sleep` → R1 и письмо после
+  окна дайджеста), загрузка `scripts/upload.*`, открывает дашборд и Mailpit. `-Reset` / `--reset` — сначала
+  `docker compose down -v` (**стирает все данные dev-стека**), `-NoOpen` / `--no-open` — без браузера.
+- Замер большого файла (ADR-055, SPEC §4, §9 #6): `scripts/bench_ingest.ps1` / `scripts/bench_ingest.sh` на запущенном
+  стеке — htgen 90 дней с пульсом раз в 3 с (~200 МБ), свежий пользователь `bench-…`, время передачи и обработки, пик
+  памяти воркера и postgres (`docker stats`), p95 `GET /api/summary/day` во время обработки → блок `bench_ingest` в
+  `docs/STATUS.md`; exit 1, если дольше 300 с (`-LimitSec` / `LIMIT_SEC`). Около 5 мин.
+- Чистый клон (ADR-055, §9 #1, #21): `scripts/fresh_clone_check.ps1` / `.sh` — клон `origin` во временную папку, LF у
+  `*.sh`/`Dockerfile`/`*.conf`, `.env` из `.env.example`, `compose up --build` проектом и образами `health-tracker-fresh` (`IMAGE_PREFIX`), smoke клона,
+  `down -v` → блок `fresh_clone_check` в `docs/STATUS.md`. По умолчанию порты 5175/8002/8027/1027/5435 (dev-стек работает);
+  `-DefaultPorts` / `--default-ports` — порты `.env.example` (5173…), сначала `docker compose stop`. `-Keep` / `--keep` —
+  оставить клон и его стек.
+- Скриншоты и 375 px (ADR-055): `e2e/screenshots.spec.ts` входит в `scripts/e2e.*` и CI (нет горизонтального скролла на
+  каждой странице при 375 px); файлы в `docs/screenshots/` — только с `-u`: `cd e2e; npx playwright test screenshots.spec.ts -u`
+  (на e2e-стеке, свежий пользователь), без `-u` — в `e2e/test-results/`.
 - Генератор (`generator/`, формат — `docs/DATA_FORMAT.md`, ADR-028, ADR-029): `uv run --project generator htgen --help`;
   пример — `uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson` (`*.ndjson` в `.gitignore`,
   без `--out` пишет в stdout); пояса, пропуски и сценарии — `--tz-change "2026-10-05T12:00Z=America/New_York"`,
