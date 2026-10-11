@@ -144,5 +144,7 @@
   конце задачи (даты ждут в `ingest_jobs.dirty_dates`). Полная пересборка пользователя (минуты и сводки):
   `docker compose exec api htadmin rebuild --user demo@example.com`
   (локально — `cd backend; uv run python -m app.cli rebuild --user …`); неизвестный email → exit 1.
+- API сводок (ADR-038, правила — `docs/API.md`): `GET /api/summary/day?date=2026-10-07`, `/api/summary/week?week=2026-W41`,
+  `/api/summary/range?from=…&to=…` (≤ 366 дней); дата без строки в `daily_summaries` — `no_data` с `null`.
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
