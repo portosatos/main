@@ -636,6 +636,16 @@ p10 минутных медиан при ≥ 60 минутах с ровно 0 �
 ### Шаг 5.1 — Шина событий и SSE
 **Этап SPEC:** 5 · **Зависит от:** 3.2, 4.3 · **Критерии §9:** вклад в #7, #19
 
+**Статус:** [x] закрыт 2026-10-11T10:22:16+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-11T09:43:52+06:00.
+Заметки: `services/events.py` — `publish` (`NOTIFY user_events` в транзакции вызывающего, `{user_id, type, data}`),
+`publish_summary_updated` (части < 8000 байт), `EventHub` (одно LISTEN-соединение `ht-events` на процесс API, фон в
+lifespan, переподключение 0,2 → 5 с, после него `resync`); `GET /api/events` на sse-starlette (`ready` первым, keep-alive
+15 с, вход своей короткой сессией БД, без LISTEN 5 с → 503). Воркер: `ingest.progress` (queued/processing/после пачек не
+чаще раза в 1 с), `ingest.done` (done/failed, `counts` как в отчёте), `summary.updated` при сбросе дат; ADR-039,
+`docs/API.md`. Тесты SSE — на настоящем uvicorn (ASGI-транспорт httpx не отдаёт поток). **Для 5.2:** `useEvents` на
+`resync` делает то же, что после переподключения EventSource (перезапрос всего); nginx уже с `proxy_buffering off`.
+**Для 7.x/8.x/10.1:** свои события — через `events.publish` в транзакции изменения.
+
 **Цель:** события от воркера доходят до всех открытых вкладок пользователя за ≤ 2 с.
 
 **Объём:** `events.py` (`NOTIFY`/`LISTEN`, переподключение), `GET /api/events` (sse-starlette, keep-alive),
