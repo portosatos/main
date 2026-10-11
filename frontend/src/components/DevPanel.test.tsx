@@ -31,6 +31,62 @@ test("hidden when /api/dev/clock returns 404", async () => {
   expect(screen.queryByRole("region", { name: "Dev-панель" })).not.toBeInTheDocument();
 });
 
+// The digest queue (plan step 9.2): the planned digest and the sent ones, from /api/digests.
+test.fails("shows digest queue", async () => {
+  server.use(
+    http.get("/api/dev/clock", () =>
+      HttpResponse.json({ offset_seconds: 0, system_now: SYSTEM_NOW, now: SYSTEM_NOW }),
+    ),
+    http.get("/api/digests", () =>
+      HttpResponse.json({
+        notify_email: "demo@example.com",
+        warning: null,
+        pending: 1,
+        items: [
+          {
+            id: "d2",
+            status: "planned",
+            local_date: "2026-10-11",
+            planned_at: "2026-10-11T05:00:00Z",
+            plan_reason: "quiet_hours",
+            sent_at: null,
+            to_email: null,
+            subject: null,
+            recommendations: 1,
+            error: null,
+          },
+          {
+            id: "d1",
+            status: "sent",
+            local_date: "2026-10-10",
+            planned_at: "2026-10-10T15:15:00Z",
+            plan_reason: "window",
+            sent_at: "2026-10-10T15:15:20Z",
+            to_email: "demo@example.com",
+            subject: "Трекер здоровья: 2 новые рекомендации",
+            recommendations: 2,
+            error: null,
+          },
+        ],
+      }),
+    ),
+  );
+  renderPanel();
+
+  const panel = await screen.findByRole("region", { name: "Dev-панель" });
+  const queue = await within(panel).findByRole("table", { name: "Очередь дайджестов" });
+  const [, planned, sent] = within(queue).getAllByRole("row");
+  expect(planned).toHaveTextContent("запланирован");
+  expect(planned).toHaveTextContent("11.10.2026, 05:00");
+  expect(planned).toHaveTextContent("тихие часы");
+  expect(planned).toHaveTextContent("1");
+  expect(sent).toHaveTextContent("отправлен");
+  expect(sent).toHaveTextContent("10.10.2026, 15:15:20");
+  expect(sent).toHaveTextContent("окно 15 мин");
+  expect(sent).toHaveTextContent("2");
+  expect(within(panel).getByText(/Ждут письма: 1/)).toBeInTheDocument();
+});
+
 test("sets offset and shows new time", async () => {
   // A stateful fake of the dev clock API: GET returns what the last POST set.
   let offset = 0;
