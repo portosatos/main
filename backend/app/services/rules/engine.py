@@ -3,18 +3,38 @@ user's enabled rules against the stored recommendations.
 
 `plan_actions` is pure: verdicts of the enabled rules and the codes with an open recommendation
 in, the actions out — `fire` without an open one opens, `close` with an open one resolves,
-everything else changes nothing. `evaluate_user` loads the facts and applies the actions.
+everything else changes nothing. `evaluate_user` loads the facts and applies the actions in the
+caller's transaction (the worker's, which holds the user lock); the partial unique index on open
+recommendations stops a second open one even if two evaluations race.
+
+Step 8.1 writes the recommendations only: the bell, the events and the e-mail outbox come with
+steps 8.3 and 9.x.
 """
 
 import uuid
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
+import structlog
+from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.rules.base import Facts, Rule
+from app.models import DailySummary, Recommendation, UserRule
+from app.models.rule import OPEN
+from app.services.goals import load_goal_book
+from app.services.localtime import load_tz_history
+from app.services.rules import r1, r2
+from app.services.rules.base import Day, Facts, Rule
+
+log = structlog.get_logger(__name__)
+
+# The rules the engine evaluates, in the order of the catalog.
+RULES: tuple[Rule, ...] = (r1.RULE, r2.RULE)
+# An anchor is today or yesterday: the dates a rule may read start this far before today.
+LOOKBACK = timedelta(days=max(rule.window_days for rule in RULES))
 
 
 @dataclass(frozen=True)
@@ -49,5 +69,91 @@ def plan_actions(
     return actions
 
 
+def day_of(summary: DailySummary) -> Day:
+    return Day(
+        summary.local_date,
+        status=summary.status,  # type: ignore[arg-type]
+        wear_minutes=summary.wear_minutes,
+        steps=summary.steps,
+        active_minutes=summary.active_minutes,
+        sleep_minutes=summary.sleep_minutes,
+        sleep_start=summary.sleep_start,
+        sleep_end=summary.sleep_end,
+        night_valid=summary.night_valid,
+        resting_hr=summary.resting_hr,
+        peak_hr=summary.peak_hr,
+    )
+
+
+async def load_facts(session: AsyncSession, user_id: uuid.UUID, now: datetime) -> Facts:
+    """The user's summaries the rules may read, today by `now` and the user's time zone, and the
+    steps and sleep goals of every date."""
+    history = await load_tz_history(session, user_id)
+    today = history.local_date(now)
+    book = await load_goal_book(session, user_id, history)
+    summaries = await session.scalars(
+        select(DailySummary).where(
+            DailySummary.user_id == user_id,
+            DailySummary.local_date.between(today - LOOKBACK, today),
+        )
+    )
+    return Facts([day_of(s) for s in summaries], today, book.target)
+
+
 async def evaluate_user(session: AsyncSession, user_id: uuid.UUID, now: datetime) -> list[Action]:
-    raise NotImplementedError("step 8.1")
+    """Evaluate the user's enabled rules and open or resolve their recommendations; `now` is
+    from Clock. Returns the actions applied. A rule without a user_rules row is enabled."""
+    disabled = set(
+        await session.scalars(
+            select(UserRule.rule_code).where(UserRule.user_id == user_id, ~UserRule.enabled)
+        )
+    )
+    enabled = {rule.code for rule in RULES} - disabled
+    if not enabled:
+        return []
+    open_codes = set(
+        await session.scalars(
+            select(Recommendation.rule_code).where(
+                Recommendation.user_id == user_id, Recommendation.status == "open"
+            )
+        )
+    )
+    facts = await load_facts(session, user_id, now)
+    applied = []
+    for action in plan_actions(RULES, facts, enabled=enabled, open_codes=open_codes):
+        if action.kind == "open":
+            changed = await session.scalar(
+                pg_insert(Recommendation)
+                .values(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    rule_code=action.code,
+                    status="open",
+                    opened_at=now,
+                    anchor_date=action.anchor_date,
+                    context=action.context,
+                )
+                .on_conflict_do_nothing(index_elements=["user_id", "rule_code"], index_where=OPEN)
+                .returning(Recommendation.id)
+            )
+        else:
+            changed = await session.scalar(
+                update(Recommendation)
+                .where(
+                    Recommendation.user_id == user_id,
+                    Recommendation.rule_code == action.code,
+                    Recommendation.status == "open",
+                )
+                .values(status="resolved", resolved_at=now, resolve_reason="auto")
+                .returning(Recommendation.id)
+            )
+        if changed is not None:  # else a concurrent evaluation got there first
+            applied.append(action)
+            log.info(
+                "recommendation_" + ("opened" if action.kind == "open" else "resolved"),
+                user_id=str(user_id),
+                rule=action.code,
+                anchor_date=action.anchor_date.isoformat(),
+                recommendation_id=str(changed),
+            )
+    return applied

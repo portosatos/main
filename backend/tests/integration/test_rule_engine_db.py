@@ -19,7 +19,6 @@ from app.services.rules.catalog import CATALOG
 from app.services.rules.engine import evaluate_user
 from tests.integration.ingest import NOW, make_user
 
-NOT_IMPLEMENTED = "step 8.1: not implemented"
 TODAY = NOW.date()  # the user lives in UTC
 
 
@@ -115,7 +114,6 @@ async def test_partial_unique_index_prevents_two_open(session: AsyncSession) -> 
     ]
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 async def test_evaluate_user_opens_once_and_resolves(session: AsyncSession) -> None:
     user_id = await make_user(session)
     other_id = await make_user(session, email="other@example.com")
@@ -150,7 +148,6 @@ async def test_evaluate_user_opens_once_and_resolves(session: AsyncSession) -> N
     assert resolved["context"] == opened["context"]
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 async def test_evaluate_user_skips_rule_disabled_by_user(session: AsyncSession) -> None:
     user_id = await make_user(session)
     await add_days(session, user_id, *[night(TODAY - timedelta(days=i), 5) for i in (2, 1, 0)])
