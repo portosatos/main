@@ -1070,3 +1070,14 @@
 - Замечание: сон 10.10 был 540 мин, после загрузки 11.10 стал 485 — ночь, обрезанная концом прошлого файла, склеилась с
   продолжением и ушла в день пробуждения 11.10 (логика шага 4.3). Записанное достижение при уменьшении значения не
   отменяется (SPEC F8: запись создаётся, когда порог перейден впервые).
+
+## 2026-10-11T13:24:11+06:00 — Шаг 7.1 завершён
+- Коммиты шага: efbf781, 220a578 (Codex: AGENTS.md, начало шага, ADR-042), 0026cb7 (docs), f147d9d (test, red),
+  27424d6 (docs), 3e59e87, 160a9b6, e0b6017 (feat), b92a0de (docs), этот и запись об итогах (docs).
+- Тесты: красный `10 xfailed` → зелёный `test_goals.py` `10 passed`; backend `186 passed`, generator `51 passed`,
+  scripts `8 passed`. `git grep -n "step 7.1: not implemented" -- ":!docs"` → пусто.
+- Done When: ruff check/format → exit 0; `scripts/test.ps1` и `scripts/test.sh` → exit 0 («OK: all tests passed»);
+  `alembic check` → «No new upgrade operations detected»; `scripts/smoke.ps1` и `smoke.sh` → exit 0. Frontend не
+  менялся (новое поле `goals` в сводках frontend пока не читает — шаг 7.2).
+- Проверить вручную: Swagger `/docs` — `GET/PUT /api/goals`, `GET /api/notifications`; события `goal.achieved` в
+  `curl.exe -N` потоке `/api/events` при загрузке данных за сегодня; прогресс в `/api/summary/day`.
