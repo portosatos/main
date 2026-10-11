@@ -1395,3 +1395,18 @@
 - Зелёный прогон: `unit/test_planner.py` — `18 passed` с первого запуска; `scripts/test.sh` → backend `271 passed`,
   generator `51 passed`, scripts `8 passed`. Проблем не было; ruff после снятия маркеров попросил пересортировать
   импорты (лишняя пустая строка), исправлено `ruff check --fix` до коммита.
+
+## 2026-10-11T17:35:05+06:00 — Шаг 9.1 завершён
+- Итог: чистый планировщик дайджеста `services/notify/planner.py`: `plan_send(...) → SendPlan(at, reason)` и обёртка
+  `plan_send_time(...) → datetime` с сигнатурой SPEC F10. ADR-049 (решения 1–5 по ответу пользователя), CLAUDE.md §6.
+- Коммиты шага: 10575ec (docs), a8f6505 (chore), f3a7c96 (test, red), 460746e (docs), 58e0bd1 (chore), 66294e9 (test,
+  red), 7b06b2c, 6691446 (docs), c9378d6 (feat), f5f4189, 2f49b07 (docs), эта запись.
+- Тесты: красный `253 passed, 17 xfailed` → после правки под `plan_send` `18 xfailed` (planner) → зелёный:
+  `scripts/test.sh` → backend `271 passed`, generator `51 passed`, scripts `8 passed`, «OK: all tests passed».
+- Сверх плана: `test_local_date_going_back_after_move_west_still_limited`, `test_overdue_plan_moves_to_now_and_respects_quiet_hours`,
+  `test_plan_send_time_returns_planned_time`.
+- Done When (общий DoD): ruff check → «All checks passed!», ruff format → «171 files already formatted»; маркеров
+  шага в коде нет; frontend не трогали.
+- Dev clock: в этой сессии не сдвигался, `GET /api/dev/clock` → `offset_seconds: 0`.
+- Проверить вручную: `uv run pytest tests/unit/test_planner.py -v` (18 passed); вызов `plan_send` из REPL на своих
+  примерах. В UI и API шаг ничего не меняет (outbox и диспетчер — 9.2).
