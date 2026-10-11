@@ -908,3 +908,15 @@
   по типу события, полный refetch после переподключения и `resync`) → страница «Загрузка» (drag-and-drop, XHR с
   `upload.onprogress`, бар обработки по `ingest.progress`, история загрузок со счётчиками и раскрываемыми ошибками).
 - Зависит от 5.1 (SSE, nginx `proxy_buffering off`) и 1.3 (каркас UI).
+
+## 2026-10-11T10:30:42+06:00 — Тесты до кода: 5 xfailed (Vitest `test.fails`), smoke SSE зелёный сразу
+- Коммиты: af278aa refactor(upload) — заглушки (`lib/queryKeys.ts`, типы `api/ingest.ts`, пустой `useEvents`, `Upload`
+  как заглушка раздела); 447fa44 test(upload) — 5 тестов `test.fails` и фейки `EventSource`/`XMLHttpRequest`;
+  9f70b4b test(smoke) — `scripts/smoke.*`: вход через `:5173` и `event: ready` из `/api/events` за ≤ 2 с.
+- Причина красного (прогон без маркеров): `useEvents` — «no EventSource was created» (подписки нет); `Upload` — нет
+  поля выбора файла, прогресс-бара «Обработка» и таблицы «История загрузок». Весь frontend: `14 passed | 5 expected fail`.
+- Smoke SSE через nginx зелёный с первого прогона (`smoke.sh` и `smoke.ps1`, 28 мс): сервер и `proxy_buffering off`
+  сделаны на 5.1. Негатив: с `proxy_buffering on` (+ `proxy_ignore_headers X-Accel-Buffering`) и с gzip событие всё
+  равно пришло сразу — nginx отдаёт маленький кусок без ожидания; против заглушки, которая держит первый байт 3 с, обе
+  версии smoke → `FAIL … no 'event: ready' within 2 s`, exit 1. Контейнер frontend пересоздан из образа.
+- Допущения в тестах (ждут подтверждения): см. сообщение пользователю (ключи инвалидации, переподключение, UI).
