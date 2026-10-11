@@ -166,6 +166,15 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
   первый пояс остаётся на время до переезда — запись с `valid_from: null` («с начала истории»).
 - После `POST` воркер пересчитывает затронутые даты (`summary.updated`) и оценивает правила — задача `tz_changed`.
 
+## Приём данных (`/api/ingest/*`, SPEC F3, ADR-031, ADR-052, `docs/DATA_FORMAT.md`)
+
+- `POST /api/ingest/files` (multipart, поле `file`, до 500 МБ) и `POST /api/ingest/batch`
+  (`{"devices": [...], "records": [...]}`, до 5000 записей, больше → 413) → `202 {"job_id"}`; обрабатывает воркер.
+- `GET /api/ingest/jobs?limit=50` (новые сначала, `limit` 1–200), `GET /api/ingest/jobs/{id}` — отчёт; чужая задача
+  → 404. `source` — `file` или `stream`; у пачки `filename: null`, `line` в `errors` — номер записи в `records` с 1.
+- Правила: в конце задачи файла — сразу; после пачек потока — через 10 с по `Clock`, пачки за эти 10 с
+  присоединяются к ждущей оценке (задача `evaluate_rules`).
+
 ## События (`GET /api/events`, SSE, SPEC F12, ADR-039)
 
 Поток Server-Sent Events пользователя сессии (без cookie → 401; API ещё не слушает БД → 503 через 5 с). Каждое
@@ -185,7 +194,7 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 | `notification.created` | `{id, type}` | новое уведомление в колокольчике; приходит перед своим `goal.achieved` |
 | `goal.achieved` | `{kind, local_date, target, value, show_toast, notification_id}` | цель выполнена впервые за дату; тост — только при `show_toast` (дата — сегодня или вчера по `Clock`) |
 | `notifications.read` | `{ids: [...]}` или `{all: true}` | уведомления отмечены прочитанными |
-| `recommendation.opened` | `{id, rule_code, anchor_date}` | открыта рекомендация (в конце загрузки, по таймеру воркера, при включении правила); перед ним — `notification.created` |
+| `recommendation.opened` | `{id, rule_code, anchor_date}` | открыта рекомендация (в конце загрузки файла, через 10 с после пачек потока, по таймеру воркера, при включении правила, после смены пояса); перед ним — `notification.created` |
 | `recommendation.resolved` | `{id, rule_code, status}` | рекомендация закрыта: `status` — `resolved` (условием правила) или `closed_rule_disabled` |
 | `recommendation.feedback` | `{id, feedback}` | отзыв поставлен, изменён или снят (`null`) |
 | `rule.toggled` | `{code, enabled}` | правило включено или выключено |

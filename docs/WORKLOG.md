@@ -1658,3 +1658,43 @@
 ## 2026-10-11T19:40:11+06:00 — Шаг 11.1: допущения 1–8 приняты, дебаунс — первый вариант
 - Со слов пользователя: «ок, допущения принимаю, дебаунс — первый вариант» (PROMPTS.md). Оценка правил после пачек
   потока: первая пачка назначает её через 10 с по Clock, следующие за эти 10 с присоединяются, не сдвигая.
+
+## 2026-10-11T19:51:02+06:00 — Фичи готовы: пачки потока с дебаунсом правил; тики воркера рядом с очередью
+- 305b0c7 `feat(ingest)`: `POST /api/ingest/batch` (до 5000 записей, иначе 413; пачка пишется на том `ingest` как
+  NDJSON — meta из `devices`, затем записи; meta — строка 0, поэтому `line` в отчёте — номер записи с 1), задача
+  `ingest_batch` тем же обработчиком, что файл; в конце пачки — `schedule_evaluation` (задача `evaluate_rules` через
+  10 с по Clock, склейка по `dedup_key` `evaluate_rules:<user>` через `queue.enqueue_once`, время не сдвигается);
+  воркер просыпается к ближайшему `run_after`. Сняты маркеры с 5 тестов `test_ingest_batch.py` и CSRF-теста.
+- 2dabd81 `feat(worker)`: тики heartbeat, правил и дайджестов — отдельные задачи asyncio (`Worker._every`), очередь —
+  `Worker._queue_loop`; снят маркер `test_digest_sent_on_time_while_queue_busy`.
+- Проблема / как решили: `test_debounced_evaluation_runs_when_due_without_new_jobs` падал примерно 1 раз из 6 —
+  отложенная задача наступала между последним `claim` и запросом ближайшего срока (`run_after > now`), и воркер
+  засыпал на `tick_s` (30 с). Теперь срок ищется позже момента начала круга захвата (`next_run_after(after=since)`):
+  наступившая за круг задача даёт ожидание 0, а ждущие занятого пользователя не крутят цикл. После исправления —
+  10 прогонов подряд зелёные. Исправление вошло в коммит фичи 2 (тот же цикл `main.py`).
+- Прогон: `scripts/test.sh` → backend `320 passed`, generator `51 passed, 3 xfailed`, scripts `8 passed`.
+
+## 2026-10-11T19:58:29+06:00 — Фича готова: htgen --stream; Done When нашёл ошибку дебаунса, исправлено
+- 9a1b180 `feat(generator)`: `generator/src/htgen/stream.py` (вход, пачки, `--rate`, ошибки API → exit 1), опции в
+  `cli.py`; сняты маркеры трёх тестов `test_stream.py`. Генератор: `54 passed`.
+- Done When на стеке (пересобран `docker compose up --build -d`, dev clock до проверки `offset_seconds: 0`):
+  первый прогон `htgen --days 3 --stream --url http://localhost:8000 --batch-size 1000` в 19:52:34 — exit 0, 55323
+  записи в 56 пачках, но в воркере `job_failed` у задач `ingest_batch`: «there is no unique or exclusion constraint
+  matching the ON CONFLICT specification». Причина: `ON CONFLICT … WHERE status = $1` — с 6-го выполнения на
+  соединении Postgres берёт общий план, частичный индекс по параметру не выводится; в тестах до 6 выполнений на одном
+  соединении не доходило. Итог первого прогона и следующего `--days 1 --batch-size 5000`: 40 задач потока `failed`
+  (записи пачек закоммичены, потеряна последняя транзакция — сводки и оценка), 20 `done`.
+- 934f2fc `test(ingest): … (red)` — регрессионный тест после кода `test_schedule_evaluation_after_many_batches_on_one_connection`
+  (8 пользователей на одном соединении), красный с той же ошибкой; 9282282 `fix(worker)`: предикат — литерал
+  `queue.QUEUED`, тест зелёный, `test_ingest_batch.py` — `6 passed`.
+- 768648e `fix(generator)`: сообщения потока в Git Bash выходили кракозябрами (stderr в кодовой странице ANSI) —
+  stderr в UTF-8; в PowerShell проверено: «htgen: ошибка: вход demo@example.com: HTTP 401: Неверный email или пароль»,
+  exit 1.
+- Повтор Done When после пересборки в 19:54:58: exit 0, «отправлено 55323 записей», 56 пачек; задачи прогона
+  (`created_at` ≥ 13:54:58Z) — 56 из 56 `done` (последняя закончена 13:55:01Z), `new 0, duplicate 4691,
+  conflict 50632, invalid 0` — конфликты с файлами прежних живых проверок демо-пользователя (другие seed: `d30`,
+  `d90`, `today` …), `line` в ошибках — номер записи с 1. В логе воркера одна `evaluate_rules` в 13:55:09 (≈10 с
+  после первой пачки). Сводки демо-пользователя пересобраны после упавших задач: `htadmin rebuild --user
+  demo@example.com` — 133 строки `daily_summaries`. `scripts/smoke.sh` — 7 OK. Dev clock: `offset_seconds: 0`.
+- Документы: ADR-052, `docs/API.md` (раздел «Приём данных»), `docs/DATA_FORMAT.md` (раздел «Поток», опции `--stream`),
+  `docs/RULES.md`, `CLAUDE.md` §6.

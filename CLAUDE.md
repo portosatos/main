@@ -139,6 +139,12 @@
   без `--out` пишет в stdout); пояса, пропуски и сценарии — `--tz-change "2026-10-05T12:00Z=America/New_York"`,
   `--gap "2026-10-03T00:00/2026-10-04T12:00@watch"`, `--gap-prob 0.05`, `--scenario short-sleep`.
   Тесты: `cd generator; uv run pytest` (входят в `scripts/test.*` и CI).
+- Поток (ADR-052): `uv run --project generator htgen --days 3 --stream --url http://localhost:8000 --batch-size 1000
+  --rate 2` (вход — `--email`/`--password`, иначе `DEMO_USER_*` из env, иначе демо) → пачки в `POST /api/ingest/batch`
+  (`{"devices": [...], "records": [...]}`, ≤ 5000, задача `ingest_batch`, `source: stream`). Правила после пачек —
+  задача `evaluate_rules` через 10 с по Clock (`dedup_key`, пачки присоединяются); воркер просыпается к `run_after`,
+  тики heartbeat, правил и дайджестов — отдельные задачи asyncio. Сквозная проверка маршрутов —
+  `tests/integration/test_security_sweep.py` (новый маршрут с id в пути — классифицировать там).
 - Загрузка файла в запущенный стек: `scripts/upload.ps1 FILE` / `scripts/upload.sh FILE` — вход демо-пользователем
   через `:5173`, `POST /api/ingest/files`, опрос задачи до `done`/`failed`, отчёт; exit 0 только при `done` (другой
   пользователь — `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`). Файлы — volume `ingest` (`/data/ingest`, общий для api и
