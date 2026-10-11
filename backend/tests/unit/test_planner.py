@@ -1,4 +1,4 @@
-"""The digest planner (SPEC F10): services/notify/planner.py::plan_send_time.
+"""The digest planner (SPEC F10): services/notify/planner.py::plan_send and plan_send_time.
 
 «Now» comes from a fixed Clock. Most cases are in Moscow (UTC+3 all year), so local times read
 as they are written.
@@ -12,7 +12,7 @@ import pytest
 
 from app.clock import Clock
 from app.services.localtime import TzHistory
-from app.services.notify.planner import QuietHours, SendPlan, plan_send_time
+from app.services.notify.planner import QuietHours, SendPlan, plan_send, plan_send_time
 
 NOT_IMPLEMENTED = pytest.mark.xfail(strict=True, reason="step 9.1: not implemented")
 
@@ -50,10 +50,10 @@ async def plan(
     history: TzHistory = MOSCOW,
     quiet: QuietHours = QUIET_22_08,
 ) -> SendPlan:
-    """plan_send_time with «now» from a fixed Clock; by default now is the last addition."""
+    """plan_send with «now» from a fixed Clock; by default now is the last addition."""
     moment = now if now is not None else max(pending)
     clock_now = await Clock(app_env="test", system_now=lambda: moment).now()
-    return plan_send_time(pending, last, history, quiet, clock_now)
+    return plan_send(pending, last, history, quiet, clock_now)
 
 
 @NOT_IMPLEMENTED
@@ -215,12 +215,12 @@ async def test_plan_reason_reported(
     assert await plan(pending, last=last, quiet=quiet) == expected
 
 
-# Beyond the plan: assumptions of step 9.1 (ADR-049).
+# Beyond the plan: decisions of step 9.1 (ADR-049).
 
 
 @NOT_IMPLEMENTED
 async def test_local_date_going_back_after_move_west_still_limited() -> None:
-    # Assumption: a digest goes out only on a local date after the last digest's one. In New York
+    # ADR-049: a digest goes out only on a local date after the last digest's one. In New York
     # it is 11.10 again after the Tokyo digest of 12.10; 12.10 in New York is skipped as well,
     # so the dates of digests only grow (and UNIQUE(user_id, local_date) never fires).
     result = await plan(
@@ -232,11 +232,26 @@ async def test_local_date_going_back_after_move_west_still_limited() -> None:
 
 @NOT_IMPLEMENTED
 async def test_overdue_plan_moves_to_now_and_respects_quiet_hours() -> None:
-    # Assumption: a time already in the past becomes «now» (the worker was down), and the rules
+    # ADR-049: a time already in the past becomes «now» (the worker was down), and the rules
     # apply to it: an overdue digest does not go out in the quiet hours.
     assert await plan([msk(11, 12, 0)], now=msk(11, 14, 0), quiet=QUIET_OFF) == SendPlan(
         msk(11, 14, 0), "window"
     )
+    # Nothing moves it further: the reason stays the one of the window or the cap.
+    capped = [msk(11, 12, 0), msk(11, 12, 50)]
+    assert await plan(capped, now=msk(11, 14, 0), quiet=QUIET_OFF) == SendPlan(
+        msk(11, 14, 0), "max_delay"
+    )
     assert await plan([msk(11, 12, 0)], now=msk(11, 23, 0)) == SendPlan(
         msk(12, 8, 0), "quiet_hours"
     )
+
+
+@NOT_IMPLEMENTED
+async def test_plan_send_time_returns_planned_time() -> None:
+    # The signature of SPEC F10 returns only the time of plan_send.
+    now = await Clock(app_env="test", system_now=lambda: msk(11, 15, 0)).now()
+    args = ([msk(11, 15, 0)], date(2026, 10, 11), MOSCOW, QUIET_22_08, now)
+
+    assert plan_send_time(*args) == msk(12, 8, 0)
+    assert plan_send_time(*args) == plan_send(*args).at
