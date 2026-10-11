@@ -1181,3 +1181,18 @@
 - Сверх списка плана (Допущения, ждут «ок» пользователя): `test_rules_seeded_r1_to_r6_with_params_from_code`,
   `test_evaluate_user_opens_once_and_resolves`, `test_evaluate_user_skips_rule_disabled_by_user`; параметризация
   `unknown`/`hold` в `test_unknown_leaves_state_unchanged` и порогов 6 / 6,5 / 6,98 ч в `test_6_to_7h_keeps_open`.
+
+## 2026-10-11T14:23:04+06:00 — Фичи шага 8.1 готовы
+- 9d3cd94 feat(rules) — миграция 0010: `rules` (сид R1–R6), `user_rules`, `recommendations`, `uq_recommendations_open`.
+  Сняты маркеры `test_rules_seeded_…`, `test_partial_unique_index_…`. `alembic check` → «No new upgrade operations»,
+  downgrade 0009 → upgrade head проходит.
+- bd621f5 feat(rules) — `plan_actions` (машина состояний), сняты маркеры `unit/test_rule_engine.py` (6).
+- 77ab59f feat(rules) — R1 (7 тестов). Проблема / как решили: в контексте `**PARAMS` затирал ключ `nights` списком →
+  числом 3 (тест `test_fires_on_3_valid_nights_under_6h` поймал), контекст собран явно.
+- a26a3bc feat(rules) — R2 (4 теста). d51c843 feat(rules) — `evaluate_user` (2 интеграционных теста).
+- 1257125 feat(rules) — оценка правил в транзакции, завершающей задачу загрузки. 594a306 docs — ADR-045, CLAUDE.md §6.
+- Зелёный прогон: backend `207 passed` (было 186 + 21 xfailed).
+- Живая проверка (стек пересобран, `alembic current` → `0010 (head)`, dev clock 0): новый пользователь
+  `rules81@example.com` (Asia/Almaty), `htgen --end 2026-10-11 --days 7 --seed 81 --scenario short-sleep`, `upload.sh` →
+  done за 8 с; `recommendations`: одна R1 `open`, `anchor_date` 2026-10-11, ночи 287/305/328 мин; лог воркера
+  `recommendation_opened`. Повторная загрузка того же файла → done, рекомендаций по-прежнему одна.
