@@ -1,20 +1,22 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
 // A metric of the dashboard (SPEC §6.4): the value or «нет данных» (never 0 for a missing one),
 // the difference with the previous period or «нет данных для сравнения», the base of a week's
-// mean and a note.
+// mean, a note and the goal's progress (children).
 export default function SummaryCard({
   title,
   value,
   delta,
   base,
   note,
+  children,
 }: {
   title: string;
   value: string | null;
   delta: string | null;
   base?: string;
   note?: string;
+  children?: ReactNode;
 }) {
   const id = useId();
   return (
@@ -33,6 +35,7 @@ export default function SummaryCard({
       </p>
       {base && <p className="text-xs text-muted-foreground">{base}</p>}
       {note && <p className="text-xs text-amber-700">{note}</p>}
+      {children}
     </section>
   );
 }

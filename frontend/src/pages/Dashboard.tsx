@@ -10,10 +10,13 @@ import {
   useWeekSummary,
   type Day,
   type DaySummary,
+  type GoalKind,
+  type Metric,
   type WeekSummary,
 } from "@/api/summary";
 import DaysChart from "@/components/DaysChart";
 import type { ChartDay } from "@/components/GapBar";
+import GoalProgress from "@/components/GoalProgress";
 import SummaryCard from "@/components/SummaryCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +35,7 @@ import {
   formatDelta,
   formatHours,
   formatValue,
+  formatWeekGoal,
   METRIC_INFO,
   partialNote,
 } from "@/lib/metrics";
@@ -45,6 +49,9 @@ import {
 
 // Days of the chart in the day view: the day and the six before it.
 const CHART_DAYS = 7;
+
+// The cards that carry a goal's progress (SPEC F8).
+const GOAL_OF: Partial<Record<Metric, GoalKind>> = { steps: "steps", sleep_minutes: "sleep" };
 
 export default function Dashboard() {
   const [params] = useSearchParams();
@@ -240,7 +247,11 @@ function DayCards({ summary }: { summary: DaySummary }) {
                 ? "ночь записана не полностью"
                 : undefined
             }
-          />
+          >
+            {GOAL_OF[metric] && (
+              <GoalProgress kind={GOAL_OF[metric]} progress={day.goals[GOAL_OF[metric]]} />
+            )}
+          </SummaryCard>
         ))}
       </div>
     </>
@@ -283,6 +294,7 @@ function WeekCards({ summary }: { summary: WeekSummary }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {METRICS.map((metric) => {
           const { value, days, of } = summary.metrics[metric];
+          const goal = GOAL_OF[metric] && summary.goals[GOAL_OF[metric]];
           return (
             <SummaryCard
               key={metric}
@@ -290,7 +302,13 @@ function WeekCards({ summary }: { summary: WeekSummary }) {
               value={formatValue(metric, value)}
               delta={formatDelta(metric, summary.delta[metric])}
               base={formatBase(metric, days, of)}
-            />
+            >
+              {goal && (
+                <p className="text-xs text-muted-foreground">
+                  {formatWeekGoal(goal.achieved_days, goal.of)}
+                </p>
+              )}
+            </SummaryCard>
           );
         })}
       </div>

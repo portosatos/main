@@ -201,6 +201,36 @@ test("week cards show base counts («сон: 6 из 7 ночей»)", async () =
   const resting = await card("Пульс в покое");
   expect(within(resting).getByText("нет данных")).toBeInTheDocument();
   expect(within(resting).getByText("пульс в покое: 0 из 7 дней")).toBeInTheDocument();
+  // Goals of the week (SPEC F8): each day by its own target.
+  expect(within(await card("Шаги")).getByText("цель выполнена 5 из 7 дней")).toBeInTheDocument();
+  expect(within(await card("Сон")).getByText("цель выполнена 0 из 7 дней")).toBeInTheDocument();
+});
+
+test("day cards show goal progress", async () => {
+  serveDay({
+    day: complete("2026-10-07", {
+      steps: 6000,
+      goals: {
+        steps: { target: 8000, percent: 75, achieved: false },
+        sleep: { target: 7.5, percent: 100, achieved: true },
+      },
+    }),
+    previous: noData("2026-10-06"),
+    delta: NO_DELTA,
+  });
+  renderDashboard("/?date=2026-10-07");
+
+  const steps = await card("Шаги");
+  expect(within(steps).getByRole("progressbar", { name: "Цель по шагам" })).toHaveAttribute(
+    "aria-valuenow",
+    "75",
+  );
+  expect(within(steps).getByText("75 % от цели 8 000 шагов")).toBeInTheDocument();
+  const sleep = await card("Сон");
+  expect(within(sleep).getByText("100 % от цели 7,5 ч")).toBeInTheDocument();
+  expect(within(sleep).getByText("цель выполнена")).toBeInTheDocument();
+  // No goal on the other cards.
+  expect(within(await card("Пиковый пульс")).queryByRole("progressbar")).not.toBeInTheDocument();
 });
 
 test("refetches on summary.updated", async () => {

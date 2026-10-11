@@ -1,5 +1,6 @@
-// A labelled bar for 0..100 percent.
+// A labelled bar for 0..100 percent; a value over 100 (a goal passed) fills the bar.
 export default function ProgressBar({ label, value }: { label: string; value: number }) {
+  value = Math.min(Math.max(value, 0), 100);
   return (
     <div
       role="progressbar"

@@ -1,4 +1,4 @@
-import type { Delta, Metric } from "@/api/summary";
+import type { Delta, GoalKind, Metric } from "@/api/summary";
 
 // How the dashboard shows the metrics of a summary (SPEC F7): titles, units, the words of the
 // week's bases («сон: 6 из 7 ночей») and the difference with the previous period.
@@ -66,4 +66,22 @@ export function formatBase(metric: Metric, days: number, of: number): string {
 // «неполные данные (носили 5 ч)» for a partial day (SPEC F6).
 export function partialNote(wearMinutes: number): string {
   return `неполные данные (носили ${tenths.format(wearMinutes / 60)} ч)`;
+}
+
+// Goals (SPEC F8): steps a day and hours of sleep, as the targets and the met values are shown.
+export const GOAL_TITLES: Record<GoalKind, string> = { steps: "Цель по шагам", sleep: "Цель по сну" };
+
+// «8 000 шагов», «7,5 ч».
+export function formatGoalAmount(kind: GoalKind, amount: number): string {
+  return kind === "steps" ? `${integer.format(amount)} шагов` : `${tenths.format(amount)} ч`;
+}
+
+// «10 151 из 8 000 шагов», «8,1 из 7,5 ч».
+export function formatGoalMet(kind: GoalKind, value: number, target: number): string {
+  const shown = kind === "steps" ? integer.format(value) : tenths.format(value);
+  return `${shown} из ${formatGoalAmount(kind, target)}`;
+}
+
+export function formatWeekGoal(days: number, of: number): string {
+  return `цель выполнена ${days} из ${of} дней`;
 }

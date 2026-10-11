@@ -5,7 +5,7 @@ import GoalProgress from "./GoalProgress";
 // Progress of a day's goal on the dashboard (SPEC F8): value as a percent of the target in effect
 // that day — a bar and words; the percent comes from the API (rounded down, may pass 100).
 
-test.fails("shows percent of target", () => {
+test("shows percent of target", () => {
   const { rerender } = render(
     <GoalProgress kind="steps" progress={{ target: 8000, percent: 75, achieved: false }} />,
   );
