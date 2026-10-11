@@ -9,6 +9,8 @@ from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from app.clock import Clock
 from app.services.localtime import TzHistory
@@ -239,3 +241,134 @@ async def test_plan_send_time_returns_planned_time() -> None:
 
     assert plan_send_time(*args) == msk(12, 8, 0)
     assert plan_send_time(*args) == plan_send(*args).at
+
+
+# Regression tests after step 9.1 (a bug of _quiet_end in the nights the clocks change, found by
+# the user): the plan is never before the window or the cap, never before now, and never inside
+# the quiet hours, when the clocks go back and when they go forward.
+
+NEW_YORK = TzHistory([Zone("America/New_York", datetime(2026, 1, 1, tzinfo=UTC))])
+
+
+def utc(month: int, day: int, hour: int, minute: int = 0) -> datetime:
+    return datetime(2026, month, day, hour, minute, tzinfo=UTC)
+
+
+@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
+async def test_quiet_end_in_repeated_hour_after_clocks_go_back() -> None:
+    # New York, Nov 1 2026: 02:00 EDT becomes 01:00 EST at 06:00 UTC, 01:00–02:00 happens twice.
+    # The window gives 06:10 UTC = 01:10 EST (the second pass), in the quiet hours 22:00–01:30:
+    # they end at 01:30 EST = 06:30 UTC, not at 01:30 EDT = 05:30 UTC of the first pass.
+    quiet = QuietHours(enabled=True, start=time(22), end=time(1, 30))
+    added = utc(11, 1, 5, 55)
+
+    result = await plan([added], now=added, history=NEW_YORK, quiet=quiet)
+
+    assert result == SendPlan(utc(11, 1, 6, 30), "quiet_hours")
+
+
+async def test_quiet_end_in_first_pass_of_repeated_hour() -> None:
+    # The same night, 01:10 EDT (the first pass): the quiet hours end at 01:30 EDT = 05:30 UTC.
+    quiet = QuietHours(enabled=True, start=time(22), end=time(1, 30))
+    added = utc(11, 1, 4, 55)
+
+    result = await plan([added], now=added, history=NEW_YORK, quiet=quiet)
+
+    assert result == SendPlan(utc(11, 1, 5, 30), "quiet_hours")
+
+
+@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
+async def test_quiet_end_in_skipped_hour_after_clocks_go_forward() -> None:
+    # New York, Mar 8 2026: 02:00 EST becomes 03:00 EDT at 07:00 UTC, 02:30 never happens.
+    # The window gives 06:25 UTC = 01:25 EST, in the quiet hours 22:00–02:30: they end when the
+    # clock jumps past 02:30, at 03:00 EDT = 07:00 UTC.
+    quiet = QuietHours(enabled=True, start=time(22), end=time(2, 30))
+    added = utc(3, 8, 6, 10)
+
+    result = await plan([added], now=added, history=NEW_YORK, quiet=quiet)
+
+    assert result == SendPlan(utc(3, 8, 7, 0), "quiet_hours")
+
+
+# Zones whose clocks change in 2026: an hour back and forward (New York, London), half an hour
+# (Lord Howe), at midnight (Santiago).
+DST_ZONES = ["America/New_York", "Europe/London", "Australia/Lord_Howe", "America/Santiago"]
+
+
+def clock_changes(tz: str) -> list[datetime]:
+    """The instants of 2026 when the UTC offset of `tz` changes (to the minute)."""
+    zone = ZoneInfo(tz)
+    found, moment = [], datetime(2026, 1, 1, tzinfo=UTC)
+    while moment.year == 2026:
+        step = moment + timedelta(hours=1)
+        if moment.astimezone(zone).utcoffset() != step.astimezone(zone).utcoffset():
+            change = moment
+            while change.astimezone(zone).utcoffset() == moment.astimezone(zone).utcoffset():
+                change += timedelta(minutes=1)
+            found.append(change)
+        moment = step
+    return found
+
+
+CHANGES = [(tz, change) for tz in DST_ZONES for change in clock_changes(tz)]
+QUARTERS = st.integers(min_value=0, max_value=24 * 4 - 1).map(lambda q: time(q // 4, q % 4 * 15))
+
+
+def wall_near(change: datetime, tz: str, quarters: int) -> time:
+    """The local wall time just before the clock change, moved by `quarters` of an hour."""
+    before = (change - timedelta(minutes=1)).astimezone(ZoneInfo(tz))
+    moved = datetime.combine(date(2026, 1, 1), time(before.hour)) + timedelta(minutes=15 * quarters)
+    return moved.time()
+
+
+def in_quiet(moment: datetime, history: TzHistory, quiet: QuietHours) -> bool:
+    clock = moment.astimezone(history.zone_at(moment)).time()
+    if not quiet.enabled or quiet.start == quiet.end:
+        return False
+    if quiet.start < quiet.end:
+        return quiet.start <= clock < quiet.end
+    return clock >= quiet.start or clock < quiet.end
+
+
+@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
+@settings(max_examples=1000, deadline=None)
+@given(
+    case=st.sampled_from(CHANGES),
+    first_min=st.integers(min_value=-4 * 60, max_value=4 * 60),
+    gaps=st.lists(st.integers(min_value=0, max_value=20), max_size=4),
+    late_min=st.integers(min_value=0, max_value=90),
+    start=QUARTERS,
+    end_quarters=st.none() | st.integers(min_value=-4, max_value=8),
+    random_end=QUARTERS,
+    last_days=st.none() | st.integers(min_value=-2, max_value=1),
+)
+def test_plan_never_before_window_or_now_and_never_quiet(
+    case: tuple[str, datetime],
+    first_min: int,
+    gaps: list[int],
+    late_min: int,
+    start: time,
+    end_quarters: int | None,
+    random_end: time,
+    last_days: int | None,
+) -> None:
+    # Pending entries within 4 hours of a clock change; the end of the quiet hours either random
+    # or near the local time of the change, where the repeated or skipped wall times are.
+    tz, change = case
+    history = TzHistory([Zone(tz, datetime(2025, 1, 1, tzinfo=UTC))])
+    end = random_end if end_quarters is None else wall_near(change, tz, end_quarters)
+    quiet = QuietHours(enabled=True, start=start, end=end)
+    pending = [change + timedelta(minutes=first_min)]
+    for gap in gaps:
+        pending.append(pending[-1] + timedelta(minutes=gap))
+    now = pending[-1] + timedelta(minutes=late_min)
+    last = None if last_days is None else history.local_date(now) + timedelta(days=last_days)
+
+    result = plan_send(pending, last, history, quiet, now)
+
+    by_window = min(max(pending) + timedelta(minutes=15), min(pending) + timedelta(minutes=60))
+    assert result.at >= by_window
+    assert result.at >= now
+    assert not in_quiet(result.at, history, quiet)
+    if last is not None:
+        assert history.local_date(result.at) > last
