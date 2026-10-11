@@ -103,7 +103,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test.fails("no_data day shows «нет данных», not 0", async () => {
+test("no_data day shows «нет данных», not 0", async () => {
   serveDay({ day: noData("2026-10-07"), previous: noData("2026-10-06"), delta: NO_DELTA });
   renderDashboard("/?date=2026-10-07");
 
@@ -115,7 +115,7 @@ test.fails("no_data day shows «нет данных», not 0", async () => {
   }
 });
 
-test.fails("partial day shows «неполные данные (носили N ч)»", async () => {
+test("partial day shows «неполные данные (носили N ч)»", async () => {
   serveDay({
     day: complete("2026-10-07", { status: "partial", wear_minutes: 300, steps: 1500 }),
     previous: noData("2026-10-06"),
@@ -128,7 +128,7 @@ test.fails("partial day shows «неполные данные (носили N ч
   expect(within(await card("Шаги")).getByText("1 500")).toBeInTheDocument();
 });
 
-test.fails("missing comparison shows «нет данных для сравнения»", async () => {
+test("missing comparison shows «нет данных для сравнения»", async () => {
   serveDay({
     day: complete("2026-10-07", { steps: 8000 }),
     previous: complete("2026-10-06", { steps: 6000, night_valid: false }),
@@ -143,7 +143,7 @@ test.fails("missing comparison shows «нет данных для сравнен
   }
 });
 
-test.fails("week cards show base counts («сон: 6 из 7 ночей»)", async () => {
+test("week cards show base counts («сон: 6 из 7 ночей»)", async () => {
   const week: WeekSummary = {
     week: "2026-W41",
     start: W41[0],
@@ -193,7 +193,7 @@ test.fails("week cards show base counts («сон: 6 из 7 ночей»)", asyn
   expect(within(resting).getByText("пульс в покое: 0 из 7 дней")).toBeInTheDocument();
 });
 
-test.fails("refetches on summary.updated", async () => {
+test("refetches on summary.updated", async () => {
   let steps = 1000;
   server.use(
     http.get("/api/summary/day", () =>
@@ -215,7 +215,7 @@ test.fails("refetches on summary.updated", async () => {
   await waitFor(() => expect(within(screen.getByRole("region", { name: "Шаги" })).getByText("5 000")).toBeInTheDocument());
 });
 
-test.fails("opens today from /api/auth/me by default", async () => {
+test("opens today from /api/auth/me by default", async () => {
   // `today` is the user's local date by the server Clock (dev offset included), not the browser's.
   server.use(
     http.get("/api/auth/me", () =>

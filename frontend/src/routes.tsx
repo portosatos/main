@@ -4,6 +4,7 @@ import { Navigate, type RouteObject } from "react-router";
 import AppLayout from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { sections } from "@/lib/sections";
+import Dashboard from "@/pages/Dashboard";
 import Devices from "@/pages/Devices";
 import Login from "@/pages/Login";
 import Placeholder from "@/pages/Placeholder";
@@ -12,6 +13,7 @@ import Upload from "@/pages/Upload";
 
 // Sections whose page is ready; the rest show a placeholder.
 const pages: Partial<Record<string, ReactNode>> = {
+  "/": <Dashboard />,
   "/upload": <Upload />,
   "/devices": <Devices />,
 };

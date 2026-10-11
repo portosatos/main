@@ -7,17 +7,20 @@ export type User = {
   id: string;
   email: string;
   notify_email: string | null;
+  // The user's local date now by the server's Clock and zone history (YYYY-MM-DD).
+  today: string;
 };
 
 export type Credentials = { email: string; password: string };
 
 export const meQueryKey = ["auth", "me"] as const;
 
-export function useMe() {
+export function useMe(enabled = true) {
   return useQuery({
     queryKey: meQueryKey,
     queryFn: () => api.get<User>("/api/auth/me"),
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 }
 

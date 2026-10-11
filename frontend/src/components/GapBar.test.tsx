@@ -16,7 +16,7 @@ function renderBar(props: Omit<GapBarProps, "patternId">) {
   return container;
 }
 
-test.fails("null value rendered as hatched gap", () => {
+test("null value rendered as hatched gap", () => {
   const gap = renderBar({
     x: 10,
     y: 200,

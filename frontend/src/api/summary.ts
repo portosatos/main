@@ -1,4 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
+
+import { summaryKeys } from "@/lib/queryKeys";
+
+import { api } from "./client";
+
 // /api/summary/* (SPEC F7, §6.3, docs/API.md): a day, an ISO week and a range of local dates.
+// Their keys are summaryKeys, so useEvents refetches them on `summary.updated`.
 
 export type DayStatus = "no_data" | "partial" | "complete";
 
@@ -37,3 +44,27 @@ export type WeekTotals = {
 };
 
 export type WeekSummary = WeekTotals & { days: Day[]; previous: WeekTotals; delta: Deltas };
+
+export function useDaySummary(date: string | undefined) {
+  return useQuery({
+    queryKey: summaryKeys.day(date ?? ""),
+    queryFn: () => api.get<DaySummary>(`/api/summary/day?date=${date}`),
+    enabled: date !== undefined,
+  });
+}
+
+export function useWeekSummary(week: string | undefined) {
+  return useQuery({
+    queryKey: summaryKeys.week(week ?? ""),
+    queryFn: () => api.get<WeekSummary>(`/api/summary/week?week=${week}`),
+    enabled: week !== undefined,
+  });
+}
+
+export function useRangeSummary(from: string | undefined, to: string | undefined) {
+  return useQuery({
+    queryKey: summaryKeys.range(from ?? "", to ?? ""),
+    queryFn: () => api.get<Day[]>(`/api/summary/range?from=${from}&to=${to}`),
+    enabled: from !== undefined && to !== undefined,
+  });
+}
