@@ -69,7 +69,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test.fails("maps each event type to invalidated query keys", () => {
+test("maps each event type to invalidated query keys", () => {
   const queryClient = setup();
   const source = FakeEventSource.last;
   expect(source.url).toMatch(/\/api\/events$/);
@@ -112,7 +112,7 @@ test.fails("maps each event type to invalidated query keys", () => {
   expect(invalidated(queryClient)).toEqual(["devices", "jobs"]);
 });
 
-test.fails("refetches everything after reconnect", () => {
+test("refetches everything after reconnect", () => {
   vi.useFakeTimers();
   const queryClient = setup();
   const first = FakeEventSource.last;

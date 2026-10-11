@@ -3,11 +3,14 @@ import { NavLink, Outlet, useNavigate } from "react-router";
 import { useLogout, useMe } from "@/api/auth";
 import DevPanel from "@/components/DevPanel";
 import { Button } from "@/components/ui/button";
+import { useEvents } from "@/hooks/useEvents";
 import { sections } from "@/lib/sections";
 
-// The shell of the logged-in app: header with the menu, the user and logout.
+// The shell of the logged-in app: header with the menu, the user and logout. It holds the tab's
+// event stream, so every page stays fresh (SPEC F12).
 export default function AppLayout() {
   const me = useMe();
+  useEvents();
   const navigate = useNavigate();
   const logout = useLogout(() => navigate("/login", { replace: true }));
 
