@@ -416,3 +416,33 @@ async def test_hanging_smtp_cut_off_by_timeout(clean: None, db_engine: AsyncEngi
     [planned] = await digests(db_engine, user_id)
     assert planned["sent_at"] is None
     assert "Timeout" in planned["error"]
+
+
+@pytest.mark.xfail(strict=True, reason="fix of step 9.2: stale planned digest")
+async def test_cleared_address_drops_planned_digest(
+    clean: None, settings: Settings, db_engine: AsyncEngine
+) -> None:
+    # Added after the code (found on step 10.1, the settings page clears the address): a digest
+    # planned while there was an address must not stay "planned" once it is gone — no letter
+    # will go. The entries keep waiting and are planned again when an address is set.
+    async with api_user(settings, "digest-cleared", at=T) as (client, _clock, user_id):
+        await open_rec(db_engine, user_id, "R1", T)
+        mailer = FakeMailer()
+        await tick(db_engine, T + timedelta(minutes=1), mailer)
+        assert [i["status"] for i in (await digest_list(client))["items"]] == ["planned"]
+
+        cleared = await client.patch("/api/settings", json={"notify_email": ""})
+        assert cleared.status_code == 200, cleared.text
+        await tick(db_engine, T + timedelta(minutes=2), mailer)
+        assert await digest_list(client) == {
+            "notify_email": None,
+            "warning": "no_notify_email",
+            "pending": 1,
+            "items": [],
+        }
+
+        restored = await client.patch("/api/settings", json={"notify_email": "back@example.com"})
+        assert restored.status_code == 200, restored.text
+        await tick(db_engine, T + timedelta(minutes=3), mailer)
+        assert [i["status"] for i in (await digest_list(client))["items"]] == ["planned"]
+        assert mailer.sent == []
