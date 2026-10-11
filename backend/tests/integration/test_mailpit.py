@@ -56,7 +56,6 @@ async def letters_to(mailpit: httpx.AsyncClient, address: str) -> list[dict[str,
     return response.json()["messages"]
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_digest_arrives_in_mailpit_with_subject(
     clean: None, db_engine: AsyncEngine, mailpit: httpx.AsyncClient
 ) -> None:

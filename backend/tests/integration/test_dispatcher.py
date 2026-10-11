@@ -155,7 +155,6 @@ async def digest_list(client: httpx.AsyncClient) -> dict[str, Any]:
     return response.json()
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_one_email_with_all_pending(clean: None, db_engine: AsyncEngine) -> None:
     user_id, email = await committed_user(db_engine, "digest-all")
     recs = [
@@ -201,7 +200,6 @@ async def test_one_email_with_all_pending(clean: None, db_engine: AsyncEngine) -
     }
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_repeated_tick_no_resend(clean: None, db_engine: AsyncEngine) -> None:
     user_id, _email = await committed_user(db_engine, "digest-once")
     await open_rec(db_engine, user_id, "R1", T)
@@ -218,7 +216,6 @@ async def test_repeated_tick_no_resend(clean: None, db_engine: AsyncEngine) -> N
     assert sent["sent_at"] == due
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_resolved_before_send_skipped_and_excluded(
     clean: None, db_engine: AsyncEngine
 ) -> None:
@@ -242,7 +239,6 @@ async def test_resolved_before_send_skipped_and_excluded(
     assert (rows[r2]["status"], rows[r2]["digest_id"]) == ("sent", sent["id"])
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_no_open_left_no_email_limit_not_consumed(
     clean: None, db_engine: AsyncEngine
 ) -> None:
@@ -361,7 +357,6 @@ async def test_digests_api_shows_planned_at_and_reason(
 # off by the timeout, so it does not hold the transaction and the lock.
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_smtp_failure_rolls_back_send_and_keeps_error(
     clean: None, db_engine: AsyncEngine
 ) -> None:
@@ -394,7 +389,6 @@ async def test_smtp_failure_rolls_back_send_and_keeps_error(
     assert (await outbox_rows(db_engine, user_id))[rec]["status"] == "sent"
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_hanging_smtp_cut_off_by_timeout(clean: None, db_engine: AsyncEngine) -> None:
     # A server that accepts the connection and never says a word.
     connections: list[asyncio.StreamWriter] = []

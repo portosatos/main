@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Run all unit and integration tests: backend (pytest), the generator and the scripts/ utilities.
-# Starts the compose Postgres (host port 5433) for integration tests; the test database is
+# Starts the compose Postgres (host port 5433) and Mailpit (SMTP 1025, API 8025) for integration
+# tests (the mailpit marker: a real digest in Mailpit); the test database is
 # TEST_DATABASE_URL from the environment (default: health_tracker_test on localhost:5433).
 # Extra arguments go to the backend pytest run, e.g. scripts/test.sh -m unit
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-docker compose up -d --wait postgres || { echo "FAIL: postgres did not start"; exit 1; }
+docker compose up -d --wait postgres mailpit || { echo "FAIL: postgres or mailpit did not start"; exit 1; }
 
 echo "== backend tests"
 (cd backend && uv run pytest "$@")

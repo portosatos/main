@@ -7,6 +7,9 @@ parallel when several workers run.
 
 At start and then every RULES_TICK_S seconds (an hour) the worker evaluates the rules of the
 users with recent data: the anchor dates move with the local date even without uploads (SPEC F9).
+
+Every DIGEST_TICK_S seconds (30) the digest dispatcher plans the users' digests and sends the due
+ones (SPEC F10, services/notify/dispatcher.py).
 """
 
 import asyncio
@@ -28,8 +31,8 @@ from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
 from app.services.ingest.classify import BATCH_SIZE
 from app.services.ingest.jobs import PROGRESS_INTERVAL_S
-from app.services.notify.dispatcher import DEFAULT_CONFIG, DigestConfig
-from app.services.notify.mailer import Mailer
+from app.services.notify.dispatcher import DEFAULT_CONFIG, DigestConfig, dispatch
+from app.services.notify.mailer import Mailer, SmtpMailer
 from app.services.rules.engine import evaluate_user, users_with_recent_data
 from app.services.summaries import FLUSH_INTERVAL_S
 from app.worker import queue
@@ -149,8 +152,14 @@ class Worker:
         log.info("rules_tick", now=now.isoformat(), evaluated=evaluated, busy=busy, changed=changed)
 
     async def digest_tick(self) -> None:
-        """Plan the digests and send the due ones (services/notify/dispatcher.py)."""
-        raise NotImplementedError("step 9.2")
+        """Plan the digests and send the due ones (services/notify/dispatcher.py); a worker
+        without a mailer sends nothing."""
+        if self.mailer is None:
+            return
+        now = await self.clock.now()
+        sent = await dispatch(self._sessionmaker, now, self.mailer, self.digest)
+        if sent:
+            log.info("digest_tick", now=now.isoformat(), sent=sent)
 
     async def claim(self) -> ClaimedJob | None:
         """The oldest queued job whose user is not busy with another job, or None."""
@@ -218,7 +227,7 @@ class Worker:
                 tick_s=self.tick_s,
                 rules_tick_s=self.rules_tick_s,
             )
-            next_tick = next_rules_tick = 0.0
+            next_tick = next_rules_tick = next_digest_tick = 0.0
             while not stop.is_set():
                 if time.monotonic() >= next_tick:
                     next_tick = time.monotonic() + self.tick_s
@@ -226,9 +235,12 @@ class Worker:
                 if time.monotonic() >= next_rules_tick:
                     next_rules_tick = time.monotonic() + self.rules_tick_s
                     await self._guarded(self.rules_tick())
+                if time.monotonic() >= next_digest_tick:
+                    next_digest_tick = time.monotonic() + self.digest_tick_s
+                    await self._guarded(self.digest_tick())
                 wake.clear()
                 await self._guarded(self.run_until_idle())
-                wait = min(next_tick, next_rules_tick) - time.monotonic()
+                wait = min(next_tick, next_rules_tick, next_digest_tick) - time.monotonic()
                 await _wait_any(wake, stop, seconds=max(wait, 0))
         finally:
             self.listening.clear()
@@ -311,6 +323,16 @@ async def run(settings: Settings, tick_s: float, rules_tick_s: float = RULES_TIC
             worker_id=f"{socket.gethostname()}-{os.getpid()}",
             tick_s=tick_s,
             rules_tick_s=rules_tick_s,
+            mailer=SmtpMailer(
+                settings.smtp_host, settings.smtp_port, timeout_s=settings.smtp_timeout_s
+            ),
+            digest=DigestConfig(
+                window=timedelta(minutes=settings.digest_window_minutes),
+                max_delay=timedelta(minutes=settings.digest_max_delay_minutes),
+                app_url=settings.app_url,
+                sender=settings.mail_from,
+            ),
+            digest_tick_s=settings.digest_tick_s,
         )
         log.info("worker_starting", app_env=settings.app_env)
         await worker.run(stop)

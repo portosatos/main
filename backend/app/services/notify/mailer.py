@@ -1,7 +1,10 @@
 """Sending e-mail (SPEC F10): SMTP to Mailpit through aiosmtplib; tests pass a fake `Mailer`."""
 
+import asyncio
 from email.message import EmailMessage
 from typing import Protocol
+
+import aiosmtplib
 
 # The whole send is cut off after this many seconds: a hanging server must not hold the
 # dispatcher's transaction and lock (ADR-050).
@@ -21,4 +24,13 @@ class SmtpMailer:
         self.timeout_s = timeout_s
 
     async def send(self, message: EmailMessage) -> None:
-        raise NotImplementedError("step 9.2")
+        """Send `message`; TimeoutError when the whole exchange takes over `timeout_s`."""
+        async with asyncio.timeout(self.timeout_s):
+            await aiosmtplib.send(
+                message,
+                hostname=self.host,
+                port=self.port,
+                timeout=self.timeout_s,
+                use_tls=False,
+                start_tls=False,
+            )

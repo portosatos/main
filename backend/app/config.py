@@ -29,3 +29,13 @@ class Settings(BaseSettings):
     worker_stale_after_s: float = 120.0
     # SSE keep-alive: a comment line this often, in seconds, so proxies keep the stream open.
     sse_ping_s: int = 15
+    # Digests (SPEC F10, ADR-050): SMTP of Mailpit, the link in the letter, the window and the cap
+    # of the planner, the dispatcher's tick.
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_timeout_s: float = 10.0
+    mail_from: str = "Трекер здоровья <noreply@health-tracker.local>"
+    app_url: str = "http://localhost:5173"
+    digest_window_minutes: int = 15
+    digest_max_delay_minutes: int = 60
+    digest_tick_s: float = 30.0

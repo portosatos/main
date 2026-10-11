@@ -13,6 +13,12 @@ x-backend: &backend
     DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-demo12345}
     DEMO_USER_TIMEZONE: ${DEMO_USER_TIMEZONE:-Europe/Moscow}
     INGEST_DIR: /data/ingest
+    # Digests (SPEC F10): SMTP of the mailpit service, the link in the letter, the planner.
+    SMTP_HOST: mailpit
+    SMTP_PORT: 1025
+    APP_URL: ${APP_URL:-http://localhost:5173}
+    DIGEST_WINDOW_MINUTES: ${DIGEST_WINDOW_MINUTES:-15}
+    DIGEST_MAX_DELAY_MINUTES: ${DIGEST_MAX_DELAY_MINUTES:-60}
   volumes:
     # Uploaded files: written by the api, read by the worker (SPEC F3).
     - ingest:/data/ingest
