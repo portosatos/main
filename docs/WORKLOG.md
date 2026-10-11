@@ -981,3 +981,30 @@
   `useEvents.test.ts::devices.changed invalidates the device list` (`[]` вместо `["devices"]`),
   `Dashboard.test.tsx::opens today from /api/auth/me by default` (нет карточек).
 - Итого красных на шаге: backend 4 xfailed, frontend 9 expected fail.
+
+## 2026-10-11T11:23:42+06:00 — Фичи готовы: устройства, «сегодня», `devices.changed`, дашборд
+- Коммиты: 8a9a17f feat(devices) — `GET/PATCH /api/devices` (`last_data_at` по `coverage_minute`, имя 1–100, чужое → 404,
+  событие `devices.changed`); 4b54418 feat(auth) — `today` в `register`/`login`/`me` по `Clock` и истории поясов;
+  7c5b7f2 feat(events) — `devices.changed` → перезапрос `["devices"]`; a6a3f65 feat(devices) — страница «Устройства»;
+  96a3dd6 feat(dashboard) — «День / Неделя» из адреса, `SummaryCard`, `DaysChart` (Recharts 3.10) с `GapBar`;
+  c0dbf19 docs — ADR-041, `docs/API.md`, CLAUDE.md. Все маркеры `step 6.1` и `test.fails` сняты.
+- Тест после кода: `lib/dates.test.ts` — `weekMonday`/`shiftWeek`/`addDays` на границах года, проверка параметров адреса.
+- Проблемы / как решили: токены `--chart-1…5` в теме были серыми — поставлена палитра shadcn по умолчанию; на 375 px
+  подпись «неполные» над крайним столбцом обрезалась — сокращена до «неполн.», под графиками легенда; деления оси Y
+  были дробными («3,5 тыс.») — заданы явно, кратные 1000 шагов / 1 ч; jsdom без `ResizeObserver` — заглушка в
+  `test/setup.ts`. Сборка предупреждает о чанке > 500 кБ (Recharts) — не ошибка, записано в ADR-041.
+- Живой стек (api, worker, frontend пересобраны; браузер): демо-пользователю загружен файл июня с пропуском
+  `2026-06-10T00:00/2026-06-11T18:00` (57,8 МБ, обработка 43 с) при открытой неделе 2026-W24 — карточки заполнились
+  по ходу обработки без перезагрузки; ср 10 — штриховка «нет данных», чт 11 — «неполные данные (носили 6 ч)» и
+  светлый столбец; «сон: 5 из 7 ночей». 375 px — `scrollWidth = 375`. Переименование в одной вкладке появилось во
+  второй за < 1,5 с (имя возвращено). «+1 д» на dev-панели → дашборд на «пн, 12 октября», «Сброс» → обратно.
+
+## 2026-10-11T11:23:42+06:00 — Шаг 6.1 завершён
+- Коммиты: ee1369b, 19f3853 (refactor, заглушки), 7919a53 и 78b11da (test, red), 222d759, 4c08368 (docs), 8a9a17f,
+  4b54418, 7c5b7f2, a6a3f65, 96a3dd6 (feat), c0dbf19 (docs) и этот (docs).
+- Тесты: красный backend `4 xfailed` + frontend `9 expected fail` → зелёный backend `176 passed`, generator 51, scripts 8,
+  frontend `31 passed`. `git grep "step 6.1: not implemented" -- ":!docs"` → пусто.
+- Done When: ruff check/format → exit 0; `scripts/test.ps1` и `scripts/test.sh` → exit 0; `npm --prefix frontend run
+  check` → exit 0; `scripts/smoke.ps1` и `smoke.sh` → exit 0.
+- Не проверено агентом: дашборд во время обработки 90-дневного файла (проверено на 42-дневном, 57,8 МБ) — ждёт ручной
+  проверки пользователя.
