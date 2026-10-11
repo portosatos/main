@@ -9,8 +9,6 @@ import { expect, test } from "./test";
 // The helpers of the scenarios themselves (beyond the plan): a broken helper should fail here with
 // a plain message, not somewhere inside a scenario.
 
-test.fail();
-
 test("newUser registers a fresh user and logs the page in", async ({ page }) => {
   const user = await newUser(page);
   expect(user.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);

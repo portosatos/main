@@ -7,7 +7,7 @@ export const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? "http://localhost:8026
 // Users of the scenarios live in this zone, and htgen writes their files in it (its default).
 export const TIMEZONE = "Europe/Moscow";
 
-export const REPO_ROOT = path.resolve(import.meta.dirname, "..");
+export const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 
 // Every mutating request to the API carries it, otherwise 403 (ADR-026).
 export const CSRF_HEADERS = { "X-Requested-With": "ht" };

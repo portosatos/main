@@ -1,4 +1,6 @@
-import type { APIRequestContext } from "@playwright/test";
+import { expect, type APIRequestContext } from "@playwright/test";
+
+import { CSRF_HEADERS } from "./env";
 
 export type ClockState = { offset_seconds: number; system_now: string; now: string };
 
@@ -9,6 +11,19 @@ export type Clock = {
 };
 
 export function clockOf(request: APIRequestContext): Clock {
-  void request;
-  throw new Error("step 12.1: not implemented");
+  return {
+    async get() {
+      const response = await request.get("/api/dev/clock");
+      expect(response.status(), "GET /api/dev/clock: is the stack in APP_ENV=dev?").toBe(200);
+      return (await response.json()) as ClockState;
+    },
+    async set(offsetSeconds) {
+      const response = await request.post("/api/dev/clock", {
+        data: { offset_seconds: offsetSeconds },
+        headers: CSRF_HEADERS,
+      });
+      expect(response.status(), await response.text()).toBe(200);
+      return (await response.json()) as ClockState;
+    },
+  };
 }
