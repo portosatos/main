@@ -1698,3 +1698,25 @@
   demo@example.com` — 133 строки `daily_summaries`. `scripts/smoke.sh` — 7 OK. Dev clock: `offset_seconds: 0`.
 - Документы: ADR-052, `docs/API.md` (раздел «Приём данных»), `docs/DATA_FORMAT.md` (раздел «Поток», опции `--stream`),
   `docs/RULES.md`, `CLAUDE.md` §6.
+
+## 2026-10-11T20:02:05+06:00 — Шаг 11.1 завершён
+- Итог: `POST /api/ingest/batch` (≤ 5000 записей, тот же конвейер, `source: stream`), дебаунс оценки правил 10 с по
+  Clock (склейка, `evaluate_rules`), воркер просыпается к `run_after`, тики heartbeat/правил/дайджестов — рядом с
+  очередью (снято ограничение ADR-050), `htgen --stream`, сквозная проверка изоляции по OpenAPI. ADR-052.
+- Коммиты: d802d8e test (red), 6d19678 и bc1fe47 docs, 305b0c7 feat(ingest), 2dabd81 feat(worker), 9a1b180
+  feat(generator), 934f2fc test (red, регрессионный после кода), 9282282 fix(worker), 768648e fix(generator),
+  478c3d1 docs.
+- Тесты до кода: красный прогон 19:36–19:38 — backend `313 passed, 7 xfailed`, generator `51 passed, 3 xfailed`;
+  зелёный 19:58–20:01 — ruff «All checks passed!», «193 files already formatted»; `scripts/test.sh` → backend
+  `321 passed`, generator `54 passed`, scripts `8 passed`. Сверх плана: `test_debounced_evaluation_runs_when_due_without_new_jobs`,
+  `test_stream_credentials_default_to_demo_env`, `test_stream_login_rejected_exit_1`; после кода —
+  `test_schedule_evaluation_after_many_batches_on_one_connection`. Зелёные с начала (существующая защита):
+  `test_all_id_routes_return_404_for_other_users_resources`, `test_all_dev_routes_404_in_prod`. Frontend не менялся,
+  `npm run check` не требуется.
+- Done When шага: `htgen --days 3 --stream --url http://localhost:8000 --batch-size 1000` → exit 0, 56 задач прогона
+  `done` (после исправления 9282282; первый прогон нашёл ошибку, см. запись 19:58:29).
+- Живая проверка сценария ручной: новый пользователь `live-111-1791727286@example.com` (пароль `live12345`, остаётся
+  в dev-БД), `htgen --days 2 --seed 5 --stream --url http://localhost:5173 --rate 2` при открытом SSE — 37 пачек,
+  37 `summary.updated`, 37 `ingest.done`, 2 `goal.achieved`. Dev clock не сдвигался: `offset_seconds: 0`.
+- Проверить вручную: `htgen --stream --rate 2` при открытом дашборде — цифры меняются по ходу потока; страница
+  «Загрузка» показывает задачи «поток»; неверный пароль — exit 1 с причиной.
