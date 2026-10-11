@@ -1,4 +1,5 @@
-"""Job handlers of the worker. `ingest_file`: an uploaded NDJSON file, batch by batch (SPEC F3).
+"""Job handlers of the worker. `ingest_file`: an uploaded NDJSON file, batch by batch (SPEC F3);
+`tz_changed`: the dates a move in the time zone history changed (SPEC F5, services/timezones.py).
 
 Every batch is one transaction: its records, the job counters and the checkpoint (byte offset
 and line number after the batch) are committed together. A resumed job starts right after the
@@ -39,6 +40,7 @@ from app.services.ingest.jobs import INGEST_FILE, JobStatus, job_counts, publish
 from app.services.ingest.parser import Line, parse_lines
 from app.services.rules.engine import evaluate_user
 from app.services.summaries import recompute_dates
+from app.services.timezones import TZ_CHANGED, apply_tz_change
 from app.worker.queue import QueuedJob
 
 
@@ -248,4 +250,21 @@ class Handler:
     failed: Callable[[AsyncSession, QueuedJob, datetime], Awaitable[None]]
 
 
-HANDLERS: dict[str, Handler] = {INGEST_FILE: Handler(ingest_file, ingest_file_failed)}
+async def tz_changed(ctx: JobContext) -> None:
+    """Recompute the dates the move changed and evaluate the rules, in one transaction: a
+    repeated run gives the same summaries and changes no recommendation again."""
+    assert ctx.job.user_id is not None
+    async with ctx.sessionmaker() as session:
+        await apply_tz_change(session, ctx.job.user_id, ctx.job.payload, await ctx.clock.now())
+        await session.commit()
+
+
+async def tz_changed_failed(session: AsyncSession, job: QueuedJob, now: datetime) -> None:
+    """Nothing to report: the error stays in jobs.last_error; the next move or `htadmin rebuild`
+    recomputes the dates."""
+
+
+HANDLERS: dict[str, Handler] = {
+    INGEST_FILE: Handler(ingest_file, ingest_file_failed),
+    TZ_CHANGED: Handler(tz_changed, tz_changed_failed),
+}

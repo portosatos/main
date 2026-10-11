@@ -146,7 +146,6 @@ async def test_invalid_quiet_hours_422(
         assert await get_settings(client) == before
 
 
-@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
 async def test_timezone_history_and_past_move(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -224,7 +223,45 @@ async def test_timezone_history_and_past_move(
         }
 
 
-@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
+async def test_move_before_history_keeps_earlier_zone(clean: None, settings: Settings) -> None:
+    # Added after the code (step 10.1): the first entry covers the time before it (ADR-033), so a
+    # move earlier than the whole history would silently move that time too. The zone it had is
+    # kept from the start of the history; the later entries stay (ADR-051).
+    async with api_user(settings, "settings-early", at=T) as (client, _clock, _user_id):
+        response = await client.post(
+            "/api/settings/timezones",
+            json={"tz": "America/New_York", "valid_from": "2026-10-05T12:00:00Z"},
+        )
+        assert response.status_code == 201, response.text
+        assert response.json() == {
+            "current": "Europe/Moscow",
+            "items": [
+                {
+                    "tz": "Europe/Moscow",
+                    "valid_from": "2026-10-10T06:00:00Z",
+                    "valid_to": None,
+                    "current": True,
+                },
+                {
+                    "tz": "America/New_York",
+                    "valid_from": "2026-10-05T12:00:00Z",
+                    "valid_to": "2026-10-10T06:00:00Z",
+                    "current": False,
+                },
+                {
+                    "tz": "Europe/Moscow",
+                    "valid_from": None,
+                    "valid_to": "2026-10-05T12:00:00Z",
+                    "current": False,
+                },
+            ],
+        }
+        too_early = await client.post(
+            "/api/settings/timezones", json={"tz": "Asia/Tokyo", "valid_from": "1969-12-31T00:00Z"}
+        )
+        assert too_early.status_code == 422, too_early.text
+
+
 @pytest.mark.parametrize("tz", ["Mars/Olympus", "europe/moscow", "", "UTC+3", None])
 async def test_invalid_iana_tz_422(
     clean: None, settings: Settings, db_engine: AsyncEngine, tz: str | None
@@ -238,7 +275,6 @@ async def test_invalid_iana_tz_422(
         assert await tz_jobs(db_engine, user_id) == []
 
 
-@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
 async def test_future_valid_from_rejected(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -268,7 +304,6 @@ async def test_future_valid_from_rejected(
         assert response.json()["current"] == "Asia/Tokyo"
 
 
-@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
 async def test_settings_changed_event_reaches_second_client(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:

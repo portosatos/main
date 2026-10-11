@@ -1,10 +1,12 @@
-"""Schemas of /api/settings (SPEC F10, F11, §6.3; ADR-051)."""
+"""Schemas of /api/settings and /api/settings/timezones (SPEC F10, F11, §6.3; ADR-051)."""
 
 import re
-from datetime import time
+from datetime import datetime, time
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator
+
+from app.auth.accounts import is_valid_timezone
 
 # Quiet hours are local times to the minute: "07:15", never "7:15" or "07:15:30".
 HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
@@ -63,3 +65,37 @@ class SettingsPatch(BaseModel):
             for name in type(self).model_fields
             if name in self.model_fields_set
         }
+
+
+class TimezoneIn(BaseModel):
+    """A move: `tz` from `valid_from` on. Without an offset `valid_from` is the local time of
+    `tz`; without `valid_from` the move is now (Clock). Never later than now (ADR-017)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tz: str = Field(examples=["America/New_York"])
+    valid_from: datetime | None = Field(default=None, examples=["2026-10-05T08:00"])
+
+    @field_validator("tz")
+    @classmethod
+    def known_timezone(cls, value: str) -> str:
+        if not is_valid_timezone(value):
+            raise ValueError("unknown IANA time zone")
+        return value
+
+
+class TimezoneOut(BaseModel):
+    tz: str
+    # null: in effect since always, kept by a move earlier than the history (ADR-051).
+    valid_from: datetime | None
+    # The next entry's valid_from; null for the last one.
+    valid_to: datetime | None
+    # In effect now.
+    current: bool
+
+
+class TimezonesOut(BaseModel):
+    # The zone in effect now.
+    current: str
+    # Newest first.
+    items: list[TimezoneOut]

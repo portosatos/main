@@ -40,9 +40,6 @@ BEFORE = datetime(2026, 10, 9, 6, 0, tzinfo=UTC)
 AFTER = datetime(2026, 10, 9, 7, 0, tzinfo=UTC)
 
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
-
-
 @pytest.fixture
 async def clean(db_engine: AsyncEngine) -> AsyncIterator[None]:
     await wipe(db_engine)
