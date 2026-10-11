@@ -14,8 +14,6 @@ from app.clock import Clock
 from app.services.localtime import TzHistory
 from app.services.notify.planner import QuietHours, SendPlan, plan_send, plan_send_time
 
-NOT_IMPLEMENTED = pytest.mark.xfail(strict=True, reason="step 9.1: not implemented")
-
 MSK = ZoneInfo("Europe/Moscow")
 NY = ZoneInfo("America/New_York")  # UTC−4 in October 2026
 TOKYO = ZoneInfo("Asia/Tokyo")  # UTC+9
@@ -56,14 +54,12 @@ async def plan(
     return plan_send(pending, last, history, quiet, clock_now)
 
 
-@NOT_IMPLEMENTED
 async def test_three_recs_within_window_send_15_min_after_last() -> None:
     result = await plan([msk(11, 12, 5), msk(11, 12, 0), msk(11, 12, 10)])
 
     assert result == SendPlan(msk(11, 12, 25), "window")
 
 
-@NOT_IMPLEMENTED
 async def test_recs_every_10_min_capped_60_min_after_first() -> None:
     every_10_min = [msk(11, 12, m) for m in range(0, 60, 10)]  # 12:00 … 12:50
 
@@ -74,7 +70,6 @@ async def test_recs_every_10_min_capped_60_min_after_first() -> None:
     assert await plan(every_10_min) == SendPlan(msk(11, 13, 0), "max_delay")
 
 
-@NOT_IMPLEMENTED
 async def test_after_todays_digest_new_rec_goes_tomorrow() -> None:
     rec = [msk(11, 15, 0)]
 
@@ -87,14 +82,12 @@ async def test_after_todays_digest_new_rec_goes_tomorrow() -> None:
     )
 
 
-@NOT_IMPLEMENTED
 async def test_tomorrow_shift_hits_quiet_hours_sends_at_quiet_end() -> None:
     result = await plan([msk(11, 15, 0)], last=date(2026, 10, 11), quiet=QUIET_22_08)
 
     assert result == SendPlan(msk(12, 8, 0), "quiet_hours")
 
 
-@NOT_IMPLEMENTED
 async def test_rec_in_quiet_hours_sends_at_quiet_end() -> None:
     # Before midnight: the end of the quiet hours is tomorrow.
     assert await plan([msk(11, 23, 30)]) == SendPlan(msk(12, 8, 0), "quiet_hours")
@@ -104,7 +97,6 @@ async def test_rec_in_quiet_hours_sends_at_quiet_end() -> None:
     assert await plan([msk(11, 21, 50)]) == SendPlan(msk(12, 8, 0), "quiet_hours")
 
 
-@NOT_IMPLEMENTED
 async def test_quiet_hours_across_midnight() -> None:
     quiet = QuietHours(enabled=True, start=time(23), end=time(7))
 
@@ -133,7 +125,6 @@ TOKYO_THEN_NY = TzHistory(
 TOKYO_DIGEST_DATE = date(2026, 10, 12)  # sent at 08:00 on 12.10 in Tokyo
 
 
-@NOT_IMPLEMENTED
 async def test_daily_limit_rechecked_after_quiet_shift() -> None:
     # 23:30 on 11.10 in New York is quiet; their end, 08:00 on 12.10, falls on the date that
     # already has the Tokyo digest, so the digest waits for the next date and its quiet hours.
@@ -144,7 +135,6 @@ async def test_daily_limit_rechecked_after_quiet_shift() -> None:
     assert result == SendPlan(at(NY, 13, 8, 0), "quiet_hours")
 
 
-@NOT_IMPLEMENTED
 async def test_daily_limit_uses_local_date_after_tz_change() -> None:
     # The digest of 11.10 went out in New York; at 21:55 UTC the user moved to Moscow (00:55 12.10).
     ny_then_moscow = TzHistory(
@@ -172,12 +162,10 @@ async def test_daily_limit_uses_local_date_after_tz_change() -> None:
     assert still_11th == SendPlan(msk(12, 0, 0), "daily_limit")
 
 
-@NOT_IMPLEMENTED
 async def test_quiet_disabled_ignored() -> None:
     assert await plan([msk(11, 23, 30)], quiet=QUIET_OFF) == SendPlan(msk(11, 23, 45), "window")
 
 
-@NOT_IMPLEMENTED
 async def test_quiet_start_equals_end_treated_as_disabled() -> None:
     # Assumption (ADR-017): start == end means the quiet hours are off, not quiet all day.
     same = QuietHours(enabled=True, start=time(22), end=time(22))
@@ -186,7 +174,6 @@ async def test_quiet_start_equals_end_treated_as_disabled() -> None:
     assert await plan([msk(12, 3, 0)], quiet=same) == SendPlan(msk(12, 3, 15), "window")
 
 
-@NOT_IMPLEMENTED
 @pytest.mark.parametrize(
     ("pending", "last", "quiet", "expected"),
     [
@@ -218,7 +205,6 @@ async def test_plan_reason_reported(
 # Beyond the plan: decisions of step 9.1 (ADR-049).
 
 
-@NOT_IMPLEMENTED
 async def test_local_date_going_back_after_move_west_still_limited() -> None:
     # ADR-049: a digest goes out only on a local date after the last digest's one. In New York
     # it is 11.10 again after the Tokyo digest of 12.10; 12.10 in New York is skipped as well,
@@ -230,7 +216,6 @@ async def test_local_date_going_back_after_move_west_still_limited() -> None:
     assert result == SendPlan(at(NY, 13, 0, 0), "daily_limit")
 
 
-@NOT_IMPLEMENTED
 async def test_overdue_plan_moves_to_now_and_respects_quiet_hours() -> None:
     # ADR-049: a time already in the past becomes «now» (the worker was down), and the rules
     # apply to it: an overdue digest does not go out in the quiet hours.
@@ -247,7 +232,6 @@ async def test_overdue_plan_moves_to_now_and_respects_quiet_hours() -> None:
     )
 
 
-@NOT_IMPLEMENTED
 async def test_plan_send_time_returns_planned_time() -> None:
     # The signature of SPEC F10 returns only the time of plan_send.
     now = await Clock(app_env="test", system_now=lambda: msk(11, 15, 0)).now()
