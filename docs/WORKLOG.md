@@ -1090,3 +1090,9 @@
   загрузка — 0 new, новых уведомлений нет; `steps = 50` → 422. Цели возвращены на 8000/8.
 - Сдвиг dev clock после проверки: `GET /api/dev/clock` → `offset_seconds: 0`.
 - Шаг закрыт, в docs/plan.md отмечен [x]. Следующий шаг по плану: 7.2 (цели в UI, колокольчик, тосты).
+
+## 2026-10-11T13:36:45+06:00 — Шаг 7.2 начат: цели в UI, колокольчик, тосты
+- План: тесты до кода (5 Vitest-тестов из плана, `test.fails`) → страница «Цели» (форма, react-hook-form + zod, прогресс
+  недели) → `GoalProgress` на дашборде → тосты (sonner) по `goal.achieved` с `show_toast` → колокольчик (`unread` из
+  `GET /api/notifications`) и строки `goal.achieved`, `notification.created`, `notifications.read`, `goal.changed` в
+  `handlers` `useEvents.ts`. Backend не меняется (API готов на шаге 7.1, ADR-043).
