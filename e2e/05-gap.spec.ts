@@ -7,8 +7,6 @@ import { expect, test } from "./test";
 // SPEC §8 stage 12, scenario 5 (§9 #9, F6): a day that no device covered is «нет данных» —
 // not 0 steps and not 0 sleep — and a hatched column on the charts.
 
-test.fail();
-
 const CARDS = ["Сон", "Шаги", "Активные минуты", "Пульс в покое", "Пиковый пульс"];
 
 test("день с пропуском показан как «нет данных»", async ({ page }) => {

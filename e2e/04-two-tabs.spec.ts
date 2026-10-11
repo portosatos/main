@@ -6,8 +6,6 @@ import { expect, test } from "./test";
 // SPEC §8 stage 12, scenario 4 (§9 #16, #19, F12): two tabs of one user (two pages of one context).
 // An upload, a rule turned off and «Полезно» in the first tab show up in the second within 2 s.
 
-test.fail();
-
 // SPEC F12: a change in one tab appears in the other not later than in 2 seconds.
 const TWO_SECONDS = 2_000;
 
