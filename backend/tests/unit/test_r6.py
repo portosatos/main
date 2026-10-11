@@ -2,8 +2,6 @@
 
 from datetime import date, timedelta
 
-import pytest
-
 from app.services.rules import r6
 from app.services.rules.base import Day, Facts
 
@@ -29,7 +27,6 @@ def five(*active: int) -> list[Day]:
     return [day(4 - i, a) for i, a in enumerate(active)]
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_fires_5_complete_days_under_15_active() -> None:
     fired = r6.evaluate(facts(*five(0, 14, 3, 10, 14)), D)
 
@@ -50,7 +47,6 @@ def test_fires_5_complete_days_under_15_active() -> None:
     assert r6.evaluate(facts(*five(0, 14, 30, 10, 14)), D).kind == "hold"
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_closes_on_active_day() -> None:
     assert r6.evaluate(facts(*five(0, 0, 0, 0, 15)), D).kind == "close"
     # The days before the anchor do not matter for closing.
