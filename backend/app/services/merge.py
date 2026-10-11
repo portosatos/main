@@ -5,6 +5,8 @@ Every merged minute takes its value from exactly one device and says which one
 - Steps: the minute's source is the first device in priority order that covers the minute
   (coverage_minute); its value is that device's steps, or 0 if it has no steps there.
   A minute that no device covers has no data and is absent from the result.
+- Sleep: the same source as for steps; the minute is asleep if that device's sleep covers it
+  (sleep_minute), so the phone's sleep is used only where no watch covers the minute.
 - Pulse: the minute's source is the first device in priority order that has pulse in that minute,
   so phone points are used only where no watch has any.
 - Priority: watches before phones; among devices of one kind the earlier registered one, and the
@@ -13,6 +15,7 @@ Every merged minute takes its value from exactly one device and says which one
 
 import uuid
 from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -66,10 +69,16 @@ def merge_steps(
 def merge_sleep(
     order: Sequence[uuid.UUID],
     coverage: Mapping[uuid.UUID, Collection[datetime]],
-    sleep: Mapping[uuid.UUID, Collection[datetime]],
+    sleep: Mapping[uuid.UUID, AbstractSet[datetime]],
 ) -> dict[datetime, Merged[bool]]:
     """Sleep state of every covered minute: {minute_utc: Merged(asleep, source)}."""
-    raise NotImplementedError("step 4.3")
+    merged: dict[datetime, Merged[bool]] = {}
+    for device_id in order:
+        asleep = sleep.get(device_id, frozenset())
+        for minute in coverage.get(device_id, ()):
+            if minute not in merged:
+                merged[minute] = Merged(minute in asleep, device_id)
+    return merged
 
 
 def merge_hr[T](

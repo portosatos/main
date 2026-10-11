@@ -14,10 +14,6 @@ from app.services.localtime import TzHistory
 from app.services.merge import device_order, merge_sleep
 from app.services.sleep import NO_SLEEP, DaySleep, SleepSession, sleep_sessions, summarize_sleep
 
-pytestmark = pytest.mark.xfail(
-    strict=True, raises=NotImplementedError, reason="step 4.3: not implemented"
-)
-
 MSK = timezone(timedelta(hours=3))
 MINUTE = timedelta(minutes=1)
 D = date(2026, 10, 5)

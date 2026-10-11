@@ -9,10 +9,12 @@ Pure functions over sets of minute starts (UTC):
   (on a tie the later one) and gives `sleep_start` and `sleep_end`; a day without sessions has
   no sleep data (None), not 0;
 - `night_valid`: the main session exists and no data gap (minutes no device covers) longer than
-  30 minutes falls into [start − 60 min, end + 60 min).
+  30 minutes falls into [start − 60 min, end + 60 min); a gap at the edge counts only inside the
+  window (SPEC F6, ADR-035).
 """
 
-from collections.abc import Collection, Iterable
+from collections.abc import Iterable
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -45,17 +47,51 @@ NO_SLEEP = DaySleep(None, None, None, False)
 
 def sleep_sessions(asleep: Iterable[datetime]) -> list[SleepSession]:
     """Every session of the asleep minutes, whatever its length, in time order."""
-    raise NotImplementedError("step 4.3")
+    joined = (GAP_MAX_MINUTES + 1) * MINUTE  # the next asleep minute after a gap of 30 minutes
+    sessions: list[SleepSession] = []
+    start = last = None
+    count = 0
+    for minute in sorted(asleep):
+        if last is not None and minute - last <= joined:
+            count += 1
+        else:
+            if start is not None and last is not None:
+                sessions.append(SleepSession(start, last + MINUTE, count))
+            start, count = minute, 1
+        last = minute
+    if start is not None and last is not None:
+        sessions.append(SleepSession(start, last + MINUTE, count))
+    return sessions
 
 
-def night_valid(session: SleepSession, covered: Collection[datetime]) -> bool:
+def night_valid(session: SleepSession, covered: AbstractSet[datetime]) -> bool:
     """No run of uncovered minutes longer than 30 inside [start − 60 min, end + 60 min)."""
-    raise NotImplementedError("step 4.3")
+    minute, end = session.start - NIGHT_WINDOW, session.end + NIGHT_WINDOW
+    run = 0
+    while minute < end:
+        run = 0 if minute in covered else run + 1
+        if run > DATA_GAP_MAX_MINUTES:
+            return False
+        minute += MINUTE
+    return True
 
 
 def summarize_sleep(
-    day: date, history: TzHistory, asleep: Collection[datetime], covered: Collection[datetime]
+    day: date, history: TzHistory, asleep: Iterable[datetime], covered: AbstractSet[datetime]
 ) -> DaySleep:
     """Sleep of the local date `day` from the merged asleep minutes and the covered minutes
     (by any device) around it."""
-    raise NotImplementedError("step 4.3")
+    sessions = [
+        s
+        for s in sleep_sessions(asleep)
+        if s.minutes >= SESSION_MIN_MINUTES and history.local_date(s.end - MINUTE) == day
+    ]
+    if not sessions:
+        return NO_SLEEP
+    main = max(sessions, key=lambda s: (s.minutes, s.end))
+    return DaySleep(
+        sleep_minutes=sum(s.minutes for s in sessions),
+        sleep_start=main.start,
+        sleep_end=main.end,
+        night_valid=night_valid(main, covered),
+    )

@@ -9,30 +9,37 @@ merged across devices (services/merge.py), then:
 - `resting_hr` — the 10th percentile of the minute pulse over minutes without steps, None if there
   are fewer than 60 such minutes; `peak_hr` — the maximum of the minute pulse. The pulse of a minute
   is the median of its points, so a single spike does not make the peak; a minute without steps
-  has exactly 0 merged steps; the percentile interpolates linearly, as percentile_cont (ADR-034).
+  has exactly 0 merged steps; the percentile interpolates linearly, as percentile_cont (ADR-034);
+- sleep — the sessions that ended on the day (services/sleep.py) from the merged sleep minutes and
+  the coverage around the day: 48 hours back for the start of a session, 2 hours forward to see
+  whether the last one goes on and to check the hour after it. A session longer than 48 hours
+  would be cut; real ones are far shorter.
 
-Sleep and storing the day in daily_summaries come in step 4.3.
+services/summaries.py stores the result in daily_summaries.
 """
 
 import math
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import ColumnElement, and_, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from app.models import CoverageMinute, Device, HrPoint, StepsMinute
-from app.services.localtime import UtcRange, load_tz_history
-from app.services.merge import Merged, device_order, merge_hr, merge_steps
+from app.models import CoverageMinute, Device, HrPoint, SleepMinute, StepsMinute
+from app.services.localtime import TzHistory, UtcRange, load_tz_history
+from app.services.merge import Merged, device_order, merge_hr, merge_sleep, merge_steps
 from app.services.minutes import ceil_minute
+from app.services.sleep import NO_SLEEP, DaySleep, summarize_sleep
 
 COMPLETE_WEAR_MINUTES = 12 * 60
 ACTIVE_MINUTE_STEPS = 100
 REST_MINUTES_MIN = 60
 RESTING_PERCENTILE = 0.1
+SLEEP_LOOKBACK = timedelta(hours=48)
+SLEEP_LOOKAHEAD = timedelta(hours=2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,10 +76,13 @@ def percentile(values: Sequence[float], q: float) -> float:
 
 
 def summarize_day(
-    day: date, steps: Mapping[datetime, Merged[float]], hr: Mapping[datetime, Merged[float]]
+    day: date,
+    steps: Mapping[datetime, Merged[float]],
+    hr: Mapping[datetime, Merged[float]],
+    sleep: DaySleep = NO_SLEEP,
 ) -> DayMetrics:
-    """Metrics of a day from its merged minutes: the steps of every covered minute and the
-    pulse (the median of the points) of every minute that has any."""
+    """Metrics of a day from its merged minutes: the steps of every covered minute, the pulse
+    (the median of the points) of every minute that has any, and the day's sleep."""
     wear_minutes = len(steps)
     status = day_status(wear_minutes)
     if status == "no_data":
@@ -86,22 +96,31 @@ def summarize_day(
         active_minutes=sum(1 for s in steps.values() if s.value >= ACTIVE_MINUTE_STEPS),
         resting_hr=percentile(rest, RESTING_PERCENTILE) if len(rest) >= REST_MINUTES_MIN else None,
         peak_hr=max((p.value for p in hr.values()), default=None),
+        sleep_minutes=sleep.sleep_minutes,
+        sleep_start=sleep.sleep_start,
+        sleep_end=sleep.sleep_end,
+        night_valid=sleep.night_valid,
     )
 
 
 async def day_metrics(session: AsyncSession, user_id: uuid.UUID, day: date) -> DayMetrics:
     """Metrics of the user's local date `day` from the minute tables and pulse points."""
     history = await load_tz_history(session, user_id)
-    ranges = _minute_ranges(history.ranges_for_date(day))
     devices = (await session.scalars(select(Device).where(Device.user_id == user_id))).all()
-    device_ids = [d.id for d in devices]
+    return await compute_day(session, history, devices, day)
 
-    coverage: dict[uuid.UUID, set[datetime]] = {d: set() for d in device_ids}
-    query = select(CoverageMinute.device_id, CoverageMinute.minute_utc).where(
-        CoverageMinute.device_id.in_(device_ids), _within(CoverageMinute.minute_utc, ranges)
-    )
-    for device_id, minute in await session.execute(query):
-        coverage[device_id].add(minute)
+
+async def compute_day(
+    session: AsyncSession, history: TzHistory, devices: Sequence[Device], day: date
+) -> DayMetrics:
+    """day_metrics with the user's time zone history and devices already loaded."""
+    ranges = _minute_ranges(history.ranges_for_date(day))
+    device_ids = [d.id for d in devices]
+    if not ranges or not device_ids:
+        return summarize_day(day, {}, {})
+    window = [(ranges[0][0] - SLEEP_LOOKBACK, ranges[-1][1] + SLEEP_LOOKAHEAD)]
+    coverage = await _minutes(session, CoverageMinute, device_ids, window)
+    asleep = await _minutes(session, SleepMinute, device_ids, window)
 
     steps: dict[uuid.UUID, dict[datetime, float]] = {d: {} for d in device_ids}
     query = select(StepsMinute.device_id, StepsMinute.minute_utc, StepsMinute.steps).where(
@@ -126,7 +145,31 @@ async def day_metrics(session: AsyncSession, user_id: uuid.UUID, day: date) -> D
         hr[device_id][minute_utc] = median
 
     order = device_order(devices)
-    return summarize_day(day, merge_steps(order, coverage, steps), merge_hr(order, hr))
+    day_coverage = {
+        device_id: {m for m in minutes if any(a <= m < b for a, b in ranges)}
+        for device_id, minutes in coverage.items()
+    }
+    merged_sleep = merge_sleep(order, coverage, asleep)
+    sleep = summarize_sleep(
+        day, history, (m for m, s in merged_sleep.items() if s.value), merged_sleep.keys()
+    )
+    return summarize_day(day, merge_steps(order, day_coverage, steps), merge_hr(order, hr), sleep)
+
+
+async def _minutes(
+    session: AsyncSession,
+    model: type[CoverageMinute | SleepMinute],
+    device_ids: list[uuid.UUID],
+    ranges: list[UtcRange],
+) -> dict[uuid.UUID, set[datetime]]:
+    """{device_id: minutes} of a minute table inside the ranges."""
+    found: dict[uuid.UUID, set[datetime]] = {d: set() for d in device_ids}
+    query = select(model.device_id, model.minute_utc).where(
+        model.device_id.in_(device_ids), _within(model.minute_utc, ranges)
+    )
+    for device_id, minute in await session.execute(query):
+        found[device_id].add(minute)
+    return found
 
 
 def _minute_ranges(ranges: list[UtcRange]) -> list[UtcRange]:
