@@ -708,3 +708,16 @@
   → реализация → `docs/MERGE_RULES.md` и ADR.
 - Прочитано: CLAUDE.md, шаг 4.2 в docs/plan.md, SPEC F2, F4 (4.3, 4.4), F5, F6, F7, §7.1, §8 этап 4, §9 #4, #9;
   ADR-007, ADR-032, ADR-033.
+
+## 2026-10-11T08:15:15+06:00 — Шаг 4.2: тесты до кода, 15 xfailed
+- Коммиты: 4e81d57 refactor(merge): заглушки `merge.py` (`device_order`, `merge_steps`, `merge_hr`, `Merged`) и
+  `metrics.py` (`DayMetrics`, `day_metrics`), NotImplementedError; 7953a96 test(merge) (red): `unit/test_merge.py` (5) и
+  `integration/test_day_metrics.py` (6 тестов, 10 случаев с параметрами). Маркер —
+  `xfail(strict=True, raises=NotImplementedError, …)` на модуль.
+- Красный прогон: `15 xfailed`; с `--runxfail` все 15 падают с `NotImplementedError: step 4.2`. Весь backend:
+  `118 passed, 15 xfailed`. ruff check и format --check → exit 0.
+- Проблема: Docker Desktop был не запущен (integration-тесты → ERROR подключения); запущен, postgres поднят.
+- Допущения в тестах (ждут подтверждения): (1) устройства, зарегистрированные в один момент (одна meta-строка), —
+  по `external_id`; (2) пульс минуты — медиана её точек, пульс в покое — 10-й перцентиль минутных медиан с линейной
+  интерполяцией, «минута без шагов» — объединённое значение ровно 0; (3) минута относится к дате своего начала.
+- Ждёт подтверждения пользователя («ок»).
