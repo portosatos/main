@@ -1965,3 +1965,7 @@
   критерия §9) → `docs/NEXT.md` (SPEC §3.2 и найденное) → `scripts/test.ps1` без `-All` один раз, `check_docs`,
   `check_process --all` → финальная запись WORKLOG с общей длительностью → push.
 - Полный прогон с e2e не повторяется (указание пользователя): e2e — из прогона 13.1 (22:51:54–22:59:37, 40 passed).
+
+## 2026-10-11T23:10:19+06:00 — Тесты до кода: 5 xfailed
+- `scripts/tests/test_check_docs.py` (strict-xfail «step 13.2: not implemented»): падают на `assert_ok` — `scripts/check_docs.py`
+  ещё нет (exit 2), то есть по правильной причине.
