@@ -6,6 +6,9 @@ export const goalsKey = ["goals"] as const;
 export const notificationsKey = ["notifications"] as const;
 export const rulesKey = ["rules"] as const;
 export const digestsKey = ["digests"] as const;
+// The settings form; the zone history is under it, so the settings key covers both.
+export const settingsKey = ["settings"] as const;
+export const timezonesKey = ["settings", "timezones"] as const;
 
 // The tabs of the recommendations page: open ones, and the closed ones.
 export type RecommendationTab = "open" | "history";

@@ -209,7 +209,7 @@ test("rule and recommendation events invalidate their keys", () => {
 });
 
 // Beyond the plan's list (step 10.1): settings changed in another tab.
-test.fails("settings.changed invalidates settings, zones, me and digests", () => {
+test("settings.changed invalidates settings, zones, me and digests", () => {
   const queryClient = setup();
   const source = FakeEventSource.last;
   source.emit("ready");

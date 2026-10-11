@@ -45,7 +45,7 @@ function renderSettings() {
   return renderRoutes([{ path: "/settings", element: <Settings /> }], ["/settings"]);
 }
 
-test.fails("saves settings", async () => {
+test("saves settings", async () => {
   let current = SETTINGS;
   const patches: { body: unknown; csrf: string | null }[] = [];
   server.use(
@@ -112,7 +112,7 @@ test.fails("saves settings", async () => {
   expect(patches.at(-1)?.body).toMatchObject({ notify_email: null });
 });
 
-test.fails("shows timezone history and next digest", async () => {
+test("shows timezone history and next digest", async () => {
   let history: TimezoneHistory = {
     current: "America/New_York",
     items: [

@@ -66,7 +66,7 @@ test("lists devices and renames one", async () => {
 
 // Beyond the plan's list (step 10.1, a note of step 6.1): the time of the last data is in the
 // user's zone from the history, not in the browser's (the tests run in UTC).
-test.fails("shows last data in the user's time zone", async () => {
+test("shows last data in the user's time zone", async () => {
   server.use(
     http.get("/api/auth/me", () =>
       HttpResponse.json({

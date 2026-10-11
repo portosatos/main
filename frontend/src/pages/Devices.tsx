@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 
-import { errorMessage } from "@/api/auth";
+import { errorMessage, useMe } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useDevices, useRenameDevice, type Device } from "@/api/devices";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,14 @@ import { Input } from "@/components/ui/input";
 
 const KIND_LABELS: Record<Device["kind"], string> = { watch: "часы", phone: "телефон" };
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
+// In the user's zone from the history (/api/auth/me), not the browser's; the browser's until it
+// is known.
+function formatTime(iso: string, timeZone: string | undefined): string {
+  return new Date(iso).toLocaleString("ru-RU", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone,
+  });
 }
 
 function renameError(error: unknown): string {
@@ -79,6 +85,7 @@ export default function Devices() {
 }
 
 function DeviceRow({ device }: { device: Device }) {
+  const timeZone = useMe().data?.timezone;
   const rename = useRenameDevice();
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -118,7 +125,7 @@ function DeviceRow({ device }: { device: Device }) {
       </td>
       <td className="py-2 pr-4">{KIND_LABELS[device.kind]}</td>
       <td className="py-2 pr-4 whitespace-nowrap">
-        {device.last_data_at ? formatTime(device.last_data_at) : "нет данных"}
+        {device.last_data_at ? formatTime(device.last_data_at, timeZone) : "нет данных"}
       </td>
       <td className="py-2">
         {draft === null ? (

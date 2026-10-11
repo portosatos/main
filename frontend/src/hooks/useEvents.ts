@@ -13,6 +13,7 @@ import {
   notificationsKey,
   recommendationKeys,
   rulesKey,
+  settingsKey,
   summaryKeys,
 } from "@/lib/queryKeys";
 import { showGoalToast } from "@/lib/toasts";
@@ -75,6 +76,13 @@ const handlers: Record<string, Handler> = {
   "recommendation.opened": invalidateRecommendations,
   "recommendation.resolved": invalidateRecommendations,
   "recommendation.feedback": invalidateRecommendations,
+  // Settings changed in another tab (ADR-051): the form and the zone history, today and the zone
+  // of /api/auth/me, the next digest. The dates a move changed come with summary.updated.
+  "settings.changed": (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: settingsKey });
+    void queryClient.invalidateQueries({ queryKey: meQueryKey });
+    void queryClient.invalidateQueries({ queryKey: digestsKey });
+  },
   // A digest went out (ADR-050): the queue on the dev panel.
   "digest.sent": (queryClient) => {
     void queryClient.invalidateQueries({ queryKey: digestsKey });

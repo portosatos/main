@@ -53,3 +53,21 @@ export function formatTick(date: string): string {
   const weekday = utc(date).toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
   return `${weekday} ${utc(date).getUTCDate()}`;
 }
+
+// "5 октября 2026, 08:00" — an instant in the given zone (the user's, not the browser's); the
+// year only when asked. Built from parts: the joining words differ between ICU versions.
+export function formatDateTime(iso: string, timeZone: string, withYear = false): string {
+  const parts = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: withYear ? "numeric" : undefined,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+  }).formatToParts(new Date(iso));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  const date = [part("day"), part("month"), withYear ? part("year") : ""].filter(Boolean);
+  return `${date.join(" ")}, ${part("hour")}:${part("minute")}`;
+}
