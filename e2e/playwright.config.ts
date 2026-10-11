@@ -2,12 +2,13 @@ import { defineConfig, devices } from "@playwright/test";
 
 import { BASE_URL, TIMEZONE } from "./lib/env";
 
-// E2E of SPEC §8 stage 12 against the e2e stack (docker-compose.e2e.yml, scripts/e2e.*).
+// E2E of SPEC §8 stage 12 against the e2e stack (docker-compose.e2e.yml, scripts/e2e.*), and the
+// screenshots of the pages with the 375 px check (screenshots.spec.ts, stage 13).
 // One worker: the dev Clock is one for the whole stack, and scenarios that move it (12.2) must not
 // overlap with others; the upload scenarios also measure timing and should not compete for the worker.
 export default defineConfig({
   testDir: ".",
-  testMatch: /\d\d-[\w-]+\.spec\.ts$/,
+  testMatch: /(\d\d-[\w-]+|screenshots)\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
