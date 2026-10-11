@@ -3,10 +3,14 @@ the classifier."""
 
 import io
 import json
+import shutil
+import subprocess
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
+import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +20,7 @@ from app.services.ingest.jobs import create_ingest_job
 from app.services.ingest.parser import parse_lines
 
 NOW = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+GENERATOR_DIR = Path(__file__).resolve().parents[3] / "generator"
 
 
 async def make_user(
@@ -57,6 +62,20 @@ async def upload(
         batch_size=batch_size,
     )
     return job_id, counts
+
+
+def generate(out_dir: Path, *args: str) -> bytes:
+    """The NDJSON htgen writes with `args` (generator/, run through uv)."""
+    uv = shutil.which("uv")
+    if uv is None:
+        pytest.fail("uv is not on PATH: it runs the generator (generator/)", pytrace=False)
+    out = out_dir / f"htgen-{uuid.uuid4().hex[:8]}.ndjson"
+    subprocess.run(
+        [uv, "run", "--project", str(GENERATOR_DIR), "htgen", *args, "--out", str(out)],
+        check=True,
+        timeout=300,
+    )
+    return out.read_bytes()
 
 
 async def rows(session: AsyncSession, query: str, **params: Any) -> list[tuple]:
