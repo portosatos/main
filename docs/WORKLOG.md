@@ -1749,3 +1749,19 @@
 
 ## 2026-10-11T20:18:23+06:00 — Шаг 12.1: ответ пользователя «продолжай» — допущения 1–6 приняты
 - Дословно в PROMPTS.md. Начинаю код: e2e-стек, хелперы, скрипты, job в CI.
+
+## 2026-10-11T20:32:29+06:00 — Фичи шага 12.1 готовы: e2e-стек, хелперы, сценарии 1–5, job в CI
+- 9dacf5e feat(e2e): e2e stack, scenario helpers and scripts/e2e — `00-helpers` 5 passed. Проблема: `REPO_ROOT`
+  указывал на `e2e/` (`lib/` на уровень глубже) → «Project directory `generator` does not exist»; исправлено до коммита.
+- 3ce1ed3 feat(e2e): scenarios 1-3, 3809f99 feat(e2e): scenarios 4-5 — маркеры `test.fail()` сняты. Сценарии 1, 2, 4, 5
+  прошли с первого запуска; №3 упал на ошибке в самом тесте (сравнивал `innerText` с `toHaveText`, который читает
+  `textContent`; значения совпали — «15 162»), исправлено до коммита. Приложение не менялось. Повтор 02 и 04
+  `--repeat-each=3` — 6 passed (1.4 мин).
+- 4355d3a feat(ci): e2e job — первый прогон CI 38147060281 упал до тестов: «container health-tracker-e2e-worker-1 has no
+  healthcheck configured» (Compose 2.38 на раннере, локально 5.5.1 пропускает). ac612c1 fix(e2e): healthcheck воркера по
+  `/api/health` → `worker.status == ok`. Прогон 38147368552 — все 5 job `success`, e2e «10 passed (40.7s)».
+- `scripts/e2e.sh` 20:24:10–20:25:00 → exit 0, 10 passed (37.3 с); `scripts/e2e.ps1` 20:25:14–20:26:01 → exit 0,
+  10 passed (35.1 с).
+- Dev clock: `GET /api/dev/clock` → `offset_seconds: 0` на e2e-стеке (8001) и dev-стеке (8000); сценарии 00 двигали
+  часы e2e-стека на +86400 с, фикстура `clock` вернула 0.
+- Документы: ADR-053, CLAUDE.md §6 (команды e2e).

@@ -1144,3 +1144,39 @@
   `generator/src/htgen/stream.py`. Миграций нет (индекс `jobs_dedup_key_queued_key` — с шага 3.2). `docs/API.md`,
   `docs/DATA_FORMAT.md`. Frontend не менялся: задачи потока на странице «Загрузка» подписаны «поток» с шага 5.2.
   Не сделано (по плану): WebSocket, токены устройств.
+
+## ADR-053. E2E: отдельный стек `health-tracker-e2e`, хелперы сценариев, `scripts/e2e.*`, job `e2e` в CI
+- **Дата:** 2026-10-11T20:30:07+06:00 (шаг 12.1)
+- **Контекст:** SPEC §8 этап 12 (Playwright, каждый сценарий на свежем пользователе, время через `/api/dev/clock`,
+  `DIGEST_WINDOW_MINUTES=1`), §9 #7, #8, #9, #19, вклад в #6 и #16; план шага 12.1 (`docker-compose.e2e.yml`, хелперы
+  `newUser`, `genFixture`, `clock.set`, `mailpit.messages`, `scripts/e2e.{ps1,sh}`, job в CI). Не определены: общий ли
+  стек с dev, порты, как сценарии получают данные и как не оставить сдвинутые часы.
+- **Варианты и выбор** (допущения 1–6 приняты пользователем: «продолжай», PROMPTS.md):
+  1. **Отдельный проект compose** — `docker-compose.yml` + `docker-compose.e2e.yml` (`name: health-tracker-e2e`), свои
+     тома (чистые БД и Mailpit) и порты через `!override`: frontend 5174, api 8001, Mailpit 8026/1026, postgres 5434.
+     `APP_ENV=dev`, `DIGEST_WINDOW_MINUTES=1`, `APP_URL=http://localhost:5174`. Отвергнуто: тот же стек с другим
+     окружением — перезапуск dev-стека, общие dev-часы и письма демо-пользователя в одном Mailpit.
+  2. **Healthcheck воркера в e2e-стеке** — `/api/health` → `worker.status == "ok"`. Найдено в CI: Compose 2.38 на
+     раннерах падает на `up --wait`, если у сервиса нет healthcheck (в базовом файле у воркера `disable: true`);
+     локальная Compose 5.5 это пропускала. Заодно сценарии стартуют с живым воркером.
+  3. **Только Chromium, `workers: 1`, `retries: 0`.** Dev Clock один на стек (сценарии 12.2 его двигают), сценарии 2 и 4
+     замеряют время; повторы спрятали бы нестабильность.
+  4. **Часы:** автоматическая фикстура `clock` (`e2e/test.ts`) в каждом тесте проверяет `offset_seconds == 0` в начале
+     и ставит 0 после теста, что бы тест ни делал (CLAUDE.md §5).
+  5. **Данные:** `genFixture` вызывает `htgen` через `uv run --project generator` с явным `--end` = вчера по `today`
+     из `/api/auth/me` (не по часам машины) и кэширует файл в `e2e/.fixtures/` (имя из аргументов, htgen
+     детерминирован). Пользователь — `POST /api/auth/register` в контексте страницы (пояс `Europe/Moscow`, тот же у
+     браузера и `htgen`), поэтому страница сразу вошла.
+  6. **Красные тесты** — хелперы-заглушки (`step 12.1: not implemented`) и `test.fail()` на файл; сверх плана
+     `e2e/00-helpers.spec.ts` проверяет сами хелперы.
+  7. **Проверки сценариев:** №2 — в момент, когда карточка «Шаги» первого дня файла получила число, задача по API ещё
+     `processing`; №4 — таймер 2 с от клика в первой вкладке; №3 — отчёт в таблице и `/api/summary/range` до и после;
+     №5 — все карточки «нет данных», соседние дни с данными, 4 заштрихованных дня на графиках.
+  8. **`scripts/e2e.*`** поднимают стек (`up -d --build --wait`), ставят `e2e/node_modules` и Chromium при первом запуске,
+     передают аргументы в `playwright test`, стек оставляют (`-Down` / `--down` — погасить). В `scripts/test.*` e2e
+     войдут на шаге 12.2 (`-All`). Job `e2e` в CI: `uv` (htgen), Node 22, `playwright install --with-deps chromium`,
+     typecheck, `scripts/e2e.sh`; при падении — логи стека и HTML-отчёт (artifact).
+- **Последствия:** `e2e/` (Playwright 1.63.0, TypeScript, `lib/`, `test.ts`, сценарии 01–05), `docker-compose.e2e.yml`,
+  `scripts/e2e.{ps1,sh}`, `.github/workflows/ci.yml` (job `e2e`), `.gitignore` (`e2e/.fixtures/`), CLAUDE.md §6.
+  Приложение не менялось: сценарии 1–5 прошли без исправлений кода (одна ошибка была в самом тесте №3 — сравнение
+  `innerText` с `textContent`). Не сделано (по плану): сценарии 6–10 и e2e в `scripts/test.*` — шаг 12.2.

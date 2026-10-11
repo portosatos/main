@@ -133,6 +133,14 @@
   `ref`, переписать на `forwardRef`, ADR-027). Часть тестов: `cd frontend; npx vitest run src/pages`.
 - CI: `.github/workflows/ci.yml` на каждый push в `main` и PR; последний прогон —
   `gh run list --branch main --limit 1`, логи упавшего — `gh run view <id> --log-failed`.
+- E2E (Playwright, `e2e/`, ADR-053): `scripts/e2e.ps1` / `scripts/e2e.sh` — поднимает отдельный стек
+  `health-tracker-e2e` (`docker-compose.yml` + `docker-compose.e2e.yml`: приложение **5174**, api 8001, Mailpit 8026/1026,
+  postgres 5434, `APP_ENV=dev`, `DIGEST_WINDOW_MINUTES=1`; dev-стек при этом работает), ставит `e2e/node_modules` и
+  Chromium, запускает сценарии; аргументы — в `playwright test` (`scripts/e2e.sh 02-upload --headed`), `-Down` /
+  `--down` гасит стек. Вручную: `cd e2e; npx playwright test --headed`, отчёт — `npx playwright show-report`, типы —
+  `npm --prefix e2e run typecheck`. Хелперы — `e2e/lib/` (`newUser`, `genFixture` — htgen с `--end` по `today` сервера,
+  кэш `e2e/.fixtures/`; `clockOf`, `mailpit.messages`, `uploadAndWait`); `test` из `e2e/test.ts` сам сбрасывает dev clock
+  в 0 после каждого теста. В CI — job `e2e`.
 - Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
 - Генератор (`generator/`, формат — `docs/DATA_FORMAT.md`, ADR-028, ADR-029): `uv run --project generator htgen --help`;
   пример — `uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson` (`*.ndjson` в `.gitignore`,
