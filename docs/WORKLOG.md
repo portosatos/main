@@ -1496,3 +1496,25 @@
 - a19374a `fix(notify)`: если в дату конца свободного времени нет — конец тихих часов на следующую дату. Маркеры сняты;
   `unit/test_planner.py` → `23 passed` (3 прогона, локальная база `.hypothesis` очищена), property-тест с
   `--hypothesis-seed` 1–10 — все passed. ADR-050 п. 9 и `docs/EMAIL.md` дополнены.
+
+## 2026-10-11T18:25:55+06:00 — Шаг 9.2 завершён
+- Итог: `email_outbox` пишется в транзакции открытия рекомендации (`engine.notify_opened`); диспетчер в воркере
+  (тик 30 с) планирует дайджест через `plan_send`, хранит план в `email_digests` (`sent_at IS NULL`), отправляет одно
+  письмо (текст + HTML) со всеми открытыми рекомендациями в Mailpit через aiosmtplib с таймаутом 10 с, закрытые —
+  `skipped`, ошибка отправки сохраняется отдельной транзакцией; `GET /api/digests` (план, причина, `warning`);
+  событие `digest.sent`; очередь на dev-панели; `docs/EMAIL.md`, ADR-050. Исправлены две ошибки шага 9.1 в тихих часах
+  при переводе часов (одна — найдена пользователем, вторая — property-тестом в моём исправлении).
+- Коммиты шага: 1f41744, 303e744 (chore), a89fbaf (test, red), 5a5d12e, a489bba (test, red), 4c599b2 (fix), e63852c,
+  55a3f7f (chore), 0ea8dad (test, red), c241f90, e42c58a, a1d340d, 24cb529 (feat), 5f29a0b, b743b94, e4337bf (test, red),
+  a19374a (fix), cdf757e, эта запись.
+- Тесты: красный backend `271 passed, 8 xfailed` + vitest `1 expected fail` → зелёный: `scripts/test.sh` → backend
+  `286 passed`, generator `51 passed`, scripts `8 passed`, «OK: all tests passed»; `scripts/test.sh -m mailpit` →
+  `1 passed, 285 deselected`; `npm --prefix frontend run check` → `47 passed`, build ok.
+- Сверх плана: `test_smtp_failure_rolls_back_send_and_keeps_error`, `test_hanging_smtp_cut_off_by_timeout`
+  (условия пользователя), регрессионные тесты планировщика (4 точных + property-тест с `@example`),
+  `DevPanel.test.tsx::shows digest queue` — подпись «окно» вместо «окно 15 мин».
+- Done When (общий DoD): ruff check → «All checks passed!», ruff format → «183 files already formatted»;
+  `git grep -n "step 9.2: not implemented" -- ":!docs"` → пусто. check_process, push и CI — после этой записи.
+- Dev clock: сдвигался при живой проверке (до 28800 с), сброшен, `GET /api/dev/clock` → `offset_seconds: 0`.
+- Проверить вручную: срабатывание правила → +1 ч на dev-панели → одно письмо в Mailpit со всеми рекомендациями;
+  ещё одно срабатывание в те же сутки → письма нет, в очереди план на 00:00 следующих суток (`1 письмо в сутки`).
