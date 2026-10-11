@@ -168,3 +168,7 @@
 - Цели в UI (ADR-044): страница `http://localhost:5173/goals` (форма, неделя), прогресс в карточках дашборда —
   `GoalProgress`, колокольчик в шапке — `Bell` (`unread`, «Прочитать все»), тосты — `sonner` (`Toasts` в `AppLayout`,
   `lib/toasts.ts::showGoalToast`, только при `show_toast`).
+- Правила (ADR-045): `services/rules/` — `engine.py` (`plan_actions` — машина состояний, `evaluate_user` — оценка
+  пользователя; вызывается в конце задачи загрузки), правила `r1.py`, `r2.py` (пороги — `PARAMS`), каталог R1–R6 —
+  `catalog.py` (сид — миграция 0010). Таблицы `rules`, `user_rules` (нет строки — включено), `recommendations`
+  (одна открытая на правило — `uq_recommendations_open`). Логи воркера `recommendation_opened` / `recommendation_resolved`.
