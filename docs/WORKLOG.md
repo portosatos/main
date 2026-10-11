@@ -1484,3 +1484,15 @@
   2026-10-12. Dev-панель в браузере: таблица с двумя строками «отправлен», причины «окно» и «1 письмо в сутки».
 - Dev clock после проверки: сдвиг был 28800 с (мой), сброшен — `POST /api/dev/clock {"offset_seconds": 0}`,
   `GET /api/dev/clock` → `offset_seconds: 0`.
+
+## 2026-10-11T18:22:32+06:00 — Ошибка в исправлении 9.1, найденная property-тестом: исправлена
+- Полный прогон `scripts/test.sh` для Done When: `1 failed, 284 passed` — `test_plan_never_before_window_or_now_and_never_quiet`
+  нашёл случай, который моё исправление 4c599b2 не покрывало: Сантьяго, 06.09.2026 (00:00 −04 → 01:00 −03 в 04:00 UTC),
+  тихие часы 00:15–00:00 — свободные 00:00–00:15 в эту ночь пропущены целиком, `_quiet_end` падал с `RuntimeError`
+  (времени раньше окна не давал). В прошлых прогонах (3 + 1 полный) hypothesis на этот случай не выходил.
+- Порядок: правка отложена (`git stash`), e4337bf `test(notify): … (red)` — точный тест
+  `test_skipped_hour_swallows_all_free_time_quiet_ends_next_day` и `@example` с найденным случаем в property-тесте
+  (чтобы strict-xfail не зависел от удачи hypothesis); красный `2 xfailed`, с `--runxfail` — `RuntimeError`.
+- a19374a `fix(notify)`: если в дату конца свободного времени нет — конец тихих часов на следующую дату. Маркеры сняты;
+  `unit/test_planner.py` → `23 passed` (3 прогона, локальная база `.hypothesis` очищена), property-тест с
+  `--hypothesis-seed` 1–10 — все passed. ADR-050 п. 9 и `docs/EMAIL.md` дополнены.
