@@ -35,7 +35,7 @@ class SendPlan:
     reason: PlanReason
 
 
-def plan_send_time(
+def plan_send(
     pending: Sequence[datetime],
     last_digest_local_date: date | None,
     tz_history: TzHistory,
@@ -45,5 +45,17 @@ def plan_send_time(
     window: timedelta = DIGEST_WINDOW,
     max_delay: timedelta = DIGEST_MAX_DELAY,
 ) -> SendPlan:
-    """The send time of a digest of the `pending` outbox entries (their creation times)."""
+    """The send time of a digest of the `pending` outbox entries (their creation times) and
+    the rule that set it."""
+    raise NotImplementedError("step 9.1")
+
+
+def plan_send_time(
+    pending: Sequence[datetime],
+    last_digest_local_date: date | None,
+    tz_history: TzHistory,
+    quiet_hours: QuietHours,
+    now: datetime,
+) -> datetime:
+    """The signature of SPEC F10: the time of `plan_send`."""
     raise NotImplementedError("step 9.1")
