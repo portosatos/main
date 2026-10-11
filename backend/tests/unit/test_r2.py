@@ -5,14 +5,11 @@ Only complete days count; each day is compared with the steps goal in effect on 
 
 from datetime import date, timedelta
 
-import pytest
-
 from app.services.goals import GoalKind
 from app.services.rules import r2
 from app.services.rules.base import Day, Facts
 
 D = date(2026, 10, 9)
-NOT_IMPLEMENTED = "step 8.1: not implemented"
 
 
 def day(days_before: int, steps: int, *, status: str = "complete") -> Day:
@@ -40,7 +37,6 @@ def facts(*days: Day, goal: dict[date, float] | None = None) -> Facts:
     return Facts(days, today=D + timedelta(days=1), goal=target)
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_fires_on_3_complete_days_under_half_goal() -> None:
     verdict = r2.evaluate(facts(day(2, 3000), day(1, 3999), day(0, 120)), D)
 
@@ -54,7 +50,6 @@ def test_fires_on_3_complete_days_under_half_goal() -> None:
     assert r2.evaluate(facts(day(2, 3000), day(1, 4000), day(0, 120)), D).kind == "hold"
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_partial_day_in_window_unknown() -> None:
     # Few steps on a day the watch was barely worn are not «few steps».
     with_partial = facts(day(2, 3000), day(1, 500, status="partial"), day(0, 1000))
@@ -65,7 +60,6 @@ def test_partial_day_in_window_unknown() -> None:
     assert r2.evaluate(facts(day(0, 9000, status="partial")), D).kind == "unknown"
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_closes_on_goal_met_day() -> None:
     assert r2.evaluate(facts(day(2, 3000), day(1, 3000), day(0, 8000)), D).kind == "close"
     # The days before the anchor do not matter for closing.
@@ -74,7 +68,6 @@ def test_closes_on_goal_met_day() -> None:
     assert r2.evaluate(facts(day(2, 3000), day(1, 3000), day(0, 7999)), D).kind == "hold"
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_uses_goal_valid_on_that_day() -> None:
     # The goal fell from 8000 to 4000 on D−1: half of it is 4000 on D−2 and 2000 since D−1.
     lowered = {D - timedelta(days=1): 4000.0}
