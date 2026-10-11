@@ -742,6 +742,20 @@ lifespan, переподключение 0,2 → 5 с, после него `resy
 ### Шаг 7.1 — Цели и достижения (backend)
 **Этап SPEC:** 7 · **Зависит от:** 4.4, 5.1 · **Критерии §9:** вклад в #11
 
+**Статус:** [x] закрыт 2026-10-11T13:34:08+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-11T12:05:37+06:00 (Codex),
+продолжен 2026-10-11T13:03:28+06:00 в Claude Code.
+Заметки: ADR-043. Версия цели действует с локальной даты `valid_from`, до первой — 8000 шагов / 8 ч; `GET/PUT /api/goals`
+(`[{kind, target, valid_from}]`, шаги 100–100 000, сон 1–16 ч); у дней сводок `goals.{kind} = {target, percent, achieved}`
+(процент вниз), у недель `{achieved_days, of: 7}`; цель выполнена при значении ≥ цели при любом статусе дня.
+Достижения — `services/goals.py::record_achievements` в конце каждого `recompute_dates` (загрузка, `htadmin rebuild`) и
+после `PUT`, изменившего цель (сегодняшний день); один раз на вид и дату; события `notification.created` → `goal.achieved`
+(`show_toast` — сегодня/вчера по `Clock`), `goal.changed`, новое `notifications.read`; `GET /api/notifications` →
+`{items, unread}`, `POST /api/notifications/read` `{ids}` или `{}`. Записанное достижение не отменяется, если значение
+потом уменьшилось. Данные, загруженные до 7.1, достижений не имеют — их создаёт `htadmin rebuild` (без тостов, кроме
+сегодня/вчера). **Для 7.2:** четыре события — строками в `handlers` `useEvents.ts`; тост — только по `show_toast`;
+счётчик — `unread` из `GET /api/notifications`. **Для 8.1 (R2):** цель дня — `GoalBook.target("steps", day)`.
+**Для 10.1:** пересчёт после смены пояса через `recompute_dates` сам создаст достижения.
+
 **Объём:** `goals` с историей, `GET/PUT /api/goals`, прогресс в API сводок, `goal_achievements` при пересчёте,
 `notifications` и `GET/POST` для них, события `goal.achieved` (с признаком «показать тост»),
 `notification.created`, `goal.changed`.
