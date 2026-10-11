@@ -1325,3 +1325,33 @@
   колокольчик — нет текста «Новая рекомендация».
 - Сверх плана: `useEvents.test.ts::rule and recommendation events invalidate their keys`,
   `Bell.test.tsx::describes a recommendation notification`.
+
+## 2026-10-11T16:51:34+06:00 — Фичи шага 8.3 готовы
+- Запись сделана в новой сессии агента после сжатия контекста: коммиты 15:54–16:00 в WORKLOG не попали, восстановлены
+  по `git log`. Проблемы при реализации в прошлой сессии в журнал не записаны.
+- 90ea28a docs(prompts): стартовый промпт шага, тесты и допущения 1–7 приняты пользователем.
+- 9e8c776 `feat(rules)`: `GET/PATCH /api/rules`; отключение закрывает открытую рекомендацию как
+  `closed_rule_disabled`, включение сразу вызывает `evaluate_user`; уведомление и события `recommendation.opened/resolved`
+  в одной точке `evaluate_user`.
+- 7749a9a `feat(recommendations)`: `GET /api/recommendations` с фильтрами `status` (повторяемый) и `rule`,
+  `PUT/DELETE …/feedback` со временем по Clock, событие `recommendation.feedback`; чужой id → 404.
+- 9953fba `feat(frontend)`: хуки и ключи правил и рекомендаций, строки `handlers` в `useEvents`, пункт колокольчика.
+- 9ea5b64 `feat(rules-ui)`: страница «Правила» (пороги словами, переключатель).
+- 3f2385d `feat(recommendations-ui)`: вкладки «Активные» / «История», фильтр по правилу, отзывы, дисклеймер.
+- 95f7d2e docs: `docs/RULES.md`, ADR-048, `docs/API.md`, CLAUDE.md §6.
+- `git grep -n "step 8.3: not implemented" -- ":!docs"` → пусто.
+
+## 2026-10-11T16:51:34+06:00 — Шаг 8.3 завершён
+- Итог: API правил и рекомендаций, отзывы, события `rule.toggled` и `recommendation.*`, страницы «Правила» и
+  «Рекомендации», колокольчик, дисклеймер. ADR-048 (допущения 1–7 приняты пользователем).
+- Коммиты шага: 4d04b68 (docs), 37dc231 (chore, заглушки), 9f66074 (test, red), 457e26a, 90ea28a (docs), 9e8c776,
+  7749a9a, 9953fba, 9ea5b64, 3f2385d (feat), 95f7d2e (docs), эта запись.
+- Тесты: красный backend `244 passed, 9 xfailed`, vitest `40 passed | 6 expected fail` → зелёный: `scripts/test.sh` →
+  backend `253 passed`, generator `51 passed`, scripts `8 passed`, «OK: all tests passed»; `npm --prefix frontend run
+  check` → exit 0, vitest `18 files, 46 passed`.
+- Done When (общий DoD): `ruff check .` → «All checks passed!», `ruff format --check .` → «168 files already formatted»;
+  `scripts/smoke.sh` и `scripts/smoke.ps1` → exit 0. На запущенном стеке: вход демо через `:5173` → 200,
+  `GET /api/rules` → 200 (R1–R6, `enabled: true`), `GET /api/recommendations?status=open` → 200, `/rules` → 200.
+- Dev clock: в этой сессии не сдвигался, `GET /api/dev/clock` → `offset_seconds: 0`.
+- Проверить вручную: загрузить `--scenario short-sleep` → R1 во вкладке «Активные»; отключить R1 → рекомендация в
+  «Истории» со статусом «правило отключено»; поставить «полезно» во вкладке «Активные» → отметка видна в «Истории».
