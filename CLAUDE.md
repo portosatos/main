@@ -194,3 +194,9 @@
   Письма в Mailpit: `http://localhost:8025`, API — `curl "http://localhost:8025/api/v1/search?query=to:demo@example.com"`.
   Тест с настоящим Mailpit — `scripts/test.ps1 -m mailpit` / `scripts/test.sh -m mailpit` (скрипты тестов поднимают
   postgres и mailpit).
+- Настройки и пояса (ADR-051, `docs/TIMEZONES.md`, `docs/API.md`): страница `http://localhost:5173/settings`;
+  `GET/PATCH /api/settings` `{"notify_email": "", "quiet_enabled": true, "quiet_start": "22:00", "quiet_end": "08:00"}`
+  (пустая почта — писем нет), `GET/POST /api/settings/timezones` `{"tz": "America/New_York", "valid_from": "2026-10-05T08:00"}`
+  (без смещения — время нового пояса; без `valid_from` — сейчас; запись действует до следующей). Переезд ставит задачу
+  `tz_changed` (`services/timezones.py`: пересчёт дат и правила), событие `settings.changed {fields}`; `timezone` — в
+  `/api/auth/me`. Тесты — `tests/integration/test_settings_api.py`, `test_tz_change.py`.

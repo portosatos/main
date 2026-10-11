@@ -58,9 +58,10 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 
 ## Текущий пользователь (`/api/auth/*`, ADR-041)
 
-`POST /api/auth/register`, `POST /api/auth/login` и `GET /api/auth/me` отдают `{id, email, notify_email, today}`.
-`today` — локальная дата пользователя «сейчас»: время `Clock` (в dev — со сдвигом dev-панели) в поясе, который
-действует в этот момент по истории поясов. Дашборд без даты в адресе открывается на этот день.
+`POST /api/auth/register`, `POST /api/auth/login` и `GET /api/auth/me` отдают
+`{id, email, notify_email, today, timezone}`. `today` — локальная дата пользователя «сейчас»: время `Clock` (в dev —
+со сдвигом dev-панели) в поясе, который действует в этот момент по истории поясов; `timezone` — этот пояс (ADR-051).
+Дашборд без даты в адресе открывается на этот день; время в интерфейсе показывается в этом поясе.
 
 ## Устройства (`/api/devices`, SPEC F2, ADR-041)
 
@@ -143,6 +144,28 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 - `error` — последняя неудачная отправка (SMTP недоступен, таймаут 10 с); следующий тик повторяет, успех очищает.
 - `warning: "no_notify_email"` — почта для писем не указана: письма не планируются и не отправляются, записи ждут.
 
+## Настройки (`/api/settings`, SPEC F10, F11, ADR-051, `docs/TIMEZONES.md`)
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/settings` | `{notify_email, quiet_enabled, quiet_start, quiet_end, timezone}` |
+| `PATCH /api/settings` `{"notify_email": "me@example.com", "quiet_enabled": true, "quiet_start": "22:00", "quiet_end": "08:00"}` | то же; любые поля из четырёх |
+| `GET /api/settings/timezones` | `{current, items: [{tz, valid_from, valid_to, current}]}` — история, новые сверху |
+| `POST /api/settings/timezones` `{"tz": "America/New_York", "valid_from": "2026-10-05T08:00"}` | 201, история целиком |
+
+- PATCH меняет только переданные поля; значение, равное текущему, ничего не меняет и событий не шлёт. Лишнее поле
+  (например, `timezone`) → 422: пояс меняется только через историю.
+- `notify_email`: адрес или `""`/`null` — писем не будет (`warning: "no_notify_email"` в `/api/digests`).
+- `quiet_start`, `quiet_end` — местное время строго `HH:MM` (`7:15`, `07:15:30`, `24:00` → 422); через полночь можно;
+  начало, равное концу, — тихие часы выключены (ADR-017). Диспетчер подхватывает изменения на следующем тике (30 с).
+- `timezone` и `current` — пояс, действующий сейчас (`Clock`) по истории.
+- `tz` — имя из базы IANA, с учётом регистра (`europe/moscow`, `UTC+3` → 422). `valid_from`: без поля — сейчас;
+  со смещением — как есть; **без смещения — местное время нового пояса**. Позже `Clock.now()` или раньше 1970 → 422.
+  Момент, где уже есть запись, или пояс, который в этот момент уже действует, → 409.
+- Запись действует до следующей (`valid_to`), поздние записи не удаляются. Если переезд раньше всей истории, прежний
+  первый пояс остаётся на время до переезда — запись с `valid_from: null` («с начала истории»).
+- После `POST` воркер пересчитывает затронутые даты (`summary.updated`) и оценивает правила — задача `tz_changed`.
+
 ## События (`GET /api/events`, SSE, SPEC F12, ADR-039)
 
 Поток Server-Sent Events пользователя сессии (без cookie → 401; API ещё не слушает БД → 503 через 5 с). Каждое
@@ -167,6 +190,7 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 | `recommendation.feedback` | `{id, feedback}` | отзыв поставлен, изменён или снят (`null`) |
 | `rule.toggled` | `{code, enabled}` | правило включено или выключено |
 | `digest.sent` | `{id, local_date, count}` | дайджест отправлен (`count` — рекомендаций в письме) |
+| `settings.changed` | `{fields: ["quiet_enabled", …]}` | изменены настройки (`PATCH /api/settings`, поля — изменённые) или добавлен пояс (`{fields: ["timezone"]}`) |
 
 `counts = {new, duplicate, conflict, invalid}` — как в отчёте `GET /api/ingest/jobs/{id}`. Прогресс —
-`bytes_done / bytes_total`. Остальные события SPEC F12 (настройки) добавляются на своих шагах.
+`bytes_done / bytes_total`.
