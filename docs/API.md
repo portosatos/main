@@ -1,0 +1,55 @@
+# API
+
+Полная схема — OpenAPI: `http://localhost:8000/docs` (Swagger сам добавляет заголовок `X-Requested-With: ht`) или
+`/openapi.json`. Здесь — правила, которых нет в схеме. Все маршруты, кроме `/api/health` и `/api/auth/register|login`,
+требуют cookie сессии `ht_session` (без неё → 401) и отдают только данные пользователя этой сессии. Список маршрутов —
+SPEC §6.3. Разделы дополняются по мере появления маршрутов.
+
+## Сводки (`/api/summary/*`, SPEC F6–F7, ADR-037, ADR-038)
+
+Читают `daily_summaries`. **Дата без строки — `no_data`:** `wear_minutes = 0`, `night_valid = false`, все метрики и
+`sleep_start`/`sleep_end` — `null`, не 0. Даты — локальные даты пользователя (по истории поясов, ADR-033).
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/summary/day?date=2026-10-07` | `{day, previous, delta}` — день, день D−1 и разница |
+| `GET /api/summary/week?week=2026-W41` | `{week, start, end, days[7], metrics, previous, delta}` |
+| `GET /api/summary/range?from=2026-10-01&to=2026-10-31` | массив дней, обе границы включительно |
+
+**День** (`DayOut`): `date, status (no_data|partial|complete), wear_minutes, steps, active_minutes, sleep_minutes,
+sleep_start, sleep_end, night_valid, resting_hr, peak_hr`. Пульс округлён до 0,1.
+
+**Разница** (`delta`): по каждой из метрик `steps, active_minutes, sleep_minutes, resting_hr, peak_hr` —
+`{abs, pct}` или `null` («нет данных для сравнения»):
+- `abs` — текущее минус прошлое, `pct` — процент от прошлого, оба округлены до 0,1 и считаются от показанных
+  (уже округлённых) значений; `pct = null`, если прошлое значение 0;
+- `null`, если значения нет хотя бы с одной стороны;
+- в дневной сводке разница по сну — только если обе ночи валидны (`night_valid = true`), иначе `null` (ADR-037).
+  Шаги, активность и пульс сравниваются по любым непустым значениям, в том числе в дни `partial`.
+
+**Неделя:** ISO-неделя `YYYY-Www`, пн–вс локальных дат. `metrics.<метрика> = {value, days, of: 7}`: `value` —
+значение по базе, `days` — размер базы («шаги: 3 из 7 дней»), при пустой базе `value = null`, `days = 0`.
+
+| Метрика | `value` | База |
+|---|---|---|
+| `steps`, `active_minutes` | среднее | дни `complete` |
+| `sleep_minutes` | среднее | валидные ночи, при любом статусе дня |
+| `resting_hr` | среднее | дни, где посчитан |
+| `peak_hr` | максимум | дни, где посчитан |
+
+Средние округлены до 0,1. `previous` — то же для предыдущей ISO-недели (`{week, start, end, metrics}`, без дней),
+`delta` — разница значений недели и предыдущей.
+
+**Ошибки (422):** неделя не в формате `YYYY-Www` (`2026-w41`, `2026-41`, `2026-W5`), недели нет в году (`W00`,
+`W54`, `W53` 52-недельного года, например `2025-W53`); `from` позже `to`; диапазон длиннее 366 дней; параметр не
+передан или дата не `YYYY-MM-DD`.
+
+Пример (неделя с пропуском):
+```json
+{"week": "2026-W41", "start": "2026-10-05", "end": "2026-10-11",
+ "metrics": {"steps": {"value": 9000.0, "days": 3, "of": 7},
+             "sleep_minutes": {"value": 450.0, "days": 3, "of": 7}, "...": "..."},
+ "days": [{"date": "2026-10-08", "status": "no_data", "wear_minutes": 0, "steps": null, "...": "..."}],
+ "previous": {"week": "2026-W40", "...": "..."},
+ "delta": {"steps": {"abs": 3000.0, "pct": 50.0}, "sleep_minutes": null, "...": "..."}}
+```
