@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "@/api/auth";
 import DevPanel from "@/components/DevPanel";
+import Toasts from "@/components/Toasts";
 import { Button } from "@/components/ui/button";
 import { useEvents } from "@/hooks/useEvents";
 import { sections } from "@/lib/sections";
@@ -55,6 +56,7 @@ export default function AppLayout() {
         <Outlet />
       </main>
       <DevPanel />
+      <Toasts />
     </div>
   );
 }

@@ -52,7 +52,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test.fails("goal.achieved with toast=true shows toast", async () => {
+test("goal.achieved with toast=true shows toast", async () => {
   const source = setup();
   source.emit("goal.achieved", achieved({}));
 
@@ -68,7 +68,7 @@ test.fails("goal.achieved with toast=true shows toast", async () => {
   expect(screen.getByText("8,1 из 7,5 ч")).toBeInTheDocument();
 });
 
-test.fails("goal.achieved with toast=false shows no toast", async () => {
+test("goal.achieved with toast=false shows no toast", async () => {
   const source = setup();
   // A date of a history import: in the bell only.
   source.emit("goal.achieved", achieved({ local_date: "2026-09-01", show_toast: false }));
