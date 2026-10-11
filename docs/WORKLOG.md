@@ -1257,3 +1257,37 @@
 - Проблема / как решили: `test_evaluated_after_ingest_done` сначала упал не по той причине — API ставит задаче
   `run_after` по реальным часам, а часы воркера в тесте стояли в прошлом, задача не бралась. Даты теста — от реального
   «сегодня» в Москве, часы воркера — завтра 09:00.
+
+## 2026-10-11T15:23:23+06:00 — Фичи шага 8.2 готовы, живая проверка
+- 412209a `feat(rules)`: опорные даты R1–R6 (`base.yesterday`, `base.last_night`, R4 — воскресенье последней завершённой
+  ISO-недели), `engine.make_facts` — «сегодня» и местное время по Clock и истории поясов.
+- 5f58a14 R3, d1382b9 R4, 7f2b35e R5 (σ по кругу суток), 3e3fda7 R6 — маркеры своих тестов сняты в тех же коммитах.
+- 9616693 `feat(rules)`: R1–R6 в `engine.RULES`, `LOOKBACK` = 20 дней; сценарии htgen зелёные.
+  Проблема / как решили: опорная дата R1 стала требовать `sleep_start` (общая `has_night`) — упали 2 теста 8.1
+  (`test_rule_engine_db`, фикстура валидной ночи без начала сессии). Поведение R1 вернул прежним (валидная ночь и
+  известный сон), начало основной сессии требует только R5.
+- fabaa59 `feat(worker)`: оценка правил при старте воркера и раз в `RULES_TICK_S` (3600 с), пользователь с идущей
+  задачей пропускается (`queue.try_lock_user`), лог `rules_tick`.
+- 9403157 docs — ADR-047, CLAUDE.md §6.
+- Зелёный прогон: backend `244 passed`, generator `51 passed`, scripts `8 passed` (`scripts/test.sh` и `test.ps1`).
+- Живая проверка (стек пересобран). Найдено: на dev-часах стоял сдвиг `offset_seconds: 90000` (+25 ч), поставленный не в
+  этой сессии; оставлен как был, сообщено пользователю. «Сегодня» по часам — 12.10.
+  - `rules82@example.com`: `htgen --end 2026-10-11 --days 16 --seed 21 --scenario high-rhr,irregular` → открыты R3
+    (67,0 / 67,5 при базе 51,9 по 14 значениям) и R5 (σ 118,9 мин, отбои в местном времени 20:39 … 02:31).
+  - `tick82@example.com`: `htgen --end 2026-10-12 --days 5 --seed 22 --scenario sedentary` → после загрузки только R2
+    (у R6 в окне 07.10 без данных); часы +1 сутки (176400) и `docker compose restart worker` → `rules_tick`
+    `evaluated: 10, changed: 1`, R6 `open` с опорной датой 12.10. Часы возвращены к 90000.
+
+## 2026-10-11T15:23:23+06:00 — Шаг 8.2 завершён
+- Итог: R3–R6, опорные даты по Clock и поясу пользователя, оценка правил в конце загрузки (с 8.1) и раз в час в воркере.
+  ADR-047 (допущения 1–8 приняты пользователем).
+- Коммиты шага: 2a7ffc3 (docs), dd55bfb (chore, заглушки), 72f92f0 (test, red), 2e9c3c0, b1fe704 (docs), 412209a,
+  5f58a14, d1382b9, 7f2b35e, 3e3fda7, 9616693, fabaa59 (feat), 9403157 (docs), эта запись.
+- Тесты: красный `215 passed, 29 xfailed` → зелёный backend `244 passed`, generator `51 passed`, scripts `8 passed`.
+  Без маркеров с начала: `test_evaluated_after_ingest_done` (вызов с 8.1), `…anchor_today_if_valid_night[R1]`,
+  сценарий `short-sleep`, `test_plain_data_open_nothing`. `git grep -n "step 8.2: not implemented" -- ":!docs"` → пусто.
+- Done When: `test_scenarios_open_expected_rule` — 6 из 6 (short-sleep→R1, sedentary→R2+R6, high-rhr→R3,
+  irregular→R5, worse-week→R4, recovery закрывает R1–R6); ruff check/format → exit 0; `scripts/test.ps1` и
+  `scripts/test.sh` → «OK: all tests passed»; `scripts/smoke.ps1` и `smoke.sh` → exit 0. Frontend и generator не трогали.
+- Проверить вручную: загрузка `high-rhr,irregular` открывает R3 и R5; смена суток по dev clock и перезапуск воркера
+  открывает R6 без новой загрузки.
