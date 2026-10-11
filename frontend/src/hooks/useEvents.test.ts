@@ -140,7 +140,7 @@ test("refetches everything after reconnect", () => {
   expect(invalidated(queryClient)).toEqual(Object.keys(keys).sort());
 });
 
-test.fails("devices.changed invalidates the device list", () => {
+test("devices.changed invalidates the device list", () => {
   const queryClient = setup();
   const source = FakeEventSource.last;
   source.emit("ready");

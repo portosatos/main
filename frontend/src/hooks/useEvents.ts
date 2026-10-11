@@ -35,6 +35,10 @@ const handlers: Record<string, Handler> = {
     void queryClient.invalidateQueries({ queryKey: ingestJobsKey });
     void queryClient.invalidateQueries({ queryKey: devicesKey });
   },
+  // A device renamed in another tab.
+  "devices.changed": (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: devicesKey });
+  },
 };
 
 // Keys of summaryKeys: a day, an ISO week or a range that contains one of the dates.
