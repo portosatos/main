@@ -4,15 +4,10 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 from app.services.merge import Merged, device_order, merge_hr, merge_steps
-
-pytestmark = pytest.mark.xfail(
-    strict=True, raises=NotImplementedError, reason="step 4.2: not implemented"
-)
 
 REGISTERED = datetime(2026, 9, 1, tzinfo=UTC)
 MINUTE = timedelta(minutes=1)
