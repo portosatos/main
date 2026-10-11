@@ -1111,3 +1111,45 @@
 - «ок, допущения 1–4 принимаю» (PROMPTS.md): тост по `show_toast` с «сегодня/вчера» по `today`; сон с запятой или
   точкой; колокольчик — выпадающий список, прочтение только кнопкой «Прочитать все»; прогресс в карточках «Шаги» и
   «Сон» дашборда, на странице «Цели» — форма и текущая ISO-неделя. Будут в ADR-044.
+
+## 2026-10-11T13:56:11+06:00 — Фичи шага 7.2 готовы
+- 29c811b feat(goals) — `GoalProgress` (шкала до 100 %, текст с настоящим процентом, без значения — «цель — 8 000
+  шагов») в карточках «Шаги» и «Сон» дня, «цель выполнена N из 7 дней» в карточках недели; `ProgressBar` ограничивает
+  значение. Снят маркер `GoalProgress.test.tsx`. Тест `Dashboard.test.tsx::day cards show goal progress` и проверка
+  недели добавлены после кода (встраивание в дашборд).
+- ba63ce1 feat(goals) — страница `/goals`: форма (react-hook-form + zod, `lib/goalSchema.ts`, сон с запятой), текущая
+  ISO-неделя по `today`; `api/goals.ts`, ключи `goalsKey`/`notificationsKey`, `goal.changed` в `useEvents`. Снят маркер
+  `Goals.test.tsx`.
+- 2434664 feat(goals) — тосты `sonner` (`Toasts` в `AppLayout`, `lib/toasts.ts::showGoalToast`, только при
+  `show_toast`, `id` = `notification_id`). Сняты маркеры 2 тестов `Toasts.test.tsx`.
+- f19a87f feat(notifications) — `Bell` (radix Popover): счётчик `unread`, последние 50, «Прочитать все»;
+  `notification.created`, `notifications.read` в `useEvents`. Сняты маркеры 2 тестов `Bell.test.tsx` и
+  `useEvents.test.ts`. `App.test.tsx`: мок `/api/notifications` и проверка колокольчика в шапке — после кода (запрос
+  колокольчика в нём был не замокан).
+- 1418ed9 docs — ADR-044, CLAUDE.md §6.
+- Зелёный прогон: `npx vitest run` → `39 passed (39)`.
+- Живая проверка (стек пересобран, демо-пользователь, dev clock +86400 → «сегодня» 12.10): вкладки `/goals` и `/`; цель
+  шагов 3000 через форму → «Цели сохранены»; `upload.sh` файла `htgen --start 2026-10-12 --end 2026-10-12 --seed 8` → done
+  за 2 с. В **обеих** вкладках тосты «Цель по сну на сегодня выполнена 9,1 из 8 ч» и «Цель по шагам на сегодня выполнена
+  10 479 из 3 000 шагов», колокольчик 3 → 5 в обеих; карточки 349 % и 128 %, неделя W42 — 1 из 7.
+- Проблема / как решили: список колокольчика не появлялся на экране — обёртка popper оставалась на
+  `translate(0, -200%)`. Причина: shadcn `Button` на React 18 не пробрасывал `ref` (ADR-027), у `Popover.Trigger asChild`
+  не было якоря. Регрессионный тест `Bell.test.tsx::the list is anchored to the bell` (после кода) сначала красный
+  (`expected 'translate(0, -200%)' not to contain '-200%'`), затем 294cc52 fix(notifications): `Button` на `forwardRef`.
+  После пересборки список виден под колокольчиком; «Прочитать все» → 0 в обеих вкладках (`notifications.read`); цель
+  возвращена на 8000 через форму → во второй вкладке 349 % → 130 % (`goal.changed`). Итого `40 passed`.
+- Сдвиг dev clock после проверки: `offset_seconds: 0`. Замечания: у демо-пользователя остались данные и достижения за
+  12.10 и версии цели шагов с `valid_from` 12.10 (3000, затем 8000); после отката часов `GET /api/goals` показывает
+  версию 8000 с `valid_from` из «будущего» — так `GoalBook` шага 7.1 выбирает последнюю версию; цель та же 8000.
+  Размер бандла 814 → 923 кБ (предупреждение Vite > 500 кБ было и до шага).
+
+## 2026-10-11T13:56:11+06:00 — Шаг 7.2 завершён
+- Коммиты шага: 016cfd7 (docs), d334528 (refactor, заглушки), 07600f3 (test, red), 07133ac, c18e6b7 (docs), 29c811b,
+  ba63ce1, 2434664, f19a87f (feat), 1418ed9 (docs), 294cc52 (fix), этот (docs).
+- Тесты: красный `31 passed | 7 expected fail` → зелёный frontend `40 passed`; backend `186 passed`, generator
+  `51 passed`, scripts `8 passed`. `git grep -n "step 7.2: not implemented" -- ":!docs"` и `git grep -n "test.fails" --
+  frontend/src` → пусто.
+- Done When: ruff check/format → exit 0; `scripts/test.ps1` и `scripts/test.sh` → exit 0 («OK: all tests passed»);
+  `npm --prefix frontend run check` → exit 0; `scripts/smoke.ps1` и `smoke.sh` → exit 0.
+- Проверить вручную: цель ниже сегодняшних шагов, загрузка за сегодня — тост в обеих вкладках, колокольчик +1;
+  страница «Цели» (валидация, сохранение, неделя); «Прочитать все» во второй вкладке.
