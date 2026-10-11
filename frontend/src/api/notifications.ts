@@ -1,4 +1,11 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { notificationsKey } from "@/lib/queryKeys";
+
+import { api } from "./client";
+
 // /api/notifications (SPEC F8, §6.3, ADR-043): the bell's feed, newest first, and the unread count.
+// Other tabs learn of changes from `notification.created` and `notifications.read` (useEvents).
 
 export type GoalAchievedPayload = {
   kind: "steps" | "sleep";
@@ -23,3 +30,19 @@ export type GoalAchievedEvent = GoalAchievedPayload & {
   show_toast: boolean;
   notification_id: string;
 };
+
+// The newest 50, as many as the bell shows.
+export function useNotifications() {
+  return useQuery({
+    queryKey: notificationsKey,
+    queryFn: () => api.get<NotificationList>("/api/notifications?limit=50"),
+  });
+}
+
+export function useMarkAllRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ unread: number }>("/api/notifications/read", {}),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: notificationsKey }),
+  });
+}

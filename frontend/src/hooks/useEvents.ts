@@ -5,7 +5,13 @@ import { meQueryKey } from "@/api/auth";
 import type { IngestEvent, IngestJob } from "@/api/ingest";
 import type { GoalAchievedEvent } from "@/api/notifications";
 import { isoWeek } from "@/lib/dates";
-import { devicesKey, goalsKey, ingestJobsKey, summaryKeys } from "@/lib/queryKeys";
+import {
+  devicesKey,
+  goalsKey,
+  ingestJobsKey,
+  notificationsKey,
+  summaryKeys,
+} from "@/lib/queryKeys";
 import { showGoalToast } from "@/lib/toasts";
 
 // The tab's subscription to GET /api/events (SPEC F12, ADR-039, docs/API.md): each event marks
@@ -45,6 +51,13 @@ const handlers: Record<string, Handler> = {
   "goal.changed": (queryClient) => {
     void queryClient.invalidateQueries({ queryKey: goalsKey });
     void queryClient.invalidateQueries({ queryKey: summaryKeys.all });
+  },
+  // The bell (ADR-043): a new notification, or notifications read in another tab.
+  "notification.created": (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: notificationsKey });
+  },
+  "notifications.read": (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: notificationsKey });
   },
   // A goal met: a toast only; its data come with summary.updated and notification.created.
   "goal.achieved": (queryClient, data) => showGoalToast(queryClient, data as GoalAchievedEvent),

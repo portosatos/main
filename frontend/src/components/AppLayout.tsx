@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "@/api/auth";
+import Bell from "@/components/Bell";
 import DevPanel from "@/components/DevPanel";
 import Toasts from "@/components/Toasts";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export default function AppLayout() {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
           <h1 className="text-lg font-semibold">Трекер здоровья</h1>
           <div className="ml-auto flex min-w-0 items-center gap-3">
+            <Bell />
             <span className="truncate text-sm text-muted-foreground">{me.data?.email}</span>
             <Button
               variant="outline"

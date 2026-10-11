@@ -41,7 +41,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test.fails("unread count updates on notification.created", async () => {
+test("unread count updates on notification.created", async () => {
   let feed: NotificationList = { items: [], unread: 0 };
   server.use(http.get("/api/notifications", () => HttpResponse.json(feed)));
   const source = renderBell();
@@ -59,7 +59,7 @@ test.fails("unread count updates on notification.created", async () => {
   expect(bell).toHaveTextContent("1");
 });
 
-test.fails("lists notifications and marks all read", async () => {
+test("lists notifications and marks all read", async () => {
   const older: Notification = {
     id: "7a1c2e0b-0000-4000-8000-000000000002",
     type: "goal.achieved",

@@ -152,7 +152,7 @@ test("devices.changed invalidates the device list", () => {
   expect(invalidated(queryClient)).toEqual(["devices"]);
 });
 
-test.fails("goal and notification events invalidate their keys", () => {
+test("goal and notification events invalidate their keys", () => {
   const queryClient = setup();
   const source = FakeEventSource.last;
   source.emit("ready");

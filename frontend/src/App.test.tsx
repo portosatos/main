@@ -26,6 +26,7 @@ function fakeSession() {
       return new HttpResponse(null, { status: 204 });
     }),
     http.get("/api/dev/clock", () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
+    http.get("/api/notifications", () => HttpResponse.json({ items: [], unread: 2 })),
   );
 }
 
@@ -38,6 +39,10 @@ test("renders app shell with title «Трекер здоровья»", async () 
   const banner = await screen.findByRole("banner");
   expect(within(banner).getByRole("heading", { level: 1, name: "Трекер здоровья" })).toBeVisible();
   expect(within(banner).getByText("demo@example.com")).toBeInTheDocument();
+  // The bell with the unread count (SPEC §6.4).
+  expect(
+    await within(banner).findByRole("button", { name: "Уведомления, непрочитанных: 2" }),
+  ).toBeInTheDocument();
   const menu = screen.getByRole("navigation", { name: "Разделы" });
   const labels = ["Дашборд", "Загрузка", "Устройства", "Цели", "Рекомендации", "Правила", "Настройки"];
   for (const label of labels) {
