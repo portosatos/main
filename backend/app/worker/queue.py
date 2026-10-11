@@ -21,6 +21,8 @@ from app.models import Job
 JOBS_CHANNEL = "jobs"
 # SPEC §4: a job locked longer than this is back in the queue (the worker died).
 STALE_AFTER = timedelta(minutes=5)
+# The predicate of the partial unique index on `dedup_key` (jobs_dedup_key_queued_key).
+QUEUED = text("status = 'queued'")
 # First key of the two-key advisory locks on users, so other advisory locks cannot clash.
 USER_LOCK_NAMESPACE = 32
 
@@ -73,7 +75,9 @@ async def enqueue_once(
             run_after=run_after,
             created_at=now,
         )
-        .on_conflict_do_nothing(index_elements=["dedup_key"], index_where=Job.status == "queued")
+        # The predicate of the partial index as a literal: with a bound parameter the generic
+        # plan (from the 6th execution on a connection) matches no index.
+        .on_conflict_do_nothing(index_elements=["dedup_key"], index_where=QUEUED)
         .returning(Job.id)
     )
     if inserted is not None:

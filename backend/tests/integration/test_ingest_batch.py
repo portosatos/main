@@ -328,7 +328,6 @@ async def _ticked(event: asyncio.Event, loop_task: asyncio.Task) -> bool:
     return event.is_set()
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_schedule_evaluation_after_many_batches_on_one_connection(
     clean: None, db_engine: AsyncEngine
 ) -> None:
