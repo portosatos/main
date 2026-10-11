@@ -1425,3 +1425,15 @@
   транзакция с открытием), диспетчер в воркере (тик 30 с, `plan_send` из 9.1, `aiosmtplib`), письмо текстом и HTML,
   `GET /api/digests`, событие `digest.sent`, очередь дайджестов на dev-панели, `docs/EMAIL.md`.
 - Сначала тесты из «Тесты до кода» с strict-xfail, красный прогон, таблица Done When; код — после «ок» пользователя.
+
+## 2026-10-11T17:54:16+06:00 — Тесты до кода: 8 xfailed (backend) + 1 expected fail (vitest)
+- 303e744 `chore(notify)`: заглушки `outbox.enqueue`, `Mailer`/`SmtpMailer`, `DigestConfig`/`dispatch`, `Worker.digest_tick`.
+- a89fbaf `test(notify): … (red)`: `integration/test_outbox.py` (1), `integration/test_dispatcher.py` (6),
+  `integration/test_mailpit.py` (1, маркер `mailpit`), `components/DevPanel.test.tsx::shows digest queue` (`test.fails`).
+- Красный прогон: `scripts/test.sh` → backend `271 passed, 8 xfailed`, generator `51 passed`, scripts `8 passed`;
+  `npm --prefix frontend run check` → `46 passed | 1 expected fail`.
+- Причины (`--runxfail --tb=line`; vitest без `.fails`): 6 — `NotImplementedError: step 9.2` в заглушке `outbox.enqueue`;
+  1 — нет таблицы `email_outbox` (`UndefinedTableError`); 1 — `GET /api/digests` → 404; vitest — нет таблицы
+  «Очередь дайджестов». Ошибок импорта нет.
+- Допущения (ждут «ок» пользователя): тема письма со склонением; флаг `warning` в `GET /api/digests`; запланированный
+  дайджест — строка `email_digests` с `sent_at IS NULL`; отдельная блокировка диспетчера; Mailpit поднимают `scripts/test.*`.
