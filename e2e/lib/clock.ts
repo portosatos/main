@@ -1,5 +1,6 @@
 import { expect, type APIRequestContext } from "@playwright/test";
 
+import { addDays, localDate, localMoment } from "./dates";
 import { CSRF_HEADERS } from "./env";
 
 export type ClockState = { offset_seconds: number; system_now: string; now: string };
@@ -30,11 +31,18 @@ export function clockOf(request: APIRequestContext): Clock {
       expect(response.status(), await response.text()).toBe(200);
       return (await response.json()) as ClockState;
     },
-    async advance() {
-      throw new Error("step 12.2: not implemented");
+    async advance(seconds) {
+      const { offset_seconds } = await clock.get();
+      return clock.set(offset_seconds + seconds);
     },
-    async toLocal() {
-      throw new Error("step 12.2: not implemented");
+    async toLocal(hhmm) {
+      const state = await clock.get();
+      const now = Date.parse(state.now);
+      const today = localDate(state.now);
+      let target = localMoment(today, hhmm);
+      if (target <= now) target = localMoment(addDays(today, 1), hhmm);
+      // Rounded up: the Clock lands at HH:MM:00 or a moment after, never before.
+      return clock.set(state.offset_seconds + Math.ceil((target - now) / 1000));
     },
   };
   return clock;

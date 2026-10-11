@@ -1,4 +1,6 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+
+import { CSRF_HEADERS } from "./env";
 
 // The user's settings, goals, rules, recommendations and digests through the API of the page's
 // session (docs/API.md), for the steps of a scenario that are not what it checks.
@@ -27,23 +29,32 @@ export type Digests = { notify_email: string | null; pending: number; items: Dig
 
 // `GET /api/recommendations`, newest first.
 export async function recommendations(
-  _page: Page,
-  _query: { status?: RecommendationStatus[]; rule?: string } = {},
+  page: Page,
+  query: { status?: RecommendationStatus[]; rule?: string } = {},
 ): Promise<Recommendation[]> {
-  throw new Error("step 12.2: not implemented");
+  const params = new URLSearchParams();
+  for (const status of query.status ?? []) params.append("status", status);
+  if (query.rule) params.set("rule", query.rule);
+  const response = await page.request.get(`/api/recommendations?${params}`);
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()) as Recommendation[];
 }
 
 // `PATCH /api/rules/{code}`.
-export async function setRule(_page: Page, _code: string, _enabled: boolean): Promise<void> {
-  throw new Error("step 12.2: not implemented");
+export async function setRule(page: Page, code: string, enabled: boolean): Promise<void> {
+  const response = await page.request.patch(`/api/rules/${code}`, { data: { enabled }, headers: CSRF_HEADERS });
+  expect(response.status(), await response.text()).toBe(200);
 }
 
 // `PUT /api/goals`.
-export async function setGoals(_page: Page, _goals: { steps: number; sleep: number }): Promise<void> {
-  throw new Error("step 12.2: not implemented");
+export async function setGoals(page: Page, goals: { steps: number; sleep: number }): Promise<void> {
+  const response = await page.request.put("/api/goals", { data: goals, headers: CSRF_HEADERS });
+  expect(response.status(), await response.text()).toBe(200);
 }
 
 // `GET /api/digests`: the planned digest first, then the sent ones, newest first.
-export async function digests(_page: Page): Promise<Digests> {
-  throw new Error("step 12.2: not implemented");
+export async function digests(page: Page): Promise<Digests> {
+  const response = await page.request.get("/api/digests");
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()) as Digests;
 }

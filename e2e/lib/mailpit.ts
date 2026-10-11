@@ -30,12 +30,25 @@ export const mailpit = {
   },
 
   // The letter with its text and HTML.
-  async message(_id: string): Promise<MailpitLetter> {
-    throw new Error("step 12.2: not implemented");
+  async message(id: string): Promise<MailpitLetter> {
+    const response = await fetch(`${MAILPIT_URL}/api/v1/message/${encodeURIComponent(id)}`);
+    if (!response.ok) throw new Error(`Mailpit message ${id}: HTTP ${response.status}`);
+    return (await response.json()) as MailpitLetter;
   },
 
   // Waits until the recipient has `count` letters (fails on more) and returns them, newest first.
-  async waitFor(_to: string, _count: number, _timeoutMs?: number): Promise<MailpitMessage[]> {
-    throw new Error("step 12.2: not implemented");
+  async waitFor(to: string, count: number, timeoutMs = 30_000): Promise<MailpitMessage[]> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const messages = await mailpit.messages(to);
+      if (messages.length > count) {
+        throw new Error(`${to} has ${messages.length} letters, expected ${count}`);
+      }
+      if (messages.length === count) return messages;
+      if (Date.now() > deadline) {
+        throw new Error(`${to} has ${messages.length} letters after ${timeoutMs} ms, expected ${count}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   },
 };

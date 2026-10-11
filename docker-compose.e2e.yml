@@ -2,12 +2,14 @@
 #   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
 # Its own project, so its own volumes (a clean database and Mailpit) and its own host ports: it runs
 # beside the dev stack and never touches its data. APP_ENV=dev opens /api/dev/clock for the
-# scenarios; a 1-minute digest window keeps the mail scenarios short.
+# scenarios; a 1-minute digest window and a 5-second dispatcher tick keep the mail scenarios short
+# (e2e/lib/env.ts DIGEST_TICK_MS).
 name: health-tracker-e2e
 
 x-e2e-env: &e2e-env
   APP_ENV: dev
   DIGEST_WINDOW_MINUTES: "1"
+  DIGEST_TICK_S: "5"
   APP_URL: http://localhost:5174
 
 services:
