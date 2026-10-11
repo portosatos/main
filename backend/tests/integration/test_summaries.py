@@ -263,6 +263,68 @@ async def test_only_dirty_dates_recomputed(session: AsyncSession) -> None:
     assert (found[oct4]["sleep_minutes"], found[oct4]["sleep_start"]) == (600, at(21, 0, oct3))
 
 
+@pytest.mark.xfail(strict=True, reason="step 8.1: not implemented")
+async def test_session_cut_by_data_edge_waits_for_continuation(session: AsyncSession) -> None:
+    # SPEC F5 (ADR-046, fixes step 4.3): a file ends at 24:00 of the evening; the user fell
+    # asleep at 23:13. The evening keeps its night (00:30–05:30) only; the next file continues
+    # the session and it becomes the night of DAY, the evening does not change.
+    user_id = await make_user(session, tz="Europe/Moscow")
+    eve = DAY - timedelta(days=1)
+    counts = await load(
+        session,
+        user_id,
+        sleep("watch-1", at(0, 30, eve), at(5, 30, eve)),
+        sleep("watch-1", at(23, 13, eve), at(0)),
+        *pulse_every_minute("watch-1", at(0, 0, eve), at(0)),
+    )
+    await recompute_dates(session, user_id, counts.dirty_dates, NOW)
+
+    found = await summary_rows(session, user_id)
+    assert set(found) == {eve}
+    assert found[eve]["sleep_minutes"] == 300
+
+    counts = await load(
+        session,
+        user_id,
+        sleep("watch-1", at(0), at(6)),
+        *pulse_every_minute("watch-1", at(0), at(9)),
+    )
+    await recompute_dates(session, user_id, counts.dirty_dates, NOW)
+
+    found = await summary_rows(session, user_id)
+    assert found[eve]["sleep_minutes"] == 300
+    assert (found[DAY]["sleep_minutes"], found[DAY]["sleep_start"], found[DAY]["sleep_end"]) == (
+        407,
+        at(23, 13, eve),
+        at(6),
+    )
+
+
+@pytest.mark.xfail(strict=True, reason="step 8.1: not implemented")
+async def test_data_after_long_gap_recomputes_date_of_old_edge(session: AsyncSession) -> None:
+    # The data resume 5 hours after the edge (the watch was off): the session at the old edge is
+    # finished now and belongs to the evening, though the new minutes are far from it.
+    user_id = await make_user(session, tz="Europe/Moscow")
+    eve = DAY - timedelta(days=1)
+    counts = await load(
+        session,
+        user_id,
+        sleep("watch-1", at(0, 30, eve), at(5, 30, eve)),
+        sleep("watch-1", at(23, 13, eve), at(0)),
+        *pulse_every_minute("watch-1", at(0, 0, eve), at(0)),
+    )
+    await recompute_dates(session, user_id, counts.dirty_dates, NOW)
+    assert (await summary_rows(session, user_id))[eve]["sleep_minutes"] == 300
+
+    counts = await load(session, user_id, *pulse_every_minute("watch-1", at(5), at(9)))
+    assert eve in counts.dirty_dates
+    await recompute_dates(session, user_id, counts.dirty_dates, NOW)
+
+    found = await summary_rows(session, user_id)
+    assert found[eve]["sleep_minutes"] == 347
+    assert found[DAY]["sleep_minutes"] is None
+
+
 @pytest.fixture(scope="module")
 def htgen_file(tmp_path_factory: pytest.TempPathFactory) -> bytes:
     uv = shutil.which("uv")

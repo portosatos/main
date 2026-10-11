@@ -183,3 +183,42 @@ def test_watch_removed_mid_night_makes_night_invalid() -> None:
     assert summarize_sleep(D, HISTORY, asleep, set(merged)) == DaySleep(
         sleep_minutes=500, sleep_start=at(23, 0, EVE), sleep_end=at(7, 20), night_valid=True
     )
+
+
+@pytest.mark.xfail(strict=True, reason="step 8.1: not implemented")
+def test_session_cut_by_data_edge_belongs_to_no_day() -> None:
+    # SPEC F5 (ADR-046, fixes step 4.3): the data end at 24:00 of EVE, the user fell asleep at
+    # 23:13. The 47 minutes are the start of the next night, not a session of EVE: a session with
+    # no data after its end is unfinished and belongs to no day until its continuation comes.
+    night = span(at(0, 30, EVE), at(5, 30, EVE))
+    evening = span(at(23, 13, EVE), at(0))
+    covered = span(at(0, 0, EVE), at(0))
+
+    assert summarize_sleep(EVE, HISTORY, night | evening, covered).sleep_minutes == 300
+    assert summarize_sleep(D, HISTORY, night | evening, covered) == NO_SLEEP
+
+    # The continuation came: the whole night belongs to D, EVE keeps its 300 minutes.
+    asleep = night | evening | span(at(0), at(6))
+    covered |= span(at(0), at(9))
+    assert summarize_sleep(EVE, HISTORY, asleep, covered).sleep_minutes == 300
+    assert summarize_sleep(D, HISTORY, asleep, covered) == DaySleep(
+        sleep_minutes=407, sleep_start=at(23, 13, EVE), sleep_end=at(6), night_valid=True
+    )
+
+
+@pytest.mark.xfail(strict=True, reason="step 8.1: not implemented")
+def test_session_with_data_after_it_is_finished() -> None:
+    # Data after the end, from any device and even hours later, finish the session: the watch
+    # was taken off at 24:00 and the user was awake from 00:00 or came back at 12:00.
+    night = span(at(0, 30, EVE), at(5, 30, EVE))
+    evening = span(at(23, 13, EVE), at(0))
+    covered = span(at(0, 0, EVE), at(0))
+
+    awake_after = covered | span(at(0), at(0, 30))
+    assert summarize_sleep(EVE, HISTORY, night | evening, awake_after).sleep_minutes == 347
+    # The edge of all the user's data is later than the minutes at hand (`data_end`).
+    later = summarize_sleep(EVE, HISTORY, night | evening, covered, data_end=at(12, 1))
+    assert later.sleep_minutes == 347
+    # The edge given explicitly right at the session's end: unfinished.
+    at_edge = summarize_sleep(EVE, HISTORY, night | evening, awake_after, data_end=at(0))
+    assert at_edge.sleep_minutes == 300
