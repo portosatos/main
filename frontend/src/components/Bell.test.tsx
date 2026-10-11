@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { MemoryRouter } from "react-router";
 
 import type { Notification, NotificationList } from "@/api/notifications";
 import { useEvents } from "@/hooks/useEvents";
@@ -31,7 +32,9 @@ function renderBell() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <TabWithBell />
+      <MemoryRouter>
+        <TabWithBell />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return FakeEventSource.last;
@@ -108,4 +111,36 @@ test("the list is anchored to the bell", async () => {
   // translate(0, -200%) (found in the live check: Button did not forward its ref, ADR-027).
   const wrapper = list.closest<HTMLElement>("[data-radix-popper-content-wrapper]");
   await waitFor(() => expect(wrapper?.style.transform).not.toContain("-200%"));
+});
+
+// Beyond the plan's list (step 8.3): an opened recommendation in the feed (SPEC F9).
+test.fails("describes a recommendation notification", async () => {
+  const opened: Notification = {
+    id: "7a1c2e0b-0000-4000-8000-000000000003",
+    type: "recommendation.opened",
+    payload: {
+      recommendation_id: "9c0d0000-0000-4000-8000-000000000001",
+      rule_code: "R1",
+      title: "Недосып",
+      anchor_date: "2026-10-10",
+    },
+    created_at: "2026-10-10T06:00:00Z",
+    read_at: null,
+  };
+  server.use(
+    http.get("/api/notifications", () => HttpResponse.json({ items: [opened], unread: 1 })),
+  );
+  const user = userEvent.setup();
+  renderBell();
+
+  await user.click(await screen.findByRole("button", { name: "Уведомления, непрочитанных: 1" }));
+  const [item] = within(await screen.findByRole("list", { name: "Уведомления" })).getAllByRole(
+    "listitem",
+  );
+  expect(item).toHaveTextContent("Новая рекомендация: Недосып");
+  expect(item).toHaveTextContent("за 10.10.2026");
+  expect(within(item).getByRole("link", { name: /Недосып/ })).toHaveAttribute(
+    "href",
+    "/recommendations",
+  );
 });

@@ -39,6 +39,9 @@ const keys: Record<string, QueryKey> = {
   rangeSep: summaryKeys.range("2026-09-01", "2026-09-30"),
   goals: ["goals"],
   notifications: ["notifications"],
+  rules: ["rules"],
+  recsOpen: ["recommendations", "open", "all"],
+  recsHistoryR1: ["recommendations", "history", "R1"],
 };
 
 function setup() {
@@ -182,4 +185,22 @@ test("goal and notification events invalidate their keys", () => {
     notification_id: "n1",
   });
   expect(invalidated(queryClient)).toEqual([]);
+});
+
+// Beyond the plan's list (step 8.3): the rules and the recommendations of other tabs and the worker.
+test.fails("rule and recommendation events invalidate their keys", () => {
+  const queryClient = setup();
+  const source = FakeEventSource.last;
+  source.emit("ready");
+
+  // A rule switched in another tab: its card, and the lists (a recommendation may have closed).
+  source.emit("rule.toggled", { code: "R1", enabled: false });
+  expect(invalidated(queryClient)).toEqual(["recsHistoryR1", "recsOpen", "rules"]);
+  reset(queryClient);
+
+  for (const type of ["recommendation.opened", "recommendation.resolved", "recommendation.feedback"]) {
+    source.emit(type, { id: "r1", rule_code: "R1" });
+    expect(invalidated(queryClient)).toEqual(["recsHistoryR1", "recsOpen"]);
+    reset(queryClient);
+  }
 });
