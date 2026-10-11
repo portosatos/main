@@ -772,3 +772,31 @@
   `night_valid` — в окне [начало − 60 мин, конец + 60 мин) нет пропуска данных длиннее 30 мин; день `no_data` строки
   в `daily_summaries` не имеет.
 - Ждёт подтверждения пользователя («ок»).
+
+## 2026-10-11T09:04:09+06:00 — Фичи готовы: сон и дневные сводки
+- Решение пользователя (08:53): допущения 1–4 приняты, правило `night_valid` — «в окне [начало − 60 мин, конец + 60 мин]
+  нет пропуска данных длиннее 30 минут»; оформлено как уточнение SPEC F6 (68ef7cb docs(spec), ADR-035).
+- Коммиты: eee361f feat(sleep): сессии, день пробуждения, `night_valid`, `merge_sleep`, сон в `day_metrics`, маркеры
+  `test_sleep` сняты (16 passed); c5fe1a4 feat(summaries): `recompute_dates`, `affected_dates`, `rebuild_summaries`,
+  `TzHistory.dates_between`, грязные даты в `ingest_records` и в задаче, сброс в воркере, сводки в `htadmin rebuild`,
+  маркеры `test_summaries` сняты (5 passed); f5f8542 test(summaries); c364232 docs(summaries): ADR-036, MERGE_RULES.
+- Тесты после кода (сверх плана): property-тест `test_dates_between_are_dates_whose_ranges_meet_the_window`;
+  `test_pending_dates_survive_worker_crash` (интервал сброса час, падение после пачки 3: дата ждёт в
+  `ingest_jobs.dirty_dates`, продолженная задача досчитывает, итог = пересборке). Тест пересборки усилен до коммита
+  фичи: строки удаляются до `cli.run`, иначе он прошёл бы и без пересборки сводок.
+- Зелёный прогон: backend `156 passed`; `scripts/test.ps1` и `scripts/test.sh` → exit 0 (backend 156, generator 51,
+  scripts 8).
+- Живой стек: api и worker пересобраны, `alembic current` → `0006 (head)`; `htadmin rebuild --user demo@example.com` →
+  exit 0, 30 строк, повтор — тот же md5; загрузка `htgen` за 1–3 августа (55 440 записей) — 5 с, `computed_at` дат
+  03:00:44 / 46 / 47 при окончании задачи в 03:00:47 (сводки появляются по ходу), после неё `htadmin rebuild` даёт тот
+  же md5 (33 строки).
+- Проблем не было.
+
+## 2026-10-11T09:04:09+06:00 — Шаг 4.3 завершён
+- Коммиты: 131ac00 (docs), 89028bc (refactor, заглушки и схема), 85aad07 (test, red), 08cf9db (docs), 68ef7cb (docs,
+  SPEC F6 + ADR-035), eee361f (feat sleep), c5fe1a4 (feat summaries), f5f8542 (test), c364232 (docs) и этот (docs).
+- Тесты: красный `21 xfailed` → зелёный backend `156 passed`; ruff check и format --check → exit 0;
+  `git grep -n "step 4.3: not implemented" -- ":!docs"` → пусто. Frontend и generator не менялись.
+- Done When шага: `htadmin rebuild` → exit 0, `daily_summaries` совпадает с исходной (`test_rebuild_reproduces_summaries`
+  и живой стек). §9 #17 закрыт `test_sleep_2340_0710_attributed_to_wake_day`.
+- Ждёт ручной проверки пользователя и чтения диффа.
