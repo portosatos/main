@@ -1,4 +1,6 @@
 """Job handlers of the worker. `ingest_file`: an uploaded NDJSON file, batch by batch (SPEC F3);
+`ingest_batch`: a stream batch, written as the same NDJSON (services/ingest/jobs.py);
+`evaluate_rules`: the user's rules, debounced after stream batches (SPEC F9);
 `tz_changed`: the dates a move in the time zone history changed (SPEC F5, services/timezones.py).
 
 Every batch is one transaction: its records, the job counters and the checkpoint (byte offset
@@ -14,8 +16,9 @@ The user's tabs hear of it in the same transactions (ADR-039): `ingest.progress`
 starts and after a batch at most every `progress_s` seconds, `summary.updated` with the dates of
 every flush, `ingest.done` when the job is done or has failed.
 
-The transaction that finishes the job also evaluates the user's rules on the fresh summaries
-(SPEC F9, services/rules/engine.py).
+The transaction that finishes a file job also evaluates the user's rules on the fresh summaries
+(SPEC F9, services/rules/engine.py); the one that finishes a stream batch queues the evaluation
+`rules_debounce_s` seconds ahead instead, or joins the one already waiting.
 """
 
 import asyncio
@@ -36,9 +39,20 @@ from app.clock import Clock
 from app.models import IngestJob
 from app.services.events import publish_summary_updated
 from app.services.ingest.classify import ERRORS_LIMIT, Counts, ingest_records
-from app.services.ingest.jobs import INGEST_FILE, JobStatus, job_counts, publish_job_event
+from app.services.ingest.jobs import (
+    INGEST_BATCH,
+    INGEST_FILE,
+    JobStatus,
+    job_counts,
+    publish_job_event,
+)
 from app.services.ingest.parser import Line, parse_lines
-from app.services.rules.engine import evaluate_user
+from app.services.rules.engine import (
+    EVALUATE_RULES,
+    RULES_DEBOUNCE_S,
+    evaluate_user,
+    schedule_evaluation,
+)
 from app.services.summaries import recompute_dates
 from app.services.timezones import TZ_CHANGED, apply_tz_change
 from app.worker.queue import QueuedJob
@@ -58,6 +72,8 @@ class JobContext:
     summary_flush_s: float
     # Progress events after batches at most this often, in seconds.
     progress_s: float
+    # The rules are evaluated this long after a stream batch, in seconds.
+    rules_debounce_s: float = RULES_DEBOUNCE_S
 
 
 @dataclass
@@ -206,7 +222,10 @@ async def ingest_file(ctx: JobContext) -> None:
     async with ctx.sessionmaker() as session:
         now = await ctx.clock.now()
         await flush_summaries(session, now)
-        await evaluate_user(session, ingest.user_id, now)
+        if ctx.job.kind == INGEST_BATCH:
+            await schedule_evaluation(session, ingest.user_id, now, ctx.rules_debounce_s)
+        else:
+            await evaluate_user(session, ingest.user_id, now)
         progress.bytes_done = ingest.bytes_total  # trailing blank lines yield no batch
         await report(session, "done")
         await session.execute(
@@ -264,7 +283,21 @@ async def tz_changed_failed(session: AsyncSession, job: QueuedJob, now: datetime
     recomputes the dates."""
 
 
+async def evaluate_rules(ctx: JobContext) -> None:
+    """The debounced evaluation after stream batches: the rules on the summaries as they are now."""
+    assert ctx.job.user_id is not None
+    async with ctx.sessionmaker() as session:
+        await evaluate_user(session, ctx.job.user_id, await ctx.clock.now())
+        await session.commit()
+
+
+async def evaluate_rules_failed(session: AsyncSession, job: QueuedJob, now: datetime) -> None:
+    """Nothing to report: the next batch, upload or the hourly tick evaluates the rules again."""
+
+
 HANDLERS: dict[str, Handler] = {
     INGEST_FILE: Handler(ingest_file, ingest_file_failed),
+    INGEST_BATCH: Handler(ingest_file, ingest_file_failed),
+    EVALUATE_RULES: Handler(evaluate_rules, evaluate_rules_failed),
     TZ_CHANGED: Handler(tz_changed, tz_changed_failed),
 }

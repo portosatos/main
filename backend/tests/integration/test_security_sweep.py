@@ -151,7 +151,6 @@ async def test_all_id_routes_return_404_for_other_users_resources(
                 assert response.is_success, f"{method} {path}: {response.status_code}"
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_all_mutating_routes_require_csrf_header(
     clean: None, migrated_database_url: str, tmp_path: Path, db_engine: AsyncEngine
 ) -> None:

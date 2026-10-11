@@ -11,6 +11,11 @@ An opened recommendation goes to the bell (a notification, `notification.created
 tabs (`recommendation.opened`); a resolved one only to the tabs (`recommendation.resolved`). The
 events are sent when the caller commits (ADR-048). An opened recommendation also waits in the
 e-mail outbox for the digest (SPEC F10), written in the same transaction (ADR-050).
+
+After a stream batch the evaluation is debounced (SPEC F9): `schedule_evaluation` queues an
+`evaluate_rules` job RULES_DEBOUNCE_S seconds (by Clock) ahead; the batches of those seconds join
+it without moving it, so the rules are evaluated at most every 10 s and at most 10 s after any
+batch (ADR-052).
 """
 
 import uuid
@@ -33,6 +38,7 @@ from app.services.notify import outbox
 from app.services.rules import r1, r2, r3, r4, r5, r6
 from app.services.rules.base import Day, Facts, Rule, default_goal
 from app.services.rules.catalog import TITLES
+from app.worker.queue import enqueue_once
 
 log = structlog.get_logger(__name__)
 
@@ -43,6 +49,9 @@ LOOKBACK = timedelta(days=max(rule.window_days for rule in RULES))
 # The notification type of an opened recommendation, as its event.
 RECOMMENDATION_OPENED = "recommendation.opened"
 RECOMMENDATION_RESOLVED = "recommendation.resolved"
+# The queue job that evaluates a user's rules, and its delay after a stream batch, in seconds.
+EVALUATE_RULES = "evaluate_rules"
+RULES_DEBOUNCE_S = 10.0
 
 
 @dataclass(frozen=True)
@@ -196,6 +205,21 @@ async def evaluate_user(session: AsyncSession, user_id: uuid.UUID, now: datetime
                 recommendation_id=str(changed),
             )
     return applied
+
+
+async def schedule_evaluation(
+    session: AsyncSession, user_id: uuid.UUID, now: datetime, delay_s: float = RULES_DEBOUNCE_S
+) -> bool:
+    """Evaluate the user's rules `delay_s` seconds after `now`, or join the evaluation already
+    waiting. True if a new one was queued. The caller commits."""
+    return await enqueue_once(
+        session,
+        kind=EVALUATE_RULES,
+        user_id=user_id,
+        dedup_key=f"{EVALUATE_RULES}:{user_id}",
+        run_after=now + timedelta(seconds=delay_s),
+        now=now,
+    )
 
 
 async def notify_opened(

@@ -1,16 +1,18 @@
-"""Ingest routes (SPEC F3, §6.3): file upload and the reports of the user's jobs."""
+"""Ingest routes (SPEC F3, §6.3): file upload, stream batches and the reports of the user's
+jobs."""
 
 import uuid
 from typing import Annotated
 
+import anyio
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select
 
 from app.api.deps import ClockDep, SessionDep
 from app.auth.deps import CurrentUserDep
 from app.models import IngestJob
-from app.schemas.ingest import IngestJobOut, UploadAccepted
-from app.services.ingest.jobs import submit_file
+from app.schemas.ingest import BatchIn, IngestJobOut, UploadAccepted
+from app.services.ingest.jobs import BATCH_MAX_RECORDS, submit_batch, submit_file, write_batch
 from app.services.ingest.upload import (
     UploadError,
     UploadTooLarge,
@@ -74,6 +76,39 @@ async def upload_file(
         await session.commit()
     except BaseException:
         partial.unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
+        raise
+    return UploadAccepted(job_id=job_id)
+
+
+@router.post("/batch", status_code=status.HTTP_202_ACCEPTED)
+async def upload_batch(
+    body: BatchIn, request: Request, user: CurrentUserDep, session: SessionDep, clock: ClockDep
+) -> UploadAccepted:
+    """Stream: up to 5000 records (413 over it) and their devices. A worker processes them like
+    a file; in the report `line` is the number of the record in `records`, from 1."""
+    if len(body.records) > BATCH_MAX_RECORDS:
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Не больше {BATCH_MAX_RECORDS} записей в пачке",
+        )
+    job_id = uuid.uuid4()
+    directory = request.app.state.settings.ingest_dir / str(user.id)
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{job_id}.ndjson"
+    devices = [device.model_dump(exclude_none=True) for device in body.devices]
+    try:
+        size = await anyio.to_thread.run_sync(write_batch, path, devices, body.records)
+        await submit_batch(
+            session,
+            user_id=user.id,
+            job_id=job_id,
+            file_path=str(path),
+            bytes_total=size,
+            now=await clock.now(),
+        )
+        await session.commit()
+    except BaseException:
         path.unlink(missing_ok=True)
         raise
     return UploadAccepted(job_id=job_id)

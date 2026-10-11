@@ -146,7 +146,6 @@ async def day_range(client: httpx.AsyncClient) -> list[dict]:
     return response.json()
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_batch_202_same_classification_as_file(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -192,7 +191,6 @@ async def test_batch_202_same_classification_as_file(
     assert not [p for p in settings.ingest_dir.rglob("*") if p.is_file()]
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_batch_over_5000_rejected(clean: None, settings: Settings) -> None:
     records = [far_steps(minute) for minute in range(5001)]
     async with user_client(settings, "limit") as client:
@@ -211,7 +209,6 @@ async def test_batch_over_5000_rejected(clean: None, settings: Settings) -> None
     assert at_limit.status_code == 202, at_limit.text
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_stream_then_file_all_duplicate_totals_unchanged(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -247,7 +244,6 @@ async def test_stream_then_file_all_duplicate_totals_unchanged(
     assert days_after_file == days_after_stream
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_rule_evaluation_debounced_10s(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -289,7 +285,6 @@ async def test_rule_evaluation_debounced_10s(
     assert make_worker(db_engine).rules_debounce_s == 10
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 async def test_debounced_evaluation_runs_when_due_without_new_jobs(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

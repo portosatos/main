@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import ARRAY, Uuid, bindparam, func, select, text, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.models import Job
@@ -47,6 +48,44 @@ async def enqueue(
     await session.flush()
     await session.execute(select(func.pg_notify(JOBS_CHANNEL, kind)))
     return job.id
+
+
+async def enqueue_once(
+    session: AsyncSession,
+    *,
+    kind: str,
+    user_id: uuid.UUID | None,
+    dedup_key: str,
+    run_after: datetime,
+    now: datetime,
+    payload: dict[str, Any] | None = None,
+) -> bool:
+    """Queue a job to run at `run_after` unless a queued job with `dedup_key` already waits: then
+    this request joins it, and its time does not move. True if a job was queued. The caller
+    commits; the NOTIFY lets the workers plan their wake-up for the new time."""
+    inserted = await session.scalar(
+        insert(Job)
+        .values(
+            kind=kind,
+            user_id=user_id,
+            payload=payload or {},
+            dedup_key=dedup_key,
+            run_after=run_after,
+            created_at=now,
+        )
+        .on_conflict_do_nothing(index_elements=["dedup_key"], index_where=Job.status == "queued")
+        .returning(Job.id)
+    )
+    if inserted is not None:
+        await session.execute(select(func.pg_notify(JOBS_CHANNEL, kind)))
+    return inserted is not None
+
+
+async def next_run_after(session: AsyncSession, *, now: datetime) -> datetime | None:
+    """The earliest time a queued job waits for that is still ahead of `now`, or None."""
+    return await session.scalar(
+        select(func.min(Job.run_after)).where(Job.status == "queued", Job.run_after > now)
+    )
 
 
 async def requeue_stale(

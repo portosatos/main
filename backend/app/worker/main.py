@@ -1,7 +1,8 @@
 """The worker process: python -m app.worker (SPEC §6.1).
 
-Takes jobs from the queue in Postgres and runs them. Wakes on NOTIFY from `enqueue` and, as a
-fallback, every WORKER_TICK_S seconds; every tick records a heartbeat and returns stale jobs to
+Takes jobs from the queue in Postgres and runs them. Wakes on NOTIFY from `enqueue`, when the
+earliest delayed job is due (by Clock: the debounced rule evaluation) and, as a fallback, every
+WORKER_TICK_S seconds; every tick records a heartbeat and returns stale jobs to
 the queue. Jobs of one user run one at a time (advisory lock), jobs of different users in
 parallel when several workers run.
 
@@ -33,7 +34,7 @@ from app.services.ingest.classify import BATCH_SIZE
 from app.services.ingest.jobs import PROGRESS_INTERVAL_S
 from app.services.notify.dispatcher import DEFAULT_CONFIG, DigestConfig, dispatch
 from app.services.notify.mailer import Mailer, SmtpMailer
-from app.services.rules.engine import evaluate_user, users_with_recent_data
+from app.services.rules.engine import RULES_DEBOUNCE_S, evaluate_user, users_with_recent_data
 from app.services.summaries import FLUSH_INTERVAL_S
 from app.worker import queue
 from app.worker.handlers import HANDLERS, JobContext
@@ -96,6 +97,7 @@ class Worker:
         mailer: Mailer | None = None,
         digest: DigestConfig = DEFAULT_CONFIG,
         digest_tick_s: float = DIGEST_TICK_S,
+        rules_debounce_s: float = RULES_DEBOUNCE_S,
     ) -> None:
         self.engine = engine
         self.clock = clock
@@ -112,6 +114,7 @@ class Worker:
         self.mailer = mailer
         self.digest = digest
         self.digest_tick_s = digest_tick_s
+        self.rules_debounce_s = rules_debounce_s
         self.listening = asyncio.Event()
         self._sessionmaker = create_sessionmaker(engine)
         self._stop: asyncio.Event | None = None
@@ -212,6 +215,13 @@ class Worker:
             processed += 1
         return processed
 
+    async def until_next_due(self) -> float | None:
+        """Seconds until the earliest delayed job is due, by Clock; None without one."""
+        now = await self.clock.now()
+        async with self._sessionmaker() as session:
+            due = await queue.next_run_after(session, now=now)
+        return None if due is None else (due - now).total_seconds()
+
     async def run(self, stop: asyncio.Event) -> None:
         """The worker loop: wakes on NOTIFY or every tick_s, until `stop` is set."""
         self._stop = stop
@@ -241,6 +251,11 @@ class Worker:
                 wake.clear()
                 await self._guarded(self.run_until_idle())
                 wait = min(next_tick, next_rules_tick, next_digest_tick) - time.monotonic()
+                try:
+                    if (due := await self.until_next_due()) is not None:
+                        wait = min(wait, due)
+                except Exception as exc:  # the database is away: the next tick tries again
+                    log.warning("worker_step_failed", error=repr(exc))
                 await _wait_any(wake, stop, seconds=max(wait, 0))
         finally:
             self.listening.clear()
@@ -269,6 +284,7 @@ class Worker:
             after_batch,
             self.summary_flush_s,
             self.progress_s,
+            self.rules_debounce_s,
         )
 
     def _stopping(self) -> bool:

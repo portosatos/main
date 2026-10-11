@@ -46,6 +46,7 @@ class IngestJob(Base):
     bytes_total: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
     # Checkpoint: bytes and lines processed and committed together with their records.
     bytes_done: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
+    # A stream batch starts at -1: its meta line is line 0, its records are numbered from 1.
     lines_done: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     status: Mapped[str] = mapped_column(
         INGEST_STATUS, nullable=False, default="queued", server_default=text("'queued'")

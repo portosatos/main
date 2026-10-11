@@ -2,15 +2,31 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models import IngestJob
 
 
 class UploadAccepted(BaseModel):
     job_id: uuid.UUID
+
+
+class BatchDevice(BaseModel):
+    """A device of a stream batch, as in the meta line of a file (docs/DATA_FORMAT.md)."""
+
+    id: str = Field(min_length=1)
+    kind: Literal["watch", "phone"]
+    name: str | None = None  # without a name the device is named by its id
+
+
+class BatchIn(BaseModel):
+    """A stream batch: up to 5000 records of the NDJSON format. A record that is not valid is
+    counted as `invalid` in the report and does not reject the batch."""
+
+    devices: list[BatchDevice] = []
+    records: list[Any]
 
 
 class IngestCounts(BaseModel):
