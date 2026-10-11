@@ -7,6 +7,7 @@ import type { GoalAchievedEvent } from "@/api/notifications";
 import { isoWeek } from "@/lib/dates";
 import {
   devicesKey,
+  digestsKey,
   goalsKey,
   ingestJobsKey,
   notificationsKey,
@@ -74,6 +75,10 @@ const handlers: Record<string, Handler> = {
   "recommendation.opened": invalidateRecommendations,
   "recommendation.resolved": invalidateRecommendations,
   "recommendation.feedback": invalidateRecommendations,
+  // A digest went out (ADR-050): the queue on the dev panel.
+  "digest.sent": (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: digestsKey });
+  },
   // A goal met: a toast only; its data come with summary.updated and notification.created.
   "goal.achieved": (queryClient, data) => showGoalToast(queryClient, data as GoalAchievedEvent),
 };

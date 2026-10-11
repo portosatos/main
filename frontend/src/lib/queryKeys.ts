@@ -5,6 +5,7 @@ export const devicesKey = ["devices"] as const;
 export const goalsKey = ["goals"] as const;
 export const notificationsKey = ["notifications"] as const;
 export const rulesKey = ["rules"] as const;
+export const digestsKey = ["digests"] as const;
 
 // The tabs of the recommendations page: open ones, and the closed ones.
 export type RecommendationTab = "open" | "history";
