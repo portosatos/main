@@ -930,3 +930,39 @@
   (по плану): потоковый дебаунс (11.1), оценка при смене пояса (10.1) и при включении правила (8.3). Тесты:
   `unit/test_r3.py`–`test_r6.py`, `unit/test_anchors.py`, `integration/test_rule_triggers.py`,
   `integration/test_rule_scenarios.py`.
+
+## ADR-048. API и UI правил и рекомендаций, отзывы
+- **Дата:** 2026-10-11T15:59:58+06:00 (шаг 8.3)
+- **Контекст:** SPEC F9, F12, §6.3, §6.4, §10, шаг 8.3 плана. В SPEC не определены: что делать при отключении правила с
+  открытой рекомендацией в деталях (поле `resolve_reason`, события), как оценивать правило при включении, какие
+  уведомления создаёт открытие, формат фильтров `GET /api/recommendations`, поведение отзыва при повторе и снятии, вид
+  порогов и текст дисклеймера.
+- **Варианты:** оценка при включении — в транзакции запроса или задачей воркера; уведомление — в API и в воркере
+  отдельно или в одной точке `evaluate_user`; «История» — все рекомендации или только закрытые; снятие отзыва — хранить
+  время снятия или очищать оба поля; пороги — сырой `params` или словами по правилу.
+- **Выбор** (Допущения 1–7, приняты пользователем: «ок, допущения 1–7 принимаю»):
+  1. отключение: `status = closed_rule_disabled`, `resolve_reason = 'rule_disabled'`, `resolved_at` по Clock; события
+     `recommendation.resolved {id, rule_code, status}`, затем `rule.toggled {code, enabled}`;
+  2. `PATCH` в то же состояние ничего не меняет (нет события, `changed_at` прежний, оценки нет); неизвестный код → 404;
+  3. включение оценивает правила пользователя (`evaluate_user`) в транзакции `PATCH`, без воркера; от второй открытой
+     рекомендации защищает `uq_recommendations_open` (одновременная задача загрузки не блокирует запрос);
+  4. открытие (в конце загрузки, по таймеру, при включении) — общая точка `evaluate_user`: уведомление
+     `recommendation.opened` с `payload {recommendation_id, rule_code, title, anchor_date}`, события
+     `notification.created` и `recommendation.opened {id, rule_code, anchor_date}`; закрытие — только событие
+     `recommendation.resolved` (без уведомления);
+  5. `GET /api/recommendations` — список, новые сверху (`opened_at desc`); `status` можно повторять («История» —
+     `status=resolved&status=closed_rule_disabled`), `rule` — R1–R6, `limit` 1–500 (200); неизвестные значения → 422;
+  6. отзыв: та же отметка ещё раз не меняет `feedback_at` и не шлёт событие; новая — новое время; `DELETE` очищает
+     `feedback` и `feedback_at` (повторный — тоже 200); оба запроса возвращают рекомендацию целиком; событие
+     `recommendation.feedback {id, feedback}`;
+  7. UI: пороги словами по правилу (`lib/rules.ts::describeThresholds`), снимок значений одной строкой
+     (`describeContext`); повторное нажатие на выбранную кнопку отзыва снимает отметку; пункт колокольчика — ссылка на
+     `/recommendations`; дисклеймер (`components/Disclaimer.tsx`) на обеих страницах: «Рекомендации носят
+     информационный характер и не заменяют консультацию врача…».
+- **Последствия:** `api/rules.py`, `api/recommendations.py`, `schemas/rules.py`, `schemas/recommendations.py`;
+  `engine.notify_opened`, `engine.publish_resolved`, `catalog.TITLES`. Frontend: `api/rules.ts`,
+  `api/recommendations.ts`, ключи `rulesKey` и `recommendationKeys` (`["recommendations", tab, rule]`), строки
+  `handlers` в `useEvents.ts`, страницы `Rules.tsx`, `Recommendations.tsx` (radix Switch и Tabs), `Bell.tsx::describe`.
+  `docs/RULES.md`. Не сделано (по плану): письма и `email_outbox` (9.x). Тесты: `integration/test_rules_api.py`,
+  `integration/test_recommendations_api.py`, `pages/Rules.test.tsx`, `pages/Recommendations.test.tsx`; сверх плана —
+  `useEvents.test.ts::rule and recommendation events…`, `Bell.test.tsx::describes a recommendation notification`.

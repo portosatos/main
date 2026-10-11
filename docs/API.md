@@ -99,7 +99,34 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 | `POST /api/notifications/read` с `{ids: [...]}` или `{}` | `{unread}`; без `ids` — прочитаны все; событие `notifications.read` |
 
 - `type = "goal.achieved"`: `payload = {kind, local_date, target, value}` (`value` — шаги или часы с точностью 0,1).
+- `type = "recommendation.opened"`: `payload = {recommendation_id, rule_code, title, anchor_date}` (ADR-048).
 - `ids` — до 100; чужие и уже прочитанные игнорируются без ошибки.
+
+## Правила (`/api/rules`, SPEC F9, ADR-048)
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/rules` | `[{code, title, description, params, enabled, changed_at}]` — R1–R6 по порядку каталога |
+| `PATCH /api/rules/{code}` с `{enabled}` | правило после изменения; неизвестный код → 404 |
+
+- Нет записи в `user_rules` — правило включено, `changed_at = null`. Переключение в то же состояние ничего не меняет.
+- Выключение закрывает открытую рекомендацию правила: `status = closed_rule_disabled`, `resolve_reason = rule_disabled`,
+  событие `recommendation.resolved`. Включение сразу оценивает правила (может прийти `recommendation.opened`). Затем —
+  `rule.toggled {code, enabled}`.
+
+## Рекомендации (`/api/recommendations`, SPEC F9, ADR-048)
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/recommendations?status=…&rule=R1&limit=200` | `[{id, rule_code, title, status, opened_at, anchor_date, context, resolved_at, resolve_reason, feedback, feedback_at}]` — новые сверху |
+| `PUT /api/recommendations/{id}/feedback` с `{value: "useful" \| "not_useful"}` | рекомендация; событие `recommendation.feedback {id, feedback}` |
+| `DELETE /api/recommendations/{id}/feedback` | рекомендация без отметки (`feedback`, `feedback_at` — `null`); событие с `feedback: null` |
+
+- `status` — `open`, `resolved`, `closed_rule_disabled`, можно повторять: вкладка «Активные» — `status=open`, «История» —
+  `status=resolved&status=closed_rule_disabled`. Без `status` — все. `limit` 1–500. Неизвестные значения → 422.
+- `resolve_reason`: `auto` — закрыта условием правила, `rule_disabled` — правило выключено.
+- Отзыв можно поставить на любую рекомендацию. Та же отметка ещё раз — без изменений и без события. Чужая или
+  несуществующая рекомендация → 404.
 
 ## События (`GET /api/events`, SSE, SPEC F12, ADR-039)
 
@@ -120,6 +147,10 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr, goals`. Пульс о�
 | `notification.created` | `{id, type}` | новое уведомление в колокольчике; приходит перед своим `goal.achieved` |
 | `goal.achieved` | `{kind, local_date, target, value, show_toast, notification_id}` | цель выполнена впервые за дату; тост — только при `show_toast` (дата — сегодня или вчера по `Clock`) |
 | `notifications.read` | `{ids: [...]}` или `{all: true}` | уведомления отмечены прочитанными |
+| `recommendation.opened` | `{id, rule_code, anchor_date}` | открыта рекомендация (в конце загрузки, по таймеру воркера, при включении правила); перед ним — `notification.created` |
+| `recommendation.resolved` | `{id, rule_code, status}` | рекомендация закрыта: `status` — `resolved` (условием правила) или `closed_rule_disabled` |
+| `recommendation.feedback` | `{id, feedback}` | отзыв поставлен, изменён или снят (`null`) |
+| `rule.toggled` | `{code, enabled}` | правило включено или выключено |
 
 `counts = {new, duplicate, conflict, invalid}` — как в отчёте `GET /api/ingest/jobs/{id}`. Прогресс —
-`bytes_done / bytes_total`. Остальные события SPEC F12 (правила, настройки) добавляются на своих шагах.
+`bytes_done / bytes_total`. Остальные события SPEC F12 (настройки, письма) добавляются на своих шагах.

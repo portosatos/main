@@ -178,3 +178,9 @@
   `catalog.py` (сид — миграция 0010). Таблицы `rules`, `user_rules` (нет строки — включено), `recommendations`
   (одна открытая на правило — `uq_recommendations_open`). Логи воркера `recommendation_opened` / `recommendation_resolved`,
   `rules_tick`. После сдвига dev clock переоценить сразу — `docker compose restart worker`.
+- Правила и рекомендации в API и UI (ADR-048, `docs/RULES.md`, `docs/API.md`): `GET /api/rules`,
+  `PATCH /api/rules/{code}` `{"enabled": false}` (выключение закрывает открытую как `closed_rule_disabled`, включение сразу
+  оценивает), `GET /api/recommendations?status=open&rule=R1` (`status` повторяется), `PUT/DELETE
+  /api/recommendations/{id}/feedback` `{"value": "useful"}`. Открытие рекомендации — уведомление и события в
+  `engine.evaluate_user` (`notify_opened`). Страницы `http://localhost:5173/rules`, `/recommendations`; пороги словами и
+  снимок значений — `lib/rules.ts`, дисклеймер — `components/Disclaimer.tsx`.
