@@ -11,8 +11,6 @@ import { expect, test } from "./test";
 // opens it opens nothing; turned on, it opens; turned off again, its recommendation goes to the
 // history as «правило отключено» and stays there.
 
-test.fail();
-
 async function switchR1(page: Page, enabled: boolean) {
   await page.goto("/rules");
   const r1 = page.getByRole("switch", { name: "Правило R1 включено" });
