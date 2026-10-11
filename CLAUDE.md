@@ -165,3 +165,6 @@
   `goals` в `/api/summary/*`; `GET /api/notifications`, `POST /api/notifications/read` `{"ids": [...]}` (без `ids` — все).
   Достижения пишет `services/goals.py::record_achievements` в конце каждого `recompute_dates`; события `goal.achieved`
   (`show_toast`), `notification.created`, `notifications.read`, `goal.changed`.
+- Цели в UI (ADR-044): страница `http://localhost:5173/goals` (форма, неделя), прогресс в карточках дашборда —
+  `GoalProgress`, колокольчик в шапке — `Bell` (`unread`, «Прочитать все»), тосты — `sonner` (`Toasts` в `AppLayout`,
+  `lib/toasts.ts::showGoalToast`, только при `show_toast`).
