@@ -1026,3 +1026,13 @@
 - Инструмент сменён с Claude Code (Opus 5.5; шаги 0.1–6.1) на Codex (GPT-6), начиная с этого шага: сессия Claude достигла лимита.
 - Новый ADR: ADR-042. Перед работой проверены CLAUDE.md, шаг 7.1, F8 и связанные требования SPEC, последние 40 строк WORKLOG и git log --oneline -15.
 - Подготовлен и закоммичен AGENTS.md: efbf781.
+
+## 2026-10-11T13:03:28+06:00 — Шаг 7.1 начат: цели и достижения (backend) — продолжение в Claude Code
+- Шаг продолжает Claude Code (Opus 5.5) по промпту пользователя (PROMPTS.md, эта же метка времени). От сессии Codex
+  в репозитории остались коммиты efbf781 (AGENTS.md) и 220a578 (запись о начале шага, ADR-042) и незакоммиченный
+  черновик `backend/tests/integration/test_goals.py`; черновик просмотрен и переписан (см. запись о тестах до кода).
+- Прочитаны: CLAUDE.md, шаг 7.1 в docs/plan.md, SPEC F0, F5–F8, F12, §6.1, §6.3, §7.1, §8 (этап 7), последние 40 строк
+  WORKLOG, git log --oneline -15.
+- План: тесты до кода (`integration/test_goals.py`, 8 тестов плана + 2 дополнительных) → миграция `goals`,
+  `goal_achievements`, `notifications` → `GET/PUT /api/goals` и прогресс в сводках → достижения при пересчёте сводок
+  с событиями → `GET /api/notifications`, `POST /api/notifications/read` → ADR, docs/API.md, CLAUDE.md.
