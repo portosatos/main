@@ -18,6 +18,18 @@ services:
 
   worker:
     environment: *e2e-env
+    # `up --wait` of older Compose (2.38 on CI runners) fails on a service without a healthcheck;
+    # healthy here means the API reports the worker's heartbeat, so scenarios start with a live worker.
+    healthcheck: !override
+      test:
+        - CMD
+        - python
+        - -c
+        - "import json, urllib.request; h = json.load(urllib.request.urlopen('http://api:8000/api/health', timeout=4)); raise SystemExit(h['worker']['status'] != 'ok')"
+      interval: 5s
+      timeout: 5s
+      start_period: 5s
+      retries: 20
 
   frontend:
     ports: !override
