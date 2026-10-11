@@ -352,7 +352,6 @@ async def test_listener_recovers_after_db_connection_drop(
     assert event.at - sent <= DELIVERY_S
 
 
-@pytest.mark.xfail(strict=True, reason="step 6.1: not implemented")
 async def test_device_rename_reaches_other_tab_within_2s(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:

@@ -12,7 +12,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
-import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -22,8 +21,6 @@ from tests.integration.client import api_client
 PASSWORD = "correct horse battery"
 CREATED_AT = datetime(2026, 10, 1, 0, 0, tzinfo=UTC)
 Sessionmaker = async_sessionmaker[AsyncSession]
-
-pytestmark = pytest.mark.xfail(strict=True, reason="step 6.1: not implemented")
 
 
 @asynccontextmanager
