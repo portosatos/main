@@ -1245,3 +1245,15 @@
   `test_scenarios_open_expected_rule` (htgen, шесть сценариев) → R3, R4, R5 (отбой по кругу суток, местное время по
   истории поясов), R6 → `engine.RULES` и `LOOKBACK` (R4 — 3 недели) → часовая оценка в воркере → ADR, CLAUDE.md §6.
 - Не делаем: потоковый дебаунс (11.1), пересчёт при смене пояса (10.1), API/UI правил, уведомления (8.3), письма (9.x).
+
+## 2026-10-11T15:00:06+06:00 — Тесты до кода: 29 xfailed
+- Заглушки интерфейсов: dd55bfb `chore(rules)` (`r3.py`–`r6.py` с порогами, `Facts.local_time`, `engine.make_facts`,
+  `Worker.rules_tick`/`rules_tick_s`) — тесты падают на `NotImplementedError` и на отсутствии R3–R6 в движке.
+- 72f92f0 `test(rules): … (red)`: весь backend — `215 passed, 29 xfailed` (было 211 passed). xfail: 22 unit (R3–R6,
+  опорные даты, R1–R6 в движке), 2 часовой оценки, 5 сценариев htgen.
+- Зелёные сразу (без маркеров), честно: `test_evaluated_after_ingest_done` — вызов `evaluate_user` в конце задачи
+  сделан на шаге 8.1 (ADR-045, п. 4); `test_r1_r5_anchor_today_if_valid_night[R1]`; сценарий `short-sleep` (R1 с 8.1);
+  контроль `test_plain_data_open_nothing` (сверх плана).
+- Проблема / как решили: `test_evaluated_after_ingest_done` сначала упал не по той причине — API ставит задаче
+  `run_after` по реальным часам, а часы воркера в тесте стояли в прошлом, задача не бралась. Даты теста — от реального
+  «сегодня» в Москве, часы воркера — завтра 09:00.
