@@ -1096,3 +1096,13 @@
   недели) → `GoalProgress` на дашборде → тосты (sonner) по `goal.achieved` с `show_toast` → колокольчик (`unread` из
   `GET /api/notifications`) и строки `goal.achieved`, `notification.created`, `notifications.read`, `goal.changed` в
   `handlers` `useEvents.ts`. Backend не меняется (API готов на шаге 7.1, ADR-043).
+
+## 2026-10-11T13:40:55+06:00 — Тесты до кода: 7 expected fail (Vitest `test.fails`)
+- Заглушки интерфейсов — d334528 refactor(goals): `goals` в типах `Day` и недели (как отдаёт API 7.1, фикстуры
+  `Dashboard.test.tsx` дополнены), `api/goals.ts`, `api/notifications.ts` (типы), пустые `Goals`, `GoalProgress`,
+  `Bell` (кнопка без счётчика), `Toasts`; зависимость `sonner` 2.0.8 (SPEC §5).
+- 07600f3 test(goals): 5 тестов плана + 2 сверх плана (`Bell.test.tsx::lists notifications and marks all read`,
+  `useEvents.test.ts::goal and notification events invalidate their keys`).
+- Красный прогон: `npx vitest run` → `31 passed | 7 expected fail (38)`. Без маркера все 7 падают на поведении:
+  нет поля «Шагов в день», нет progressbar «Цель по шагам», нет текста тоста, нет кнопки «Уведомления, непрочитанных: 0»,
+  события не инвалидируют ключи (`expected [] to deeply equal [...]`). Ошибок импорта нет.
