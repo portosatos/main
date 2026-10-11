@@ -23,7 +23,8 @@ from app.clock import Clock
 from app.config import Settings
 from app.db import create_sessionmaker
 from app.models import DailySummary
-from tests.integration.ingest import ndjson
+from app.services.rules.engine import schedule_evaluation
+from tests.integration.ingest import make_user, ndjson
 from tests.integration.test_goals import api_user
 from tests.integration.test_ingest_jobs import (
     META,
@@ -325,3 +326,26 @@ async def _ticked(event: asyncio.Event, loop_task: asyncio.Task) -> bool:
     if loop_task.done():
         loop_task.result()  # re-raise the loop's error
     return event.is_set()
+
+
+@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
+async def test_schedule_evaluation_after_many_batches_on_one_connection(
+    clean: None, db_engine: AsyncEngine
+) -> None:
+    # Added after the code (found by the Done When run: 40 of 60 stream jobs failed). From the
+    # 6th execution on one connection Postgres plans the statement generically; a parameter in
+    # ON CONFLICT ... WHERE then matches no partial index, so the predicate must be a literal.
+    async with create_sessionmaker(db_engine)() as session:
+        users = [
+            await make_user(session, email=f"plan-{n}-{uuid.uuid4().hex[:6]}@jobs.example.com")
+            for n in range(8)
+        ]
+        for user_id in users:
+            assert await schedule_evaluation(session, user_id, MORNING)
+        for user_id in users:  # all of them wait already: they join
+            assert not await schedule_evaluation(session, user_id, MORNING)
+        await session.commit()
+    for user_id in users:
+        assert await queued_jobs(db_engine, user_id) == [
+            ("evaluate_rules", MORNING + timedelta(seconds=10))
+        ]
