@@ -37,7 +37,6 @@ def facts(*days: Day) -> Facts:
 FLAT_60 = baseline(*[60.0] * 14)
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_baseline_requires_7_values() -> None:
     six = baseline(*[60.0] * 6, *[None] * 8)
     seven = baseline(*[60.0] * 7, *[None] * 7)
@@ -53,7 +52,6 @@ def test_baseline_requires_7_values() -> None:
     assert r3.evaluate(facts(*mixed[:6], day(1, 70), day(0, 70)), D).kind == "unknown"
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_fires_2_days_ge_baseline_plus_7() -> None:
     fired = r3.evaluate(facts(*FLAT_60, day(1, 67), day(0, 71.5)), D)
 
@@ -71,7 +69,6 @@ def test_fires_2_days_ge_baseline_plus_7() -> None:
     assert r3.evaluate(facts(*FLAT_60, day(0, 75)), D).kind == "unknown"
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 @pytest.mark.parametrize(("anchor_hr", "kind"), [(63.9, "close"), (55, "close"), (64, "hold")])
 def test_closes_below_baseline_plus_4(anchor_hr: float, kind: str) -> None:
     # Yesterday was high, the anchor day is back under baseline + 4 (hysteresis: 4 < 7).
