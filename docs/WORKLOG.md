@@ -1765,3 +1765,18 @@
 - Dev clock: `GET /api/dev/clock` → `offset_seconds: 0` на e2e-стеке (8001) и dev-стеке (8000); сценарии 00 двигали
   часы e2e-стека на +86400 с, фикстура `clock` вернула 0.
 - Документы: ADR-053, CLAUDE.md §6 (команды e2e).
+
+## 2026-10-11T20:32:54+06:00 — Шаг 12.1 завершён
+- Итог: `e2e/` (Playwright 1.63.0, Chromium, один воркер), отдельный стек `health-tracker-e2e`
+  (`docker-compose.e2e.yml`: 5174/8001/8026/1026/5434, `APP_ENV=dev`, `DIGEST_WINDOW_MINUTES=1`, healthcheck воркера),
+  хелперы `newUser`, `genFixture`, `clockOf` (фикстура сбрасывает в 0), `mailpit.messages`, `uploadAndWait`;
+  `scripts/e2e.{ps1,sh}`; job `e2e` в CI. Сценарии 1–5 зелёные, приложение без исправлений. ADR-053.
+- Коммиты: 3548acc test (red), 636f754 и b885fc2 docs, 9dacf5e feat(e2e) стек и хелперы, 3ce1ed3 feat(e2e) 1–3,
+  3809f99 feat(e2e) 4–5, 4355d3a feat(ci), ac612c1 fix(e2e), 89ce629 docs.
+- Тесты до кода: красный 20:16:48 — 10 ожидаемых падений (`test.fail()`, причина — заглушки); зелёный 20:24–20:28 —
+  `scripts/e2e.sh` 10 passed, `scripts/e2e.ps1` 10 passed, ruff «All checks passed!» и «193 files already formatted»,
+  `scripts/test.sh` → backend 321 passed, generator 54 passed, scripts 8 passed; `npm --prefix e2e run typecheck` → 0.
+  Сверх плана: `e2e/00-helpers.spec.ts` (5 тестов). Frontend не менялся, `npm run check` не требуется.
+- Done When шага: `scripts/e2e.ps1` → exit 0 (сценарии 1–5); job e2e в CI 38147368552 → success.
+- Проверить вручную: `cd e2e; npx playwright test --headed` (или HTML-отчёт) — прогоны сценариев 1–5; стек e2e
+  на `http://localhost:5174` работает рядом с dev-стеком на 5173.
