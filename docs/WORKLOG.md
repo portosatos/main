@@ -901,3 +901,10 @@
   ни одного события загрузки; `pg_terminate_backend` слушателя → `resync` во всех потоках, следующая загрузка снова
   дошла до обоих; без cookie → 401.
 - Шаг закрыт, в docs/plan.md отмечен [x]. Следующий шаг по плану: 5.2 (страница «Загрузка» и `useEvents`).
+
+## 2026-10-11T10:24:59+06:00 — Шаг 5.2 начат: страница «Загрузка» и `useEvents`
+- План: тесты до кода (Vitest `test.fails`: `hooks/useEvents.test.ts` ×2, `pages/Upload.test.tsx` ×3; smoke первого
+  байта SSE через nginx в `scripts/smoke.*`) → `useEvents` (EventSource `/api/events`, инвалидация ключей TanStack Query
+  по типу события, полный refetch после переподключения и `resync`) → страница «Загрузка» (drag-and-drop, XHR с
+  `upload.onprogress`, бар обработки по `ingest.progress`, история загрузок со счётчиками и раскрываемыми ошибками).
+- Зависит от 5.1 (SSE, nginx `proxy_buffering off`) и 1.3 (каркас UI).
