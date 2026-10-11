@@ -418,7 +418,6 @@ async def test_hanging_smtp_cut_off_by_timeout(clean: None, db_engine: AsyncEngi
     assert "Timeout" in planned["error"]
 
 
-@pytest.mark.xfail(strict=True, reason="fix of step 9.2: stale planned digest")
 async def test_cleared_address_drops_planned_digest(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

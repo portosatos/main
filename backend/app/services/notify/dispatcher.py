@@ -14,7 +14,8 @@ so a long upload does not hold the letters; another dispatcher skips a locked us
 3. a failed send rolls step 2 back, so the error is written into the planned row (committed in
    step 1) in a transaction of its own; the next tick tries again.
 
-A user without an address for digests is not planned: the entries wait, GET /api/digests warns.
+A user without an address for digests is not planned (a plan made before the address was cleared
+goes): the entries wait, GET /api/digests warns.
 """
 
 import uuid
@@ -102,6 +103,14 @@ async def _plan(
             return None
         user = await session.get(User, user_id)
         if user is None or not user.notify_email:
+            # No address: nothing is planned, and a plan made while there was one goes (the
+            # entries wait for an address, GET /api/digests warns).
+            await session.execute(
+                delete(EmailDigest).where(
+                    EmailDigest.user_id == user_id, EmailDigest.sent_at.is_(None)
+                )
+            )
+            await session.commit()
             return None
         pending = list(
             await session.scalars(
