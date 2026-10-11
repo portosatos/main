@@ -1844,3 +1844,20 @@
 - 59ab9cc feat(scripts): `scripts/test.ps1 -All` 21:15:49–21:21:42 → exit 0: backend 321 passed, generator 54 passed,
   scripts 8 passed, e2e «18 passed (2.7m)», «OK: all tests passed (with e2e)».
 - Приложение не менялось. Документы: ADR-054, CLAUDE.md §6. Dev clock: `offset_seconds: 0` на e2e-стеке после прогонов.
+
+## 2026-10-11T21:28:46+06:00 — Шаг 12.2 завершён
+- Итог: e2e-сценарии 6–10 (`06-rule-mail-resolve`, `07-quiet-hours`, `08-digest-limit`, `09-goal-toast`,
+  `10-disabled-rule`) зелёные; хелперы писем и часов, `lib/account.ts`; `DIGEST_TICK_S=5` в e2e-стеке;
+  `scripts/test.{ps1,sh} -All/--all` с e2e. Приложение без исправлений. ADR-054, CLAUDE.md §6.
+- Коммиты: 79623b9 test (red), 2fea025, 50d960c и 9d7e272 docs, 8085e9e feat(e2e) хелперы, fb85dba feat(e2e) 9–10,
+  ae413de feat(e2e) 6–8, 59ab9cc feat(scripts), d72ae34 docs.
+- Тесты до кода: красный 21:04:36 — 8 ожидаемых падений, причина у всех — заглушки «step 12.2: not implemented»;
+  зелёный: `scripts/test.ps1 -All` 21:15:49–21:21:42 → exit 0 и `scripts/test.sh --all` 21:22:49–21:28:41 → exit 0
+  (backend 321 passed, generator 54 passed, scripts 8 passed, e2e 18 passed); ruff «All checks passed!» и
+  «193 files already formatted»; `git grep "step 12.2: not implemented" -- ":!docs"` → пусто; `npm --prefix e2e run
+  typecheck` → 0. Frontend не менялся, `npm run check` не требуется.
+- Done When шага: `scripts/e2e.ps1` (внутри `test.ps1 -All`) → «18 passed», exit 0: все 10 сценариев + 8 проверок хелперов.
+- Dev clock: `offset_seconds: 0` на e2e-стеке (8001) и dev-стеке (8000), 21:28:46. Сценарии 06–09 двигали часы
+  e2e-стека (до +1 сут. и −3 сут.), фикстура `clock` вернула 0.
+- Проверить вручную: `cd e2e; npx playwright test 06 07 08 09 10 --headed` (или трейсы в HTML-отчёте); письма в Mailpit
+  e2e-стека `http://localhost:8026`.
