@@ -4,12 +4,13 @@ Raw records are stored as they came, in UTC; derived minute tables are rebuilt f
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -20,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, ExcludeConstraint
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -63,6 +64,11 @@ class IngestJob(Base):
     # Devices created without meta (SPEC §7.2), as text for the report.
     warnings: Mapped[list[str]] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    # Local dates whose summaries are stale, committed with the checkpoint until they are
+    # recomputed: a resumed job recomputes them too (services/summaries.py).
+    dirty_dates: Mapped[list[date]] = mapped_column(
+        ARRAY(Date), nullable=False, server_default=text("'{}'::date[]")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import User
+from app.models import User, UserTimezone
 from app.services.ingest.classify import BATCH_SIZE, Counts, ingest_records
 from app.services.ingest.jobs import create_ingest_job
 from app.services.ingest.parser import parse_lines
@@ -18,11 +18,18 @@ from app.services.ingest.parser import parse_lines
 NOW = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 
 
-async def make_user(session: AsyncSession, email: str = "ingest@example.com") -> uuid.UUID:
+async def make_user(
+    session: AsyncSession, email: str = "ingest@example.com", tz: str | None = "UTC"
+) -> uuid.UUID:
+    """A user registered at NOW in the zone `tz` (the first zone also covers the earlier data);
+    tz=None: the test writes the time zone history itself."""
     # A dummy hash: these tests never log in.
     user = User(email=email, password_hash="x", notify_email=email, created_at=NOW)
     session.add(user)
     await session.flush()
+    if tz is not None:
+        session.add(UserTimezone(user_id=user.id, tz=tz, valid_from=NOW, created_at=NOW))
+        await session.flush()
     return user.id
 
 

@@ -33,8 +33,10 @@ class JobContext:
     batch_size: int
     # Inside a batch transaction: keep the job and the worker alive (lock time, heartbeat).
     checkpoint: Callable[[AsyncSession, datetime], Awaitable[None]]
-    # After batch k is committed: the crash test hook and the graceful stop.
-    after_batch: Callable[[int], None]
+    # After batch k is committed: the test hooks (crash, pause) and the graceful stop.
+    after_batch: Callable[[int], Awaitable[None]]
+    # Stale summaries are recomputed at least this often, in seconds, and at the end of the job.
+    summary_flush_s: float
 
 
 @dataclass
@@ -130,7 +132,7 @@ async def ingest_file(ctx: JobContext) -> None:
                 )
                 await ctx.checkpoint(session, now)
                 await session.commit()
-            ctx.after_batch(number)
+            await ctx.after_batch(number)
 
     async with ctx.sessionmaker() as session:
         await session.execute(

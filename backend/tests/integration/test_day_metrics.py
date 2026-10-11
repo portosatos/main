@@ -11,9 +11,8 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.models import UserTimezone
 from app.services.metrics import DayMetrics, day_metrics
-from tests.integration.ingest import NOW, make_user, ndjson, steps_minute_rows, upload
+from tests.integration.ingest import make_user, ndjson, steps_minute_rows, upload
 
 MSK = timezone(timedelta(hours=3))
 DAY = date(2026, 10, 5)
@@ -37,10 +36,7 @@ async def session(
 
 async def make_msk_user(session: AsyncSession) -> uuid.UUID:
     """A user registered at NOW in Europe/Moscow: the first zone also covers the earlier data."""
-    user_id = await make_user(session)
-    session.add(UserTimezone(user_id=user_id, tz="Europe/Moscow", valid_from=NOW, created_at=NOW))
-    await session.flush()
-    return user_id
+    return await make_user(session, tz="Europe/Moscow")
 
 
 def at(hour: int, minute: int = 0, second: int = 0, day: date = DAY) -> datetime:

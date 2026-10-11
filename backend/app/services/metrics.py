@@ -44,6 +44,11 @@ class DayMetrics:
     active_minutes: int | None
     resting_hr: float | None
     peak_hr: float | None
+    # Sleep of the sessions that ended on this date (services/sleep.py).
+    sleep_minutes: int | None = None
+    sleep_start: datetime | None = None
+    sleep_end: datetime | None = None
+    night_valid: bool = False
 
 
 def day_status(wear_minutes: int) -> str:

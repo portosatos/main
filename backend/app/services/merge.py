@@ -63,6 +63,15 @@ def merge_steps(
     return merged
 
 
+def merge_sleep(
+    order: Sequence[uuid.UUID],
+    coverage: Mapping[uuid.UUID, Collection[datetime]],
+    sleep: Mapping[uuid.UUID, Collection[datetime]],
+) -> dict[datetime, Merged[bool]]:
+    """Sleep state of every covered minute: {minute_utc: Merged(asleep, source)}."""
+    raise NotImplementedError("step 4.3")
+
+
 def merge_hr[T](
     order: Sequence[uuid.UUID], hr: Mapping[uuid.UUID, Mapping[datetime, T]]
 ) -> dict[datetime, Merged[T]]:

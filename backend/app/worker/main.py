@@ -11,7 +11,7 @@ import os
 import signal
 import socket
 import time
-from collections.abc import AsyncIterator, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -24,6 +24,7 @@ from app.config import Settings
 from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
 from app.services.ingest.classify import BATCH_SIZE
+from app.services.summaries import FLUSH_INTERVAL_S
 from app.worker import queue
 from app.worker.handlers import HANDLERS, JobContext
 from app.worker.heartbeat import beat
@@ -73,6 +74,8 @@ class Worker:
         batch_size: int = BATCH_SIZE,
         stale_after: timedelta = STALE_AFTER,
         crash_after_batch: int | None = None,
+        on_batch: Callable[[int], Awaitable[None]] | None = None,
+        summary_flush_s: float = FLUSH_INTERVAL_S,
     ) -> None:
         self.engine = engine
         self.clock = clock
@@ -81,6 +84,9 @@ class Worker:
         self.batch_size = batch_size
         self.stale_after = stale_after
         self.crash_after_batch = crash_after_batch
+        # Test hook: awaited after every committed batch, e.g. to pause the job after batch k.
+        self.on_batch = on_batch
+        self.summary_flush_s = summary_flush_s
         self.listening = asyncio.Event()
         self._sessionmaker = create_sessionmaker(engine)
         self._stop: asyncio.Event | None = None
@@ -175,14 +181,22 @@ class Worker:
             await queue.touch(session, job.id, now)
             await beat(session, self.worker_id, now)
 
-        def after_batch(number: int) -> None:
+        async def after_batch(number: int) -> None:
             if self.crash_after_batch == number:
                 raise SimulatedCrash(f"after batch {number}")
+            if self.on_batch is not None:
+                await self.on_batch(number)
             if self._stopping():
                 raise JobInterrupted
 
         return JobContext(
-            job, self._sessionmaker, self.clock, self.batch_size, checkpoint, after_batch
+            job,
+            self._sessionmaker,
+            self.clock,
+            self.batch_size,
+            checkpoint,
+            after_batch,
+            self.summary_flush_s,
         )
 
     def _stopping(self) -> bool:

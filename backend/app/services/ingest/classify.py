@@ -12,7 +12,7 @@ import bisect
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 import asyncpg
@@ -42,6 +42,8 @@ class Counts:
     invalid: int = 0
     errors: list[IngestError] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # Local dates whose summary may have changed (services/summaries.py).
+    dirty_dates: set[date] = field(default_factory=set)
 
     @property
     def total(self) -> int:
