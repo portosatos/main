@@ -4,7 +4,9 @@ Pure functions over sets of minute starts (UTC):
 - a session is a run of asleep minutes in which no gap without sleep is longer than 30 minutes;
   its length is the number of asleep minutes (gaps do not count); sessions under 30 minutes are
   ignored;
-- a session belongs to the local date of its last asleep minute — the wake day;
+- a session belongs to the local date of its last asleep minute — the wake day; a session with
+  no data after its end (from any device: the edge of the user's data) is unfinished and belongs
+  to no day until its continuation or later data come (SPEC F5, ADR-046);
 - the day's `sleep_minutes` is the sum over its sessions, the main session is the longest one
   (on a tie the later one) and gives `sleep_start` and `sleep_end`; a day without sessions has
   no sleep data (None), not 0;
@@ -77,14 +79,23 @@ def night_valid(session: SleepSession, covered: AbstractSet[datetime]) -> bool:
 
 
 def summarize_sleep(
-    day: date, history: TzHistory, asleep: Iterable[datetime], covered: AbstractSet[datetime]
+    day: date,
+    history: TzHistory,
+    asleep: Iterable[datetime],
+    covered: AbstractSet[datetime],
+    data_end: datetime | None = None,
 ) -> DaySleep:
     """Sleep of the local date `day` from the merged asleep minutes and the covered minutes
-    (by any device) around it."""
+    (by any device) around it. `data_end` — the end of the last minute any device of the user
+    covers; by default the end of the last minute of `covered`."""
+    if data_end is None and covered:
+        data_end = max(covered) + MINUTE
     sessions = [
         s
         for s in sleep_sessions(asleep)
-        if s.minutes >= SESSION_MIN_MINUTES and history.local_date(s.end - MINUTE) == day
+        if s.minutes >= SESSION_MIN_MINUTES
+        and (data_end is None or s.end < data_end)  # else unfinished: the data end with it
+        and history.local_date(s.end - MINUTE) == day
     ]
     if not sessions:
         return NO_SLEEP

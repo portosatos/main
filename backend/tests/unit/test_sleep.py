@@ -185,7 +185,6 @@ def test_watch_removed_mid_night_makes_night_invalid() -> None:
     )
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.1: not implemented")
 def test_session_cut_by_data_edge_belongs_to_no_day() -> None:
     # SPEC F5 (ADR-046, fixes step 4.3): the data end at 24:00 of EVE, the user fell asleep at
     # 23:13. The 47 minutes are the start of the next night, not a session of EVE: a session with
@@ -206,7 +205,6 @@ def test_session_cut_by_data_edge_belongs_to_no_day() -> None:
     )
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.1: not implemented")
 def test_session_with_data_after_it_is_finished() -> None:
     # Data after the end, from any device and even hours later, finish the session: the watch
     # was taken off at 24:00 and the user was awake from 00:00 or came back at 12:00.

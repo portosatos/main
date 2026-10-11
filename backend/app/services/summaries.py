@@ -10,8 +10,11 @@ changed. A changed minute m changes the metrics of its own date and, through sle
 the sessions near it: the session that m joins or splits (asleep minutes within 31 minutes of m)
 and every session whose validity window (60 minutes around it) holds m. All of them meet
 [m − 91 min, m + 91 min), so the dirty dates are the dates of that span plus the wake days of the
-sessions that meet it, followed forward up to 48 hours. The ingest collects the dates with its
-checkpoint and recomputes them at least every ~2 s and at the end of the job.
+sessions that meet it, followed forward up to 48 hours. A session at the edge of the user's data
+belongs to no day until data come after it (ADR-046), and data that resume after a long gap
+finish it far from the new minutes: so the date of the last covered minute before every span is
+dirty too. The ingest collects the dates with its checkpoint and recomputes them at least every
+~2 s and at the end of the job.
 """
 
 import uuid
@@ -26,7 +29,14 @@ from app.models import CoverageMinute, DailySummary, Device, SleepMinute
 from app.services.goals import record_achievements
 from app.services.localtime import TzHistory, UtcRange, load_tz_history
 from app.services.merge import device_order, merge_sleep
-from app.services.metrics import SLEEP_LOOKBACK, DayMetrics, compute_day, load_minutes
+from app.services.metrics import (
+    SLEEP_LOOKBACK,
+    DayMetrics,
+    compute_day,
+    data_end,
+    last_covered,
+    load_minutes,
+)
 from app.services.minutes import DirtyMinutes
 from app.services.sleep import MINUTE, sleep_sessions
 from app.worker.queue import lock_user
@@ -45,12 +55,15 @@ async def affected_dates(
     if not spans:
         return set()
     history = await load_tz_history(session, user_id)
+    devices = (await session.scalars(select(Device).where(Device.user_id == user_id))).all()
+    device_ids = [d.id for d in devices]
     dates: set[date] = set()
     for start, end in spans:
         dates |= history.dates_between(start, end)
+        before = await last_covered(session, device_ids, before=start)
+        if before is not None:  # the old edge of the data, if the span comes after it
+            dates.add(history.local_date(before))
 
-    devices = (await session.scalars(select(Device).where(Device.user_id == user_id))).all()
-    device_ids = [d.id for d in devices]
     # No device sleeps inside the spans: no session meets them.
     asleep_inside = await load_minutes(session, SleepMinute, device_ids, spans)
     if not any(asleep_inside.values()):
@@ -75,7 +88,8 @@ async def recompute_dates(
         return
     history = await load_tz_history(session, user_id)
     devices = (await session.scalars(select(Device).where(Device.user_id == user_id))).all()
-    metrics = [await compute_day(session, history, devices, day) for day in days]
+    end_of_data = await data_end(session, [d.id for d in devices])
+    metrics = [await compute_day(session, history, devices, day, end_of_data) for day in days]
 
     empty = [m.local_date for m in metrics if m.status == "no_data"]
     if empty:

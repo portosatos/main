@@ -374,9 +374,17 @@ async def test_sleep_goal_counted_on_wake_day(
         "start": "2026-10-01T19:00:00Z",
         "end": "2026-10-02T04:30:00Z",
     }
+    # Steps after waking up: a session at the edge of the data belongs to no day (ADR-046).
+    morning = {
+        "type": "steps",
+        "device": "watch-1",
+        "start": "2026-10-02T04:30:00Z",
+        "end": "2026-10-02T04:45:00Z",
+        "count": 600,
+    }
     async with api_user(settings, "goals-sleep") as (client, _clock, user_id):
         async with listen(settings.database_url, user_id) as events:
-            await upload(client, ndjson(META, sleep))
+            await upload(client, ndjson(META, sleep, morning))
             clock = MovableClock(T0 + timedelta(days=5))
             await make_worker(db_engine, clock, summary_flush_s=0).run_until_idle()
             found = await events.until("ingest.done")

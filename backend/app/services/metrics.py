@@ -13,7 +13,8 @@ merged across devices (services/merge.py), then:
 - sleep — the sessions that ended on the day (services/sleep.py) from the merged sleep minutes and
   the coverage around the day: 48 hours back for the start of a session, 2 hours forward to see
   whether the last one goes on and to check the hour after it. A session longer than 48 hours
-  would be cut; real ones are far shorter.
+  would be cut; real ones are far shorter. A session that ends with the user's data (no device
+  covers any minute after it, `data_end`) belongs to no day yet (ADR-046).
 
 services/summaries.py stores the result in daily_summaries.
 """
@@ -31,7 +32,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app.models import CoverageMinute, Device, HrPoint, SleepMinute, StepsMinute
 from app.services.localtime import TzHistory, UtcRange, load_tz_history
 from app.services.merge import Merged, device_order, merge_hr, merge_sleep, merge_steps
-from app.services.minutes import ceil_minute
+from app.services.minutes import MINUTE, ceil_minute
 from app.services.sleep import NO_SLEEP, DaySleep, summarize_sleep
 
 COMPLETE_WEAR_MINUTES = 12 * 60
@@ -110,10 +111,39 @@ async def day_metrics(session: AsyncSession, user_id: uuid.UUID, day: date) -> D
     return await compute_day(session, history, devices, day)
 
 
+async def last_covered(
+    session: AsyncSession, device_ids: Sequence[uuid.UUID], before: datetime | None = None
+) -> datetime | None:
+    """The latest minute any of the devices covers (earlier than `before`); None without one.
+    One index lookup per device."""
+    latest = []
+    for device_id in device_ids:
+        query = select(func.max(CoverageMinute.minute_utc)).where(
+            CoverageMinute.device_id == device_id
+        )
+        if before is not None:
+            query = query.where(CoverageMinute.minute_utc < before)
+        latest.append(query.scalar_subquery())
+    if not latest:
+        return None
+    return await session.scalar(select(func.greatest(*latest)))
+
+
+async def data_end(session: AsyncSession, device_ids: Sequence[uuid.UUID]) -> datetime | None:
+    """The end of the user's data: the end of the last minute any device covers."""
+    last = await last_covered(session, device_ids)
+    return None if last is None else last + MINUTE
+
+
 async def compute_day(
-    session: AsyncSession, history: TzHistory, devices: Sequence[Device], day: date
+    session: AsyncSession,
+    history: TzHistory,
+    devices: Sequence[Device],
+    day: date,
+    end_of_data: datetime | None = None,
 ) -> DayMetrics:
-    """day_metrics with the user's time zone history and devices already loaded."""
+    """day_metrics with the user's time zone history and devices already loaded;
+    `end_of_data` — data_end of the devices, loaded if not given."""
     ranges = _minute_ranges(history.ranges_for_date(day))
     device_ids = [d.id for d in devices]
     if not ranges or not device_ids:
@@ -150,8 +180,14 @@ async def compute_day(
         for device_id, minutes in coverage.items()
     }
     merged_sleep = merge_sleep(order, coverage, asleep)
+    if end_of_data is None:
+        end_of_data = await data_end(session, device_ids)
     sleep = summarize_sleep(
-        day, history, (m for m, s in merged_sleep.items() if s.value), merged_sleep.keys()
+        day,
+        history,
+        (m for m, s in merged_sleep.items() if s.value),
+        merged_sleep.keys(),
+        end_of_data,
     )
     return summarize_day(day, merge_steps(order, day_coverage, steps), merge_hr(order, hr), sleep)
 
