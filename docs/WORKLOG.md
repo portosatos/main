@@ -1534,3 +1534,18 @@
   `settings.changed`, страница «Настройки» (почта и предупреждение без неё, тихие часы, пояс с «действует с», история
   поясов, ближайший дайджест из `GET /api/digests`), `docs/TIMEZONES.md`, ADR.
 - Сначала тесты из «Тесты до кода» с strict-xfail, красный прогон, таблица Done When; код — после «ок» пользователя.
+
+## 2026-10-11T18:47:27+06:00 — Тесты до кода: 23 xfailed (backend) + 4 expected fail (vitest)
+- 0dde59c `chore(settings)`: типы `api/settings.ts`, заглушка `pages/Settings.tsx`, поле `timezone` в типе `User`.
+- 1ed493a `test(settings): … (red)`: `integration/test_settings_api.py` (20 с параметризацией: `test_update_email_and_quiet_hours`,
+  `test_invalid_quiet_hours_422` ×11, `test_invalid_iana_tz_422` ×5, `test_future_valid_from_rejected`,
+  `test_settings_changed_event_reaches_second_client`, сверх плана `test_timezone_history_and_past_move`),
+  `integration/test_tz_change.py` (3), `pages/Settings.test.tsx` (2), сверх плана — `useEvents.test.ts::settings.changed …`
+  и `Devices.test.tsx::shows last data in the user's time zone` (заметка шага 6.1); MSW-обработчик `/api/auth/me` по умолчанию.
+- Причины красного (с `--runxfail` / без `test.fails`): backend — `404 Not Found` у `/api/settings` и
+  `/api/settings/timezones` (подготовка данных и проверки «до» проходят); frontend — нет элементов страницы-заглушки,
+  `settings.changed` ничего не инвалидирует, время устройств `07.10.2026, 21:59` (пояс браузера) вместо `08.10.2026, 00:59`.
+- Полный прогон `scripts/test.sh`: backend `286 passed, 23 xfailed`, generator `51 passed`, scripts `8 passed`;
+  vitest `47 passed | 4 expected fail`.
+- Допущения, вынесенные на подтверждение пользователю: «действует с» без смещения — местное время нового пояса;
+  переезд в прошлом действует до следующей записи истории; повтор того же момента или пояса — 409.
