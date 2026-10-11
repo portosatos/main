@@ -59,7 +59,7 @@ export default function Upload() {
   const job = processingJob(jobs.data, transfer?.jobId);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader>
           <CardTitle>
@@ -70,7 +70,7 @@ export default function Upload() {
             обрабатывается, можно открывать другие разделы.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-5">
+        <CardContent className="grid grid-cols-1 gap-5">
           <DropZone
             disabled={transfer?.status === "sending"}
             onFile={(file) => void startTransfer(file, queryClient)}
