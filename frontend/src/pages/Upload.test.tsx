@@ -55,7 +55,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test.fails("upload bar follows XHR progress", async () => {
+test("upload bar follows XHR progress", async () => {
   server.use(http.get("/api/ingest/jobs", () => HttpResponse.json([])));
   const user = userEvent.setup();
   renderUpload();
@@ -80,7 +80,7 @@ test.fails("upload bar follows XHR progress", async () => {
   expect(await screen.findByText(/Файл передан/)).toBeInTheDocument();
 });
 
-test.fails("processing bar follows ingest.progress", async () => {
+test("processing bar follows ingest.progress", async () => {
   let job = makeJob();
   server.use(http.get("/api/ingest/jobs", () => HttpResponse.json([job])));
   renderUpload();
@@ -98,7 +98,8 @@ test.fails("processing bar follows ingest.progress", async () => {
     bytes_total: 1000,
     counts,
   });
-  expect(bar("Обработка")).toHaveAttribute("aria-valuenow", "30");
+  // The query cache tells the components about new data on the next tick.
+  await waitFor(() => expect(bar("Обработка")).toHaveAttribute("aria-valuenow", "30"));
 
   job = makeJob({
     status: "done",
@@ -119,7 +120,7 @@ test.fails("processing bar follows ingest.progress", async () => {
   expect(within(processing).getByText("Готово")).toBeInTheDocument();
 });
 
-test.fails("history shows new/duplicate/conflict/invalid and expandable errors", async () => {
+test("history shows new/duplicate/conflict/invalid and expandable errors", async () => {
   server.use(
     http.get("/api/ingest/jobs", () =>
       HttpResponse.json([
@@ -143,7 +144,8 @@ test.fails("history shows new/duplicate/conflict/invalid and expandable errors",
 
   const history = await screen.findByRole("table", { name: "История загрузок" });
   const row = within(history).getByRole("row", { name: /week\.ndjson/ });
-  for (const value of ["1000", "700", "200", "60", "40", "Готово"]) {
+  // Numbers are grouped by thousands as in Russian: "1 000" (a no-break space).
+  for (const value of ["1 000", "700", "200", "60", "40", "Готово"]) {
     expect(within(row).getByRole("cell", { name: value })).toBeInTheDocument();
   }
   expect(within(history).getByRole("row", { name: /empty\.ndjson/ })).toHaveTextContent("Ошибка");

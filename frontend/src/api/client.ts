@@ -24,6 +24,11 @@ export function setUnauthorizedRedirect(navigate: Navigate): void {
   redirect = navigate;
 }
 
+// The session is gone: to /login. Also for requests made without apiFetch (the upload XHR).
+export function onUnauthorized(): void {
+  redirect("/login");
+}
+
 export async function apiFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
@@ -44,7 +49,7 @@ export async function apiFetch<T>(
   if (!response.ok) {
     const detail = await readDetail(response);
     // A 401 from /api/auth/* is an answer for the form (wrong password) or for ProtectedRoute.
-    if (response.status === 401 && !path.startsWith("/api/auth/")) redirect("/login");
+    if (response.status === 401 && !path.startsWith("/api/auth/")) onUnauthorized();
     throw new ApiError(response.status, detail);
   }
   if (response.status === 204) return undefined as T;
