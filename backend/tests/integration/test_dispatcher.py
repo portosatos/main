@@ -23,6 +23,7 @@ from app.config import Settings
 from app.db import create_sessionmaker
 from app.models import Recommendation
 from app.services.notify import outbox
+from app.services.notify.mailer import SmtpMailer
 from app.services.rules.catalog import TITLES
 from tests.integration.ingest import make_user
 from tests.integration.test_goals import api_user, listen, of_type
@@ -30,6 +31,17 @@ from tests.integration.test_ingest_jobs import MovableClock, make_worker, wipe
 
 T = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 APP_URL = "http://localhost:5173"
+
+
+class BrokenMailer:
+    """An SMTP server that refuses every letter."""
+
+    def __init__(self) -> None:
+        self.attempts = 0
+
+    async def send(self, message: EmailMessage) -> None:
+        self.attempts += 1
+        raise ConnectionRefusedError("smtp is down")
 
 
 class FakeMailer:
@@ -116,7 +128,7 @@ async def digests(engine: AsyncEngine, user_id: uuid.UUID) -> list[dict]:
     async with engine.connect() as conn:
         result = await conn.execute(
             text(
-                "SELECT id, local_date, to_email, subject, planned_at, plan_reason, sent_at"
+                "SELECT id, local_date, to_email, subject, planned_at, plan_reason, sent_at, error"
                 " FROM email_digests WHERE user_id = :u ORDER BY planned_at"
             ),
             {"u": user_id},
@@ -124,7 +136,7 @@ async def digests(engine: AsyncEngine, user_id: uuid.UUID) -> list[dict]:
         return [dict(row._mapping) for row in result]
 
 
-async def tick(engine: AsyncEngine, at: datetime, mailer: FakeMailer) -> None:
+async def tick(engine: AsyncEngine, at: datetime, mailer: Any) -> None:
     """One digest tick of a worker whose Clock says `at`."""
     await make_worker(engine, MovableClock(at), mailer=mailer).digest_tick()
 
@@ -181,6 +193,7 @@ async def test_one_email_with_all_pending(clean: None, db_engine: AsyncEngine) -
         "planned_at": T + timedelta(minutes=25),
         "plan_reason": "window",
         "sent_at": T + timedelta(minutes=25),
+        "error": None,
     }
     rows = await outbox_rows(db_engine, user_id)
     assert {rec: (r["status"], r["digest_id"]) for rec, r in rows.items()} == {
@@ -341,3 +354,73 @@ async def test_digests_api_shows_planned_at_and_reason(
         ]
         # Another user sees none of it.
         assert (await digest_list(other))["items"] == []
+
+
+# Beyond the plan's list (the user's conditions on assumption 5, ADR-050): a failed send rolls
+# back its transaction, yet the error is kept on the planned digest; a hanging SMTP server is cut
+# off by the timeout, so it does not hold the transaction and the lock.
+
+
+@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
+async def test_smtp_failure_rolls_back_send_and_keeps_error(
+    clean: None, db_engine: AsyncEngine
+) -> None:
+    user_id, _email = await committed_user(db_engine, "digest-broken")
+    rec = await open_rec(db_engine, user_id, "R1", T)
+    broken = BrokenMailer()
+    due = T + timedelta(minutes=15)
+
+    await tick(db_engine, due, broken)
+
+    assert broken.attempts == 1
+    [planned] = await digests(db_engine, user_id)
+    assert planned["sent_at"] is None
+    assert "smtp is down" in planned["error"]
+    assert (await outbox_rows(db_engine, user_id))[rec] == {
+        "recommendation_id": rec,
+        "status": "pending",
+        "digest_id": None,
+    }
+
+    # The next tick tries again; the letter goes out and the error is cleared.
+    mailer = FakeMailer()
+    await tick(db_engine, due + timedelta(seconds=30), mailer)
+    assert len(mailer.sent) == 1
+    [sent] = await digests(db_engine, user_id)
+    assert sent["id"] == planned["id"]
+    assert sent["sent_at"] == due + timedelta(seconds=30)
+    assert sent["planned_at"] == due
+    assert sent["error"] is None
+    assert (await outbox_rows(db_engine, user_id))[rec]["status"] == "sent"
+
+
+@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
+async def test_hanging_smtp_cut_off_by_timeout(clean: None, db_engine: AsyncEngine) -> None:
+    # A server that accepts the connection and never says a word.
+    connections: list[asyncio.StreamWriter] = []
+
+    async def silent(_reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        connections.append(writer)
+
+    server = await asyncio.start_server(silent, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    user_id, _email = await committed_user(db_engine, "digest-hang")
+    await open_rec(db_engine, user_id, "R1", T)
+    try:
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        await tick(
+            db_engine, T + timedelta(minutes=15), SmtpMailer("127.0.0.1", port, timeout_s=0.5)
+        )
+        elapsed = loop.time() - started
+    finally:
+        for writer in connections:
+            writer.close()
+        server.close()
+        await server.wait_closed()
+
+    assert connections, "the mailer did not connect"
+    assert elapsed < 5
+    [planned] = await digests(db_engine, user_id)
+    assert planned["sent_at"] is None
+    assert "Timeout" in planned["error"]
