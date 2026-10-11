@@ -870,3 +870,27 @@
 - Допущения в тестах (ждут подтверждения): при подключении поток шлёт событие `ready`; после восстановления LISTEN —
   `resync` (вкладка перезапрашивает всё); `ingest.done` несёт `status` и `counts`; `ingest.progress` — `bytes_done`,
   `bytes_total`; данные события в SSE — JSON без `user_id`.
+
+## 2026-10-11T10:13:20+06:00 — Фичи готовы: шина событий, SSE и события загрузки
+- Решение пользователя (10:01): допущения 1–7 приняты (`ready`, `resync`, `ingest.done` при ошибке, прогресс не чаще
+  раза в 1 с, формат, 503 без LISTEN, без событий от `htadmin rebuild`); ADR-039.
+- Коммиты: ec10e6d feat(events) — `publish`/`publish_summary_updated` (NOTIFY, деление < 8000 байт), `EventHub`
+  (LISTEN в lifespan, переподключение, `resync`), `GET /api/events` (sse-starlette, своя короткая сессия БД для входа),
+  4 маркера сняты; 4a5a6f3 feat(events) — `ingest.progress` (queued/processing/после пачек), `ingest.done`
+  (done/failed), `summary.updated` при сбросе дат, 3 маркера сняты; 13e8dac docs(events) — `docs/API.md`, ADR-039;
+  39507e4 docs(claude).
+- Зелёный прогон: backend `172 passed` (`test_events.py` 7 passed, трижды подряд, ~9 с); `scripts/test.ps1` и
+  `scripts/test.sh` → exit 0 (backend 172, generator 51, scripts 8).
+- Живой стек (api и worker пересобраны, через nginx `:5173`): без cookie → 401; демо-пользователь, файл htgen 30 дней
+  (43 МБ) — в потоке `ready`, `ingest.progress` ×30 за 33 с обработки, `summary.updated` ×15, `ingest.done` со счётчиками
+  отчёта; в `pg_stat_activity` одно соединение `ht-events`.
+- Проблема: первая попытка `scripts/upload.sh` с файлом из `mktemp` (`/tmp`) → HTTP 000 (путь Git Bash не виден
+  curl); с файлом в обычной папке Windows — ok. Скрипт не меняли, это особенность окружения агента.
+
+## 2026-10-11T10:13:20+06:00 — Шаг 5.1 завершён
+- Коммиты: 3510ca6 (docs), 50fe6df (refactor, заглушки), 789f364 (test, red), ef7eb60 (docs), e421b82 (docs, prompts),
+  ec10e6d (feat), 4a5a6f3 (feat), 13e8dac (docs), 39507e4 (docs) и этот (docs).
+- Тесты: красный `7 xfailed` (все на `501`) → зелёный backend `172 passed`; ruff check и format --check → exit 0;
+  `git grep -n "step 5.1: not implemented" -- ":!docs"` → пусто. Frontend и generator не менялись.
+- Done When шага: только общий DoD. Вклад в §9 #7 и #19 (backend); smoke SSE через nginx и UI — шаг 5.2.
+- Ждёт ручной проверки пользователя (две вкладки `curl -N` к `/api/events` + загрузка) и чтения диффа.
