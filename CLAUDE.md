@@ -142,7 +142,8 @@
   `npm --prefix e2e run typecheck`. Хелперы — `e2e/lib/` (`newUser`, `genFixture` — htgen с `--end` по `today` сервера,
   кэш `e2e/.fixtures/`; `clockOf` с `toLocal("12:00")` / `advance(s)`, `mailpit.messages/message/waitFor`, `uploadAndWait`,
   `lib/account.ts` — правила, рекомендации, цели, дайджесты по API); `test` из `e2e/test.ts` сам сбрасывает dev clock
-  в 0 после каждого теста. Сценарии 01–10; с письмами (06–08) ставят часы на 12:00 МСК. В CI — job `e2e`.
+  в 0 после каждого теста. Сценарии 01–10; с письмами (06–08) ставят часы на 12:00 МСК и объявляют
+  `test.use({ rulesOffAfter: true })` — после теста правила их пользователя выключаются (фикстура `rulesOff`). В CI — job `e2e`.
 - Демо (появится на шаге 13.1): `scripts/demo.ps1` / `scripts/demo.sh`
 - Генератор (`generator/`, формат — `docs/DATA_FORMAT.md`, ADR-028, ADR-029): `uv run --project generator htgen --help`;
   пример — `uv run --project generator htgen --days 7 --seed 1 --out sample.ndjson` (`*.ndjson` в `.gitignore`,
