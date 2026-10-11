@@ -82,9 +82,10 @@ def login(target: Target) -> str:
     return f"{SESSION_COOKIE}={morsel.value}"
 
 
-def send(lines: Iterator[str], target: Target, log: TextIO = sys.stderr) -> int:
-    """Log in and post the records of `lines` (meta line first) in batches; the number of
-    records sent."""
+def send(lines: Iterator[str], target: Target, log: TextIO | None = None) -> int:
+    """Log in and post the records of `lines` (meta line first) in batches, reporting each to
+    `log` (stderr); the number of records sent."""
+    log = log or sys.stderr
     cookie = login(target)
     meta = json.loads(next(lines))
     devices = json.dumps(meta.get("devices", []), ensure_ascii=False)

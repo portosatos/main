@@ -261,6 +261,9 @@ def _write(lines: Iterator[str], stream: TextIO) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    # Messages in UTF-8 on every OS, like the output: a Windows pipe defaults to the ANSI page.
+    if isinstance(sys.stderr, io.TextIOWrapper):
+        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = _parser()
     args = parser.parse_args(argv)
     moments = [moment for moment, _zone in args.tz_change]
