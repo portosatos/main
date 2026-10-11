@@ -46,7 +46,6 @@ def facts(days: list[Day]) -> Facts:
     return Facts(days, today=D, local_time=lambda ts: ts.astimezone(MOSCOW))
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_circular_stdev_2330_vs_0030_is_60() -> None:
     assert r5.circular_diff(23 * 60 + 30, 30) == 60
     assert r5.circular_diff(30, 23 * 60 + 30) == 60
@@ -62,7 +61,6 @@ def test_circular_stdev_2330_vs_0030_is_60() -> None:
     assert verdict.kind == "close"
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_requires_5_of_7_valid_nights() -> None:
     wild = ["20:30", "02:30", "21:30", "01:30", "22:30", "00:30", "23:30"]
 
@@ -82,7 +80,6 @@ def test_requires_5_of_7_valid_nights() -> None:
     ]
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_fires_over_90_closes_under_60() -> None:
     def spread_of(stdev: float) -> list[str]:
         # 7 bedtimes symmetric around midnight with the given population stdev:
