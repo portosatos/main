@@ -28,7 +28,7 @@ const R2: Rule = {
   changed_at: "2026-10-10T06:00:00Z",
 };
 
-test.fails("toggle calls API and reflects state", async () => {
+test("toggle calls API and reflects state", async () => {
   let rules = [R1, R2];
   const patches: { code: string; body: unknown; csrf: string | null }[] = [];
   server.use(

@@ -10,6 +10,7 @@ import Goals from "@/pages/Goals";
 import Login from "@/pages/Login";
 import Placeholder from "@/pages/Placeholder";
 import Register from "@/pages/Register";
+import Rules from "@/pages/Rules";
 import Upload from "@/pages/Upload";
 
 // Sections whose page is ready; the rest show a placeholder.
@@ -18,6 +19,7 @@ const pages: Partial<Record<string, ReactNode>> = {
   "/upload": <Upload />,
   "/devices": <Devices />,
   "/goals": <Goals />,
+  "/rules": <Rules />,
 };
 
 export const routes: RouteObject[] = [
