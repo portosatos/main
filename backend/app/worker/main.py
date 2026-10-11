@@ -28,6 +28,8 @@ from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
 from app.services.ingest.classify import BATCH_SIZE
 from app.services.ingest.jobs import PROGRESS_INTERVAL_S
+from app.services.notify.dispatcher import DEFAULT_CONFIG, DigestConfig
+from app.services.notify.mailer import Mailer
 from app.services.rules.engine import evaluate_user, users_with_recent_data
 from app.services.summaries import FLUSH_INTERVAL_S
 from app.worker import queue
@@ -39,6 +41,8 @@ log = structlog.get_logger("app.worker")
 
 # SPEC F9: the rules are evaluated every hour as well, in case the local date has changed.
 RULES_TICK_S = 3600.0
+# SPEC F10: the digest dispatcher checks the plans every 30 seconds.
+DIGEST_TICK_S = 30.0
 
 
 class SimulatedCrash(BaseException):
@@ -86,6 +90,9 @@ class Worker:
         summary_flush_s: float = FLUSH_INTERVAL_S,
         progress_s: float = PROGRESS_INTERVAL_S,
         rules_tick_s: float = RULES_TICK_S,
+        mailer: Mailer | None = None,
+        digest: DigestConfig = DEFAULT_CONFIG,
+        digest_tick_s: float = DIGEST_TICK_S,
     ) -> None:
         self.engine = engine
         self.clock = clock
@@ -99,6 +106,9 @@ class Worker:
         self.summary_flush_s = summary_flush_s
         self.progress_s = progress_s
         self.rules_tick_s = rules_tick_s
+        self.mailer = mailer
+        self.digest = digest
+        self.digest_tick_s = digest_tick_s
         self.listening = asyncio.Event()
         self._sessionmaker = create_sessionmaker(engine)
         self._stop: asyncio.Event | None = None
@@ -137,6 +147,10 @@ class Worker:
             except Exception as exc:  # one user's failure must not stop the others
                 log.warning("rules_evaluation_failed", user_id=str(user_id), error=repr(exc))
         log.info("rules_tick", now=now.isoformat(), evaluated=evaluated, busy=busy, changed=changed)
+
+    async def digest_tick(self) -> None:
+        """Plan the digests and send the due ones (services/notify/dispatcher.py)."""
+        raise NotImplementedError("step 9.2")
 
     async def claim(self) -> ClaimedJob | None:
         """The oldest queued job whose user is not busy with another job, or None."""
