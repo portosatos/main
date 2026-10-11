@@ -34,3 +34,5 @@ class UserOut(BaseModel):
     notify_email: str | None
     # The user's local date now: Clock (dev offset included) and the zone history (SPEC F0, F5).
     today: date
+    # The zone in effect now by the history (SPEC F5).
+    timezone: str

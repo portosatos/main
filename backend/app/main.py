@@ -21,6 +21,7 @@ from app.api import (
     rules,
     summary,
 )
+from app.api import settings as settings_api
 from app.auth.csrf import CsrfHeaderMiddleware
 from app.clock import create_clock
 from app.config import Settings
@@ -66,6 +67,7 @@ def create_app(
     app.include_router(rules.router)
     app.include_router(recommendations.router)
     app.include_router(digests.router)
+    app.include_router(settings_api.router)
     app.include_router(events.router)
     if settings.app_env == "dev":
         app.include_router(dev.router)

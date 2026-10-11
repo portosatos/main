@@ -23,10 +23,14 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 async def user_out(db: AsyncSession, user: User, now: datetime) -> UserOut:
-    """The user with today's local date by the zone history."""
+    """The user with today's local date and the zone in effect now by the zone history."""
     history = await load_tz_history(db, user.id)
     return UserOut(
-        id=user.id, email=user.email, notify_email=user.notify_email, today=history.local_date(now)
+        id=user.id,
+        email=user.email,
+        notify_email=user.notify_email,
+        today=history.local_date(now),
+        timezone=history.zone_at(now).key,
     )
 
 

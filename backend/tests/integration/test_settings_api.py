@@ -33,9 +33,6 @@ T = datetime(2026, 10, 10, 6, 0, tzinfo=UTC)
 server = test_events.server
 
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
-
-
 @pytest.fixture
 async def clean(db_engine: AsyncEngine) -> AsyncIterator[None]:
     await wipe(db_engine)
@@ -149,6 +146,7 @@ async def test_invalid_quiet_hours_422(
         assert await get_settings(client) == before
 
 
+@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
 async def test_timezone_history_and_past_move(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -226,6 +224,7 @@ async def test_timezone_history_and_past_move(
         }
 
 
+@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
 @pytest.mark.parametrize("tz", ["Mars/Olympus", "europe/moscow", "", "UTC+3", None])
 async def test_invalid_iana_tz_422(
     clean: None, settings: Settings, db_engine: AsyncEngine, tz: str | None
@@ -239,6 +238,7 @@ async def test_invalid_iana_tz_422(
         assert await tz_jobs(db_engine, user_id) == []
 
 
+@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
 async def test_future_valid_from_rejected(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -268,6 +268,7 @@ async def test_future_valid_from_rejected(
         assert response.json()["current"] == "Asia/Tokyo"
 
 
+@pytest.mark.xfail(strict=True, reason="step 10.1: not implemented")
 async def test_settings_changed_event_reaches_second_client(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:
