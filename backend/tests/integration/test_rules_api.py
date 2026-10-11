@@ -154,7 +154,6 @@ async def test_disable_closes_open_as_closed_rule_disabled(
         ]
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.3: not implemented")
 async def test_history_preserved_after_disable(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:

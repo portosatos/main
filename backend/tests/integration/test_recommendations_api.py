@@ -20,8 +20,6 @@ from app.config import Settings
 from tests.integration.test_goals import api_user, listen, of_type
 from tests.integration.test_ingest_jobs import wipe
 
-pytestmark = pytest.mark.xfail(strict=True, reason="step 8.3: not implemented")
-
 T = datetime(2026, 10, 10, 6, 0, tzinfo=UTC)
 
 

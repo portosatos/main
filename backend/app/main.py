@@ -16,6 +16,7 @@ from app.api import (
     health,
     ingest,
     notifications,
+    recommendations,
     rules,
     summary,
 )
@@ -62,6 +63,7 @@ def create_app(
     app.include_router(goals.router)
     app.include_router(notifications.router)
     app.include_router(rules.router)
+    app.include_router(recommendations.router)
     app.include_router(events.router)
     if settings.app_env == "dev":
         app.include_router(dev.router)
