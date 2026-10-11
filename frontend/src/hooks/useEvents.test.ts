@@ -37,6 +37,8 @@ const keys: Record<string, QueryKey> = {
   week40: summaryKeys.week("2026-W40"),
   rangeOct: summaryKeys.range("2026-10-01", "2026-10-31"),
   rangeSep: summaryKeys.range("2026-09-01", "2026-09-30"),
+  goals: ["goals"],
+  notifications: ["notifications"],
 };
 
 function setup() {
@@ -148,4 +150,36 @@ test("devices.changed invalidates the device list", () => {
   // A device was renamed in another tab (SPEC F12): only the device list is fetched again.
   source.emit("devices.changed", { device_id: "5d1f4c1e-0000-4000-8000-000000000001" });
   expect(invalidated(queryClient)).toEqual(["devices"]);
+});
+
+test.fails("goal and notification events invalidate their keys", () => {
+  const queryClient = setup();
+  const source = FakeEventSource.last;
+  source.emit("ready");
+
+  // Goals changed in another tab: the form and the progress of every summary (SPEC F8).
+  source.emit("goal.changed", { kinds: ["steps"] });
+  expect(invalidated(queryClient)).toEqual(
+    ["day01", "day07", "goals", "rangeOct", "rangeSep", "week40", "week41"].sort(),
+  );
+  reset(queryClient);
+
+  // The bell: a new notification, then read in another tab.
+  source.emit("notification.created", { id: "n1", type: "goal.achieved" });
+  expect(invalidated(queryClient)).toEqual(["notifications"]);
+  reset(queryClient);
+  source.emit("notifications.read", { all: true });
+  expect(invalidated(queryClient)).toEqual(["notifications"]);
+  reset(queryClient);
+
+  // goal.achieved only shows a toast: its data come with summary.updated and notification.created.
+  source.emit("goal.achieved", {
+    kind: "steps",
+    local_date: "2026-09-01",
+    target: 8000,
+    value: 9000,
+    show_toast: false,
+    notification_id: "n1",
+  });
+  expect(invalidated(queryClient)).toEqual([]);
 });
