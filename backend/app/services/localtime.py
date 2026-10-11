@@ -7,13 +7,21 @@ move nothing is lost or counted twice, and a day may last 17 or 31 hours or come
 The first zone of the history also covers everything before its `valid_from` (data recorded before
 registration). A local day starts at the first instant of that date: 00:00, or the end of the gap
 when the clock jumps over midnight (America/Santiago, 00:00 → 01:00).
+
+`TzHistory` is pure; `load_tz_history` reads a user's history from user_timezones.
 """
 
+import uuid
 from bisect import bisect_right
 from collections.abc import Iterable
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Protocol
 from zoneinfo import ZoneInfo
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import UserTimezone
 
 UtcRange = tuple[datetime, datetime]
 
@@ -69,6 +77,12 @@ class TzHistory:
             else:
                 ranges.append((start, end))
         return ranges
+
+
+async def load_tz_history(session: AsyncSession, user_id: uuid.UUID) -> TzHistory:
+    """The user's time zone history from user_timezones."""
+    records = await session.scalars(select(UserTimezone).where(UserTimezone.user_id == user_id))
+    return TzHistory(records.all())
 
 
 def _day_start(day: date, zone: ZoneInfo) -> datetime:

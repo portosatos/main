@@ -15,10 +15,6 @@ from app.models import UserTimezone
 from app.services.metrics import DayMetrics, day_metrics
 from tests.integration.ingest import NOW, make_user, ndjson, steps_minute_rows, upload
 
-pytestmark = pytest.mark.xfail(
-    strict=True, raises=NotImplementedError, reason="step 4.2: not implemented"
-)
-
 MSK = timezone(timedelta(hours=3))
 DAY = date(2026, 10, 5)
 META = {
