@@ -1,4 +1,5 @@
-"""Command line interface: htgen --days 7 --seed 1 --out sample.ndjson"""
+"""Command line interface: htgen --days 7 --seed 1 --out sample.ndjson, or to the API:
+htgen --days 3 --stream --url http://localhost:8000 --batch-size 1000 --rate 5"""
 
 from __future__ import annotations
 
@@ -26,6 +27,16 @@ from htgen.gaps import RandomGaps, parse_gap
 from htgen.ndjson import meta_line
 from htgen.profile import plan_day
 from htgen.scenarios import NAMES
+from htgen.stream import (
+    DEFAULT_BATCH,
+    DEFAULT_URL,
+    DEMO_EMAIL,
+    DEMO_PASSWORD,
+    MAX_BATCH,
+    StreamError,
+    Target,
+    send,
+)
 from htgen.timeline import Timeline
 
 
@@ -108,6 +119,20 @@ def _hr_interval(value: str) -> int:
     return seconds
 
 
+def _batch_size(value: str) -> int:
+    size = int(value)
+    if not 1 <= size <= MAX_BATCH:
+        raise argparse.ArgumentTypeError(f"--batch-size: от 1 до {MAX_BATCH}")
+    return size
+
+
+def _rate(value: str) -> float:
+    rate = float(value)
+    if not rate > 0:
+        raise argparse.ArgumentTypeError("--rate: больше 0 пачек в секунду")
+    return rate
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="htgen",
@@ -188,6 +213,27 @@ def _parser() -> argparse.ArgumentParser:
         help=f"данные для правил в конце периода: {', '.join(NAMES)}; можно повторять",
     )
     parser.add_argument("--out", default="-", help="файл NDJSON; '-' — stdout (по умолчанию)")
+    stream = parser.add_argument_group(
+        "поток", "вместо файла — пачками в POST /api/ingest/batch, после входа пользователем"
+    )
+    stream.add_argument("--stream", action="store_true", help="отправить записи в API")
+    stream.add_argument(
+        "--url", default=DEFAULT_URL, help=f"адрес API (по умолчанию {DEFAULT_URL})"
+    )
+    stream.add_argument(
+        "--batch-size",
+        type=_batch_size,
+        default=DEFAULT_BATCH,
+        metavar="N",
+        help=f"записей в пачке, до {MAX_BATCH} (по умолчанию {DEFAULT_BATCH})",
+    )
+    stream.add_argument(
+        "--rate", type=_rate, metavar="R", help="пачек в секунду (по умолчанию без пауз)"
+    )
+    stream.add_argument(
+        "--email", help=f"почта для входа (по умолчанию $DEMO_USER_EMAIL или {DEMO_EMAIL})"
+    )
+    stream.add_argument("--password", help="пароль (по умолчанию $DEMO_USER_PASSWORD или демо)")
     return parser
 
 
@@ -247,6 +293,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if (problem := config.scenario_plan().problem()) is not None:
         parser.error(f"--scenario: {problem}")
+    if args.stream:
+        if args.out != "-":
+            parser.error("--stream отправляет записи в API: --out с ним не указывают")
+        target = Target(
+            url=args.url.rstrip("/"),
+            email=args.email or os.environ.get("DEMO_USER_EMAIL") or DEMO_EMAIL,
+            password=args.password or os.environ.get("DEMO_USER_PASSWORD") or DEMO_PASSWORD,
+            batch_size=args.batch_size,
+            rate=args.rate,
+        )
+        try:
+            send(generate(config), target)
+        except StreamError as error:
+            print(f"htgen: ошибка: {error}", file=sys.stderr)
+            return 1
+        return 0
     # LF and UTF-8 on every OS: the same seed gives byte-identical files on Windows and Linux.
     if args.out == "-":
         try:

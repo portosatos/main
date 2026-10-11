@@ -89,7 +89,6 @@ def api() -> Iterator[FakeApi]:
         server.server_close()
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 def test_stream_mode_posts_batches_and_logs_in(api: FakeApi, tmp_path: Path) -> None:
     expected = run_htgen(tmp_path / "file.ndjson", *ARGS)
 
@@ -123,7 +122,6 @@ def test_stream_mode_posts_batches_and_logs_in(api: FakeApi, tmp_path: Path) -> 
     assert all(batch["devices"] == expected.meta["devices"] for batch in api.batches)
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 def test_stream_credentials_default_to_demo_env(
     api: FakeApi, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -136,7 +134,6 @@ def test_stream_credentials_default_to_demo_env(
     assert api.batches
 
 
-@pytest.mark.xfail(strict=True, reason="step 11.1: not implemented")
 def test_stream_login_rejected_exit_1(api: FakeApi, capsys: pytest.CaptureFixture[str]) -> None:
     """Beyond the plan: a wrong password stops before any batch, with the API's reason."""
     code = main(
