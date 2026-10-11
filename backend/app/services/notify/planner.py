@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from app.services.localtime import TzHistory
 
@@ -24,6 +25,7 @@ _MAX_ROUNDS = 10
 # The first date after the last digest is at most this many days after it (offsets differ by
 # at most 26 hours).
 _DATES_AHEAD = 3
+_SECOND = timedelta(seconds=1)
 
 
 @dataclass(frozen=True)
@@ -99,17 +101,46 @@ def _first_allowed(at: datetime, last: date | None, tz_history: TzHistory) -> da
 def _quiet_end(at: datetime, quiet: QuietHours, tz_history: TzHistory) -> datetime:
     """The end of the quiet hours [start, end) that `at` falls in, or `at` itself. Local time is
     read in the zone in effect at `at`: the history has no moves after now (ADR-017)."""
-    if not quiet.enabled or quiet.start == quiet.end:  # start == end: off (ADR-017)
-        return at
     zone = tz_history.zone_at(at)
     local = at.astimezone(zone)
-    clock = local.time()
-    if quiet.start < quiet.end:
-        inside, end_day = quiet.start <= clock < quiet.end, local.date()
-    elif clock >= quiet.start:  # across midnight, the evening part: ends tomorrow
-        inside, end_day = True, local.date() + timedelta(days=1)
-    else:
-        inside, end_day = clock < quiet.end, local.date()
-    if not inside:
+    if not _is_quiet(local.time(), quiet):
         return at
-    return datetime.combine(end_day, quiet.end, tzinfo=zone).astimezone(UTC)
+    # Across midnight, the evening part ends tomorrow.
+    evening = quiet.start > quiet.end and local.time() >= quiet.start
+    end_day = local.date() + timedelta(days=1) if evening else local.date()
+    # The end is the first instant after `at` that is not quiet. When the clocks go back, its wall
+    # time happens twice (fold 0 and 1) and the first pass may be before `at`; when they go
+    # forward, it may never happen, and the quiet hours end when the clock jumps past it.
+    for fold in (0, 1):
+        end = datetime.combine(end_day, quiet.end, tzinfo=zone).replace(fold=fold).astimezone(UTC)
+        if end > at and not _is_quiet(end.astimezone(zone).time(), quiet):
+            break
+    else:
+        raise RuntimeError(f"no end of the quiet hours after {at.isoformat()}")
+    if end.astimezone(zone).time() == quiet.end:
+        return end
+    return _first_not_quiet(at, end, zone, quiet)
+
+
+def _is_quiet(clock: time, quiet: QuietHours) -> bool:
+    """Is the local wall time in the quiet hours [start, end)?"""
+    if not quiet.enabled or quiet.start == quiet.end:  # start == end: off (ADR-017)
+        return False
+    if quiet.start < quiet.end:
+        return quiet.start <= clock < quiet.end
+    return clock >= quiet.start or clock < quiet.end
+
+
+def _first_not_quiet(
+    quiet_at: datetime, free_at: datetime, zone: ZoneInfo, quiet: QuietHours
+) -> datetime:
+    """The first whole second after `quiet_at` (quiet) up to `free_at` (not quiet) that is not
+    quiet: the moment the clock jumps over the end of the quiet hours."""
+    lo, hi = quiet_at.replace(microsecond=0), free_at
+    while hi - lo > _SECOND:
+        mid = (lo + (hi - lo) / 2).replace(microsecond=0)
+        if _is_quiet(mid.astimezone(zone).time(), quiet):
+            lo = mid
+        else:
+            hi = mid
+    return hi

@@ -254,7 +254,6 @@ def utc(month: int, day: int, hour: int, minute: int = 0) -> datetime:
     return datetime(2026, month, day, hour, minute, tzinfo=UTC)
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_quiet_end_in_repeated_hour_after_clocks_go_back() -> None:
     # New York, Nov 1 2026: 02:00 EDT becomes 01:00 EST at 06:00 UTC, 01:00–02:00 happens twice.
     # The window gives 06:10 UTC = 01:10 EST (the second pass), in the quiet hours 22:00–01:30:
@@ -277,7 +276,6 @@ async def test_quiet_end_in_first_pass_of_repeated_hour() -> None:
     assert result == SendPlan(utc(11, 1, 5, 30), "quiet_hours")
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_quiet_end_in_skipped_hour_after_clocks_go_forward() -> None:
     # New York, Mar 8 2026: 02:00 EST becomes 03:00 EDT at 07:00 UTC, 02:30 never happens.
     # The window gives 06:25 UTC = 01:25 EST, in the quiet hours 22:00–02:30: they end when the
@@ -330,7 +328,6 @@ def in_quiet(moment: datetime, history: TzHistory, quiet: QuietHours) -> bool:
     return clock >= quiet.start or clock < quiet.end
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 @settings(max_examples=1000, deadline=None)
 @given(
     case=st.sampled_from(CHANGES),
