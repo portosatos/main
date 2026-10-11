@@ -65,7 +65,7 @@ def test_r1_r5_anchor_today_if_valid_night(rule: Rule) -> None:
     assert rule.anchor(Facts([complete_day(today)], today)) == today
     assert rule.anchor(Facts([complete_day(today, night_valid=False)], today)) == yesterday
     assert rule.anchor(Facts([complete_day(yesterday)], today)) == yesterday
-    # A valid night without a main session start says nothing about the bedtime (R5) or sleep.
+    # A day without a night (no main session) says nothing about sleep or the bedtime.
     no_night = Day(today, status="partial", wear_minutes=600, night_valid=False)
     assert rule.anchor(Facts([no_night], today)) == yesterday
 
@@ -86,7 +86,6 @@ def test_r4_anchor_last_complete_iso_week(today: date, sunday: date) -> None:
     assert anchor.isoweekday() == 7
 
 
-@pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
 def test_engine_evaluates_r1_to_r6_reading_three_weeks() -> None:
     """Beyond the plan: every rule is in the engine, and the dates it loads cover each anchor and
     window (R4: two weeks before a Sunday up to 7 days back)."""

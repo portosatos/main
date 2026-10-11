@@ -48,7 +48,7 @@ def bedtime(facts: Facts, night: Day) -> float:
 def evaluate(facts: Facts, at: date) -> Verdict:
     """The 7 nights end with the night of `at`; only valid ones count, at least 5."""
     window = [facts.day(at - timedelta(days=i)) for i in reversed(range(PARAMS["nights"]))]
-    nights = [night for night in window if has_night(night)]
+    nights = [n for n in window if has_night(n) and n.sleep_start is not None]
     if len(nights) < PARAMS["min_nights"]:
         return Verdict("unknown")
     beds = [bedtime(facts, night) for night in nights]

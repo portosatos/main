@@ -68,17 +68,7 @@ async def statuses(session: AsyncSession, user_id: uuid.UUID) -> dict[str, tuple
     return {code: (status, reason) for code, status, reason in found}
 
 
-# short-sleep opens R1, which is there since step 8.1.
-NOT_YET = pytest.mark.xfail(strict=True, reason="step 8.2: not implemented")
-
-
-@pytest.mark.parametrize(
-    "scenario",
-    [
-        pytest.param(name, marks=() if name == "short-sleep" else NOT_YET)
-        for name in [*OPENS, "recovery"]
-    ],
-)
+@pytest.mark.parametrize("scenario", [*OPENS, "recovery"])
 async def test_scenarios_open_expected_rule(
     session: AsyncSession, tmp_path: Path, scenario: str
 ) -> None:

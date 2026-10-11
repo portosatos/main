@@ -72,8 +72,8 @@ def yesterday(facts: Facts) -> date:
 
 
 def has_night(day: Day) -> bool:
-    """A valid night with its main session (SPEC F6): its sleep and bedtime are known."""
-    return day.night_valid and day.sleep_minutes is not None and day.sleep_start is not None
+    """A valid night (SPEC F6): its sleep is known."""
+    return day.night_valid and day.sleep_minutes is not None
 
 
 def last_night(facts: Facts) -> date:

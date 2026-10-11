@@ -26,14 +26,14 @@ from app.models import DailySummary, Recommendation, UserRule
 from app.models.rule import OPEN
 from app.services.goals import GoalKind, load_goal_book
 from app.services.localtime import TzHistory, load_tz_history
-from app.services.rules import r1, r2
+from app.services.rules import r1, r2, r3, r4, r5, r6
 from app.services.rules.base import Day, Facts, Rule, default_goal
 
 log = structlog.get_logger(__name__)
 
 # The rules the engine evaluates, in the order of the catalog.
-RULES: tuple[Rule, ...] = (r1.RULE, r2.RULE)
-# An anchor is today or yesterday: the dates a rule may read start this far before today.
+RULES: tuple[Rule, ...] = (r1.RULE, r2.RULE, r3.RULE, r4.RULE, r5.RULE, r6.RULE)
+# The dates the rules may read start this far before today (R4: two weeks before a Sunday).
 LOOKBACK = timedelta(days=max(rule.window_days for rule in RULES))
 
 
