@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
-import { addDays } from "./lib/dates";
+import { digests, recommendations, setGoals, setRule } from "./lib/account";
+import { addDays, localDate, localTime } from "./lib/dates";
 import { genFixture } from "./lib/htgen";
 import { mailpit } from "./lib/mailpit";
 import { newUser, uniqueEmail } from "./lib/users";
@@ -41,4 +42,37 @@ test("genFixture writes the requested period with htgen", async () => {
 
 test("mailpit.messages lists nothing for a fresh address", async () => {
   expect(await mailpit.messages(uniqueEmail())).toEqual([]);
+});
+
+// Helpers of step 12.2.
+
+test.fail("localDate and localTime are in the users' zone", () => {
+  // Moscow is UTC+3.
+  expect(localDate("2026-10-11T21:30:00Z")).toBe("2026-10-12");
+  expect(localTime("2026-10-11T21:30:00Z")).toBe("00:30");
+  expect(localTime(new Date("2026-10-11T08:05:59Z"))).toBe("11:05");
+});
+
+test.fail("clock.toLocal moves forward to the next HH:MM of the zone, clock.advance adds to it", async ({ clock }) => {
+  const noon = await clock.toLocal("12:00");
+  expect(localTime(noon.now)).toBe("12:00");
+  expect(noon.offset_seconds).toBeGreaterThan(0);
+  expect(noon.offset_seconds).toBeLessThanOrEqual(86_400);
+  const later = await clock.advance(90);
+  expect(later.offset_seconds).toBe(noon.offset_seconds + 90);
+});
+
+test.fail("the account helpers read and change the session user's data", async ({ page }) => {
+  const user = await newUser(page);
+  expect(await recommendations(page)).toEqual([]);
+  expect(await digests(page)).toMatchObject({ notify_email: user.email, pending: 0, items: [] });
+  await setGoals(page, { steps: 1234, sleep: 7.5 });
+  const goals = (await (await page.request.get("/api/goals")).json()) as { kind: string; target: number }[];
+  expect(goals.map((goal) => [goal.kind, goal.target])).toEqual([
+    ["steps", 1234],
+    ["sleep", 7.5],
+  ]);
+  await setRule(page, "R3", false);
+  const rules = (await (await page.request.get("/api/rules")).json()) as { code: string; enabled: boolean }[];
+  expect(rules.find((rule) => rule.code === "R3")?.enabled).toBe(false);
 });

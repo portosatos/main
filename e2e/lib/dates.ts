@@ -4,3 +4,12 @@ export function addDays(date: string, days: number): string {
   day.setUTCDate(day.getUTCDate() + days);
   return day.toISOString().slice(0, 10);
 }
+
+// The local date (YYYY-MM-DD) and time (HH:MM) of a moment in the users' zone (TIMEZONE).
+export function localDate(_moment: string | Date): string {
+  throw new Error("step 12.2: not implemented");
+}
+
+export function localTime(_moment: string | Date): string {
+  throw new Error("step 12.2: not implemented");
+}

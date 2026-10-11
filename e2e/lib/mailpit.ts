@@ -7,6 +7,15 @@ export type MailpitMessage = {
   Created: string;
 };
 
+// A whole letter: `Date` is its Date header — the server's Clock at the send, not Mailpit's.
+export type MailpitLetter = {
+  ID: string;
+  Subject: string;
+  Date: string;
+  Text: string;
+  HTML: string;
+};
+
 // Letters in the e2e Mailpit (its API, SPEC §5): digests of one recipient, newest first.
 export const mailpit = {
   async messages(to: string): Promise<MailpitMessage[]> {
@@ -18,5 +27,15 @@ export const mailpit = {
     return (body.messages ?? []).filter((message) =>
       message.To.some((address) => address.Address.toLowerCase() === to.toLowerCase()),
     );
+  },
+
+  // The letter with its text and HTML.
+  async message(_id: string): Promise<MailpitLetter> {
+    throw new Error("step 12.2: not implemented");
+  },
+
+  // Waits until the recipient has `count` letters (fails on more) and returns them, newest first.
+  async waitFor(_to: string, _count: number, _timeoutMs?: number): Promise<MailpitMessage[]> {
+    throw new Error("step 12.2: not implemented");
   },
 };
