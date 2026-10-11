@@ -1629,3 +1629,28 @@
 ## 2026-10-11T19:24:45+06:00 — Шаг 10.1 закрыт
 - Шаг отмечен [x] в docs/plan.md с заметками для 11.1 и 12.x/13.1. Следующий шаг по плану: 11.1 (поток и сквозная
   проверка изоляции), в новой сессии агента.
+
+## 2026-10-11T19:30:14+06:00 — Шаг 11.1 начат: поток и сквозная проверка изоляции
+- План: `POST /api/ingest/batch` (пачка до 5000 записей → задача `ingest_batch` в очереди, тот же конвейер разбора и
+  классификации, что у файла, `ingest_jobs.source = stream`), дебаунс оценки правил 10 с по `Clock` (задача
+  `evaluate_rules` со склейкой по `dedup_key` и `run_after`), `htgen --stream --url --batch-size --rate --email
+  --password`, сквозные тесты изоляции по OpenAPI (чужой ресурс → 404, без CSRF → 403, dev-маршруты в prod → 404).
+- Заметка плана для 11.1: тики дайджестов и правил вынести из цикла разбора очереди, чтобы при непрерывной очереди
+  письмо уходило вовремя, и проверить это тестом.
+- Сначала тесты из «Тесты до кода» с strict-xfail, красный прогон, таблица Done When; код — после «ок» пользователя.
+
+## 2026-10-11T19:38:53+06:00 — Тесты до кода: 10 xfailed (backend 7 + generator 3)
+- d802d8e `test(ingest): … (red)`: `integration/test_ingest_batch.py` (`test_batch_202_same_classification_as_file`,
+  `test_batch_over_5000_rejected`, `test_stream_then_file_all_duplicate_totals_unchanged`,
+  `test_rule_evaluation_debounced_10s`, сверх плана `test_debounced_evaluation_runs_when_due_without_new_jobs`),
+  `integration/test_security_sweep.py` (3), `integration/test_dispatcher.py::test_digest_sent_on_time_while_queue_busy`
+  (заметка плана для 11.1), `generator/tests/test_stream.py` (`test_stream_mode_posts_batches_and_logs_in`, сверх плана
+  `test_stream_credentials_default_to_demo_env`, `test_stream_login_rejected_exit_1`).
+- Причины красного (`--runxfail`): `POST /api/ingest/batch` → 404; `Worker` без `rules_debounce_s`; письмо не ушло за
+  1,5 с при занятой очереди («the digest waited for the job queue»); в OpenAPI нет `post /api/ingest/batch`;
+  `htgen: error: unrecognized arguments: --stream …`.
+- Зелёные с начала (без маркера, проверяют уже существующую защиту): `test_all_id_routes_return_404_for_other_users_resources`,
+  `test_all_dev_routes_404_in_prod`. Тест генератора идёт против тестового HTTP-сервера на стандартной библиотеке, а не
+  uvicorn: у генератора нет зависимостей backend; приём настоящим API — в `test_ingest_batch.py`.
+- Прогон 19:36–19:38: ruff — «All checks passed!», «192 files already formatted»; `scripts/test.sh` → backend
+  `313 passed, 7 xfailed`, generator `51 passed, 3 xfailed`, scripts `8 passed`.
