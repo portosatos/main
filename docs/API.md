@@ -54,6 +54,24 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr`. Пульс округ
  "delta": {"steps": {"abs": 3000.0, "pct": 50.0}, "sleep_minutes": null, "...": "..."}}
 ```
 
+## Текущий пользователь (`/api/auth/*`, ADR-041)
+
+`POST /api/auth/register`, `POST /api/auth/login` и `GET /api/auth/me` отдают `{id, email, notify_email, today}`.
+`today` — локальная дата пользователя «сейчас»: время `Clock` (в dev — со сдвигом dev-панели) в поясе, который
+действует в этот момент по истории поясов. Дашборд без даты в адресе открывается на этот день.
+
+## Устройства (`/api/devices`, SPEC F2, ADR-041)
+
+| Запрос | Ответ |
+|---|---|
+| `GET /api/devices` | устройства пользователя по порядку регистрации: `{id, external_id, kind (watch\|phone), name, created_at, last_data_at}` |
+| `PATCH /api/devices/{id}` с `{name}` | устройство с новым именем; событие `devices.changed` вкладкам пользователя |
+
+- `last_data_at` — начало последней минуты, которую покрывает хоть одна запись устройства (шаги, сон, пульс;
+  `coverage_minute`), или `null`, если записей нет.
+- Имя обрезается по краям; пустое или длиннее 100 символов → 422. Чужое или несуществующее устройство → 404.
+  Устройства создаёт загрузка (SPEC F2), тип и `external_id` не меняются.
+
 ## События (`GET /api/events`, SSE, SPEC F12, ADR-039)
 
 Поток Server-Sent Events пользователя сессии (без cookie → 401; API ещё не слушает БД → 503 через 5 с). Каждое
@@ -68,6 +86,7 @@ sleep_start, sleep_end, night_valid, resting_hr, peak_hr`. Пульс округ
 | `ingest.progress` | `{job_id, status, bytes_done, bytes_total, counts}` | задача поставлена (`queued`), начата или возобновлена (`processing`), после пачки — не чаще раза в 1 с (не реже раза в 2 с) |
 | `ingest.done` | то же, `status` — `done` или `failed` | задача закончена |
 | `summary.updated` | `{dates: ["2026-10-01", …]}` | пересчитаны сводки этих локальных дат (по ходу загрузки, не реже раза в ~2 с); длинный список приходит несколькими событиями |
+| `devices.changed` | `{device_id}` | устройство переименовано (`PATCH /api/devices/{id}`) |
 
 `counts = {new, duplicate, conflict, invalid}` — как в отчёте `GET /api/ingest/jobs/{id}`. Прогресс —
 `bytes_done / bytes_total`. Остальные события SPEC F12 (цели, правила, настройки) добавляются на своих шагах.

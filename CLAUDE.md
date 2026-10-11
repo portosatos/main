@@ -157,3 +157,7 @@
   `test/fakeEventSource.ts` и `test/fakeXhr.ts`.
 - Проверка процесса шага: `python scripts/check_process.py --step X.Y` (вся история: `--all`)
 - Тесты утилит `scripts/`: `python -m pytest scripts/tests -q`
+- Дашборд и устройства (ADR-041): `http://localhost:5173/?date=2026-10-07`, `/?view=week&week=2026-W41` (без параметров —
+  `today` из `/api/auth/me` по `Clock`), `http://localhost:5173/devices`; API — `GET /api/devices`,
+  `PATCH /api/devices/{id}` `{"name": "…"}` (событие `devices.changed`). Компоненты — `SummaryCard`, `DaysChart`
+  (Recharts), `GapBar` (пропуск — штриховка); подписи и форматы метрик — `lib/metrics.ts`.
