@@ -15,7 +15,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DailySummary
-from app.schemas.summary import DayOut, Delta, Deltas, WeekMetric, WeekMetrics, WeekTotals
+from app.schemas.summary import (
+    DayGoals,
+    DayOut,
+    Delta,
+    Deltas,
+    GoalProgress,
+    WeekGoal,
+    WeekGoals,
+    WeekMetric,
+    WeekMetrics,
+    WeekTotals,
+)
+from app.services.goals import GoalBook, GoalKind, goal_value, is_met, load_goal_book, percent
 
 WEEK = timedelta(days=7)
 # The longest /api/summary/range, in days: a year of a chart.
@@ -43,7 +55,9 @@ def week_label(monday: date) -> str:
 async def load_days(
     session: AsyncSession, user_id: uuid.UUID, start: date, end: date
 ) -> list[DayOut]:
-    """Every local date from `start` to `end` inclusive; a date without a row is no_data."""
+    """Every local date from `start` to `end` inclusive with its goals; a date without a row
+    is no_data."""
+    book = await load_goal_book(session, user_id)
     summaries = await session.scalars(
         select(DailySummary).where(
             DailySummary.user_id == user_id,
@@ -51,9 +65,25 @@ async def load_days(
             DailySummary.local_date <= end,
         )
     )
-    by_date = {s.local_date: DayOut.of(s) for s in summaries}
+    by_date = {
+        s.local_date: DayOut.of(s, day_goals(book, s.local_date, s.steps, s.sleep_minutes))
+        for s in summaries
+    }
     days = (start + timedelta(days=i) for i in range((end - start).days + 1))
-    return [by_date.get(day) or DayOut.no_data(day) for day in days]
+    return [
+        by_date.get(day) or DayOut.no_data(day, day_goals(book, day, None, None)) for day in days
+    ]
+
+
+def day_goals(book: GoalBook, day: date, steps: int | None, sleep_minutes: int | None) -> DayGoals:
+    def progress(kind: GoalKind) -> GoalProgress:
+        target = book.target(kind, day)
+        value = goal_value(kind, steps, sleep_minutes)
+        return GoalProgress(
+            target=target, percent=percent(value, target), achieved=is_met(value, target)
+        )
+
+    return DayGoals(steps=progress("steps"), sleep=progress("sleep"))
 
 
 def delta(current: float | None, previous: float | None) -> Delta | None:
@@ -102,6 +132,10 @@ def week_totals(monday: date, days: Sequence[DayOut]) -> WeekTotals:
         start=monday,
         end=monday + WEEK - timedelta(days=1),
         metrics=week_metrics(days),
+        goals=WeekGoals(
+            steps=WeekGoal(achieved_days=sum(d.goals.steps.achieved for d in days)),
+            sleep=WeekGoal(achieved_days=sum(d.goals.sleep.achieved for d in days)),
+        ),
     )
 
 

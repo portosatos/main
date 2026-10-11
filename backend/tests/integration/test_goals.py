@@ -222,7 +222,6 @@ async def day_goals(client: httpx.AsyncClient, day: str) -> dict[str, Any]:
     return response.json()["day"]["goals"]
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_default_goals_8000_steps_8h_sleep(clean: None, settings: Settings) -> None:
     async with api_user(settings, "goals-default") as (client, _clock, _user_id):
         response = await client.get("/api/goals")
@@ -238,7 +237,6 @@ async def test_default_goals_8000_steps_8h_sleep(clean: None, settings: Settings
         }
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_put_creates_new_version_past_days_use_old_target(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -398,7 +396,6 @@ async def test_sleep_goal_counted_on_wake_day(
     assert bed_day["sleep"] == {"target": 8, "percent": None, "achieved": False}
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_week_progress_n_of_7(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -503,7 +500,6 @@ async def test_lowering_goal_below_today_value_creates_achievement(
         assert len((await notifications(client))["items"]) == 2  # Oct 1 and Oct 2
 
 
-@pytest.mark.xfail(strict=True, reason="step 7.1: not implemented")
 async def test_put_rejects_invalid_targets(clean: None, settings: Settings) -> None:
     async with api_user(settings, "goals-invalid") as (client, _clock, _user_id):
         for body in [

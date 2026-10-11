@@ -4,6 +4,7 @@ autogenerate."""
 from app.models.base import Base
 from app.models.dev_clock import DevClock
 from app.models.device import Device
+from app.models.goal import Goal
 from app.models.ingest import HrPoint, IngestJob, SleepRaw, StepsRaw
 from app.models.jobs import Job, WorkerHeartbeat
 from app.models.minutes import CoverageMinute, SleepMinute, StepsMinute
@@ -18,6 +19,7 @@ __all__ = [
     "DailySummary",
     "DevClock",
     "Device",
+    "Goal",
     "HrPoint",
     "IngestJob",
     "Job",

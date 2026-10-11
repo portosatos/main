@@ -8,6 +8,20 @@ from pydantic import BaseModel, Field
 from app.models import DailySummary
 
 
+class GoalProgress(BaseModel):
+    """A goal on one date (SPEC F8): the target in effect that day, the share of it reached
+    (rounded down; null without a value) and whether it is met."""
+
+    target: int | float
+    percent: int | None
+    achieved: bool
+
+
+class DayGoals(BaseModel):
+    steps: GoalProgress = Field(description="Steps a day")
+    sleep: GoalProgress = Field(description="Hours of sleep, counted on the wake day")
+
+
 class DayOut(BaseModel):
     """One local date. A date without a daily_summaries row is `no_data`: wear 0, metrics null."""
 
@@ -22,9 +36,10 @@ class DayOut(BaseModel):
     night_valid: bool
     resting_hr: float | None
     peak_hr: float | None
+    goals: DayGoals
 
     @classmethod
-    def of(cls, summary: DailySummary) -> "DayOut":
+    def of(cls, summary: DailySummary, goals: DayGoals) -> "DayOut":
         """The row as shown: pulse (REAL in the table) rounded to 0.1."""
         return cls(
             date=summary.local_date,
@@ -38,10 +53,11 @@ class DayOut(BaseModel):
             night_valid=summary.night_valid,
             resting_hr=_tenths(summary.resting_hr),
             peak_hr=_tenths(summary.peak_hr),
+            goals=goals,
         )
 
     @classmethod
-    def no_data(cls, day: date) -> "DayOut":
+    def no_data(cls, day: date, goals: DayGoals) -> "DayOut":
         return cls(
             date=day,
             status="no_data",
@@ -54,6 +70,7 @@ class DayOut(BaseModel):
             night_valid=False,
             resting_hr=None,
             peak_hr=None,
+            goals=goals,
         )
 
 
@@ -101,11 +118,24 @@ class WeekMetrics(BaseModel):
     peak_hr: WeekMetric = Field(description="Max over days where it is computed")
 
 
+class WeekGoal(BaseModel):
+    """ "Цель выполнена N из 7 дней": each day by the target in effect on it."""
+
+    achieved_days: int
+    of: int = 7
+
+
+class WeekGoals(BaseModel):
+    steps: WeekGoal
+    sleep: WeekGoal
+
+
 class WeekTotals(BaseModel):
     week: str = Field(examples=["2026-W41"])
     start: date
     end: date
     metrics: WeekMetrics
+    goals: WeekGoals
 
 
 class WeekSummaryOut(WeekTotals):
