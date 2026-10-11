@@ -853,3 +853,10 @@
   `delta.sleep_minutes = null` (прошлая ночь невалидна); `2025-W53` → 422, `2026-W53` → 28.12–03.01; `range`
   31.07–04.08 — 5 дней, крайние `no_data`; без входа → 401.
 - Шаг закрыт, в docs/plan.md отмечен [x]. Следующий шаг по плану: 5.1 (шина событий и SSE).
+
+## 2026-10-11T09:43:52+06:00 — Шаг 5.1 начат: шина событий и SSE
+- План: тесты `integration/test_events.py` (7 шт., strict-xfail) на заглушках `services/events.py` и `GET /api/events`
+  → `events.py` (`publish` через `pg_notify('user_events', …)`, слушатель `LISTEN` в lifespan API с переподключением,
+  раздача по `user_id`), `/api/events` на sse-starlette (cookie, keep-alive), события воркера `ingest.progress`
+  (не реже раза в 2 с), `ingest.done`, `summary.updated {dates}` с делением на части < 8 КБ; ADR, `docs/API.md`, CLAUDE.md.
+- Не делаем: UI, `useEvents`, nginx-smoke (шаг 5.2), события целей и правил.
