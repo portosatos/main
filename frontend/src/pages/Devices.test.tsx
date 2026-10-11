@@ -28,7 +28,7 @@ const PHONE: Device = {
   last_data_at: null,
 };
 
-test.fails("lists devices and renames one", async () => {
+test("lists devices and renames one", async () => {
   let devices = [WATCH, PHONE];
   let patch: { id: string; body: unknown; csrf: string | null } | undefined;
   server.use(
