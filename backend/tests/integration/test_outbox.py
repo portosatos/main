@@ -44,7 +44,6 @@ async def open_ids(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]
     return list(result)
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_outbox_row_in_same_transaction_as_open(session: AsyncSession) -> None:
     user_id = await make_user(session)
     await add_days(session, user_id, *[night(TODAY - timedelta(days=i), 5) for i in (2, 1, 0)])

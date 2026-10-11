@@ -9,7 +9,8 @@ recommendations stops a second open one even if two evaluations race.
 
 An opened recommendation goes to the bell (a notification, `notification.created`) and to the
 tabs (`recommendation.opened`); a resolved one only to the tabs (`recommendation.resolved`). The
-events are sent when the caller commits (ADR-048). The e-mail outbox comes with step 9.2.
+events are sent when the caller commits (ADR-048). An opened recommendation also waits in the
+e-mail outbox for the digest (SPEC F10), written in the same transaction (ADR-050).
 """
 
 import uuid
@@ -28,6 +29,7 @@ from app.models.rule import OPEN
 from app.services import events
 from app.services.goals import GoalKind, load_goal_book
 from app.services.localtime import TzHistory, load_tz_history
+from app.services.notify import outbox
 from app.services.rules import r1, r2, r3, r4, r5, r6
 from app.services.rules.base import Day, Facts, Rule, default_goal
 from app.services.rules.catalog import TITLES
@@ -199,8 +201,11 @@ async def evaluate_user(session: AsyncSession, user_id: uuid.UUID, now: datetime
 async def notify_opened(
     session: AsyncSession, user_id: uuid.UUID, rec_id: uuid.UUID, action: Action, now: datetime
 ) -> None:
-    """The bell's notification of an opened recommendation; `notification.created` goes first,
-    as with goals, so a tab hearing `recommendation.opened` already finds it in the feed."""
+    """The bell's notification of an opened recommendation and its outbox entry for the digest;
+    `notification.created` goes first, as with goals, so a tab hearing `recommendation.opened`
+    already finds it in the feed. Every way of opening one comes here: the end of an upload, the
+    hourly evaluation and turning a rule on."""
+    await outbox.enqueue(session, user_id, rec_id, now)
     anchor = action.anchor_date.isoformat()
     notification = Notification(
         user_id=user_id,
