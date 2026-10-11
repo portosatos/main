@@ -845,6 +845,20 @@ lifespan, переподключение 0,2 → 5 с, после него `resy
 ### Шаг 8.2 — R3–R6, опорные даты, триггеры оценки
 **Этап SPEC:** 8 · **Зависит от:** 8.1 · **Критерии §9:** вклад в #9, #12, #13
 
+**Статус:** [x] закрыт 2026-10-11T15:31:01+06:00 (принят пользователем, ручная проверка пройдена). Начат 2026-10-11T14:47:52+06:00.
+Заметки: ADR-047. R3–R6 (`r3.py`–`r6.py`, пороги — `PARAMS`, каталог берёт их оттуда); опорные даты — `base.yesterday`,
+`base.last_night`, R4 — воскресенье последней завершённой ISO-недели; «сегодня» и местное время отбоя — `engine.make_facts`
+по Clock и истории поясов; `LOOKBACK` = 20 дней. R5 — σ кратчайших разностей от кругового среднего (делим на n).
+Оценка: в конце задачи загрузки (с 8.1) и в воркере при старте и раз в `RULES_TICK_S` (3600 с, `Worker.rules_tick`,
+лог `rules_tick`); пользователь с идущей задачей пропускается (`queue.try_lock_user`). Сверх плана:
+`test_hourly_tick_skips_user_with_running_job`, `test_plain_data_open_nothing`. `test_evaluated_after_ingest_done` зелёный
+с начала (вызов с 8.1). На живой проверке найден чужой сдвиг dev clock +25 ч — по указанию пользователя в CLAUDE.md §5
+добавлено правило: после проверок со сдвигом возвращать `offset_seconds` в 0 и писать это в WORKLOG. **Для 8.3:** оценка
+при включении правила — вызвать `evaluate_user` в транзакции `PATCH /api/rules` (или под `queue.try_lock_user`);
+события `recommendation.*` и уведомления — в `evaluate_user` (общая точка для загрузки и `rules_tick`). **Для 10.1 и
+11.1:** оценка при смене пояса и потоковый дебаунс — тот же `evaluate_user`. Тестовые пользователи живой проверки:
+`rules82@example.com`, `tick82@example.com` (у них данные за 12.10 и рекомендации, открытые при сдвиге часов).
+
 **Тесты до кода:**
 - `unit/test_r3.py`: `test_baseline_requires_7_values`, `test_fires_2_days_ge_baseline_plus_7`, `test_closes_below_baseline_plus_4`
 - `unit/test_r4.py`: `test_requires_5_valid_nights_each_week`, `test_fires_on_drop_ge_60`, `test_closes_under_30`
