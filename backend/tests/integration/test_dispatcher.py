@@ -263,7 +263,6 @@ async def test_no_open_left_no_email_limit_not_consumed(
     assert sent["sent_at"] == later + timedelta(minutes=15)
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_no_notify_email_no_send_and_warning_flag(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
@@ -291,7 +290,6 @@ async def test_no_notify_email_no_send_and_warning_flag(
         }
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_digests_api_shows_planned_at_and_reason(
     clean: None, settings: Settings, db_engine: AsyncEngine
 ) -> None:
