@@ -1169,3 +1169,15 @@
   `rules` (сид R1–R6), `user_rules`, `recommendations` с частичным уникальным индексом → движок и машина состояний →
   R1, R2 → оценка правил в конце задачи загрузки → ADR, CLAUDE.md §6.
 - Не делаем: R3–R6, API, UI, письма (шаги 8.2, 8.3, 9.x).
+
+## 2026-10-11T14:11:47+06:00 — Тесты до кода: 21 xfailed
+- Заглушки интерфейсов: 93a3747 `chore(rules)` (`services/rules/`: `Day`, `Facts`, `Verdict`, `Rule`, `plan_actions`,
+  `evaluate_user`, R1, R2, каталог R1–R6) — тесты падают на поведении, а не на импорте.
+- adf5cf9 `test(rules): … (red)`: `uv run pytest tests/unit/test_rule_engine.py tests/unit/test_r1.py
+  tests/unit/test_r2.py tests/integration/test_rule_engine_db.py -q` → `21 xfailed`; весь backend — `186 passed,
+  21 xfailed`.
+- Причины (`--runxfail --tb=line`): 18 — `NotImplementedError: step 8.1` в заглушках; 3 — нет таблиц `rules`,
+  `recommendations`, `user_rules` (`UndefinedTableError`). Ошибок импорта нет.
+- Сверх списка плана (Допущения, ждут «ок» пользователя): `test_rules_seeded_r1_to_r6_with_params_from_code`,
+  `test_evaluate_user_opens_once_and_resolves`, `test_evaluate_user_skips_rule_disabled_by_user`; параметризация
+  `unknown`/`hold` в `test_unknown_leaves_state_unchanged` и порогов 6 / 6,5 / 6,98 ч в `test_6_to_7h_keeps_open`.
