@@ -1036,3 +1036,16 @@
 - План: тесты до кода (`integration/test_goals.py`, 8 тестов плана + 2 дополнительных) → миграция `goals`,
   `goal_achievements`, `notifications` → `GET/PUT /api/goals` и прогресс в сводках → достижения при пересчёте сводок
   с событиями → `GET /api/notifications`, `POST /api/notifications/read` → ADR, docs/API.md, CLAUDE.md.
+
+## 2026-10-11T13:07:31+06:00 — Тесты до кода: 10 xfailed
+- `uv run pytest tests/integration/test_goals.py -q` → `10 xfailed in 7.83s`; коммит f147d9d `test(goals): … (red)`.
+- Причины (`--runxfail --tb=line`): `GET/PUT /api/goals`, `GET/POST /api/notifications*` → 404; в сводках нет
+  поля `goals` (`KeyError`); воркер не шлёт `goal.achieved` («no goal.achieved within 5.0 s; got ['ingest.progress', …,
+  'summary.updated']»). Ошибок импорта и окружения нет.
+- Черновик Codex переписан: проверка «сразу» теперь — достижение и событие есть, пока задача на паузе после пачки 3
+  (раньше порядок «goal.achieved до ingest.done» выполнялся бы и при пересчёте только в конце); тест сна проверял
+  сон, целиком лежащий в одной московской дате; для пользователя-владельца данных добавлены проверки полей.
+- Сверх списка плана (Допущения, ждут «ок» пользователя): `test_lowering_goal_below_today_value_creates_achievement`,
+  `test_put_rejects_invalid_targets`.
+- Проблема / как решили: Docker Desktop не был запущен — запущен, `docker compose up -d --wait postgres`. Первый прогон
+  с `--runxfail` показал 2 падения по неправильной причине (строка вместо `date` в INSERT теста) — исправлено до коммита.
