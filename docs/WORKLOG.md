@@ -1370,3 +1370,12 @@
   пользователя — реализация (окно и потолок, суточный лимит по местной дате, тихие часы, повторная проверка лимита,
   причина переноса) → ADR, CLAUDE.md §6.
 - Не делаем: outbox, SMTP, диспетчер, настройки `DIGEST_*` в `Settings` (9.2).
+
+## 2026-10-11T17:20:58+06:00 — Тесты до кода: 17 xfailed
+- Заглушка: `chore(notify)` — `app/services/notify/planner.py` (`plan_send_time` → `NotImplementedError`,
+  `QuietHours`, `SendPlan(at, reason)`); с `--runxfail` все 17 падают на `NotImplementedError: step 9.1`.
+- `test(notify): … (red)`: `unit/test_planner.py` — 11 тестов плана (`test_plan_reason_reported` — 5 случаев) и 2 сверх
+  плана на допущения (даты дайджестов только растут; просроченное время → «сейчас»).
+- Красный прогон: `scripts/test.sh` → backend `253 passed, 17 xfailed`, generator `51 passed`, scripts `8 passed`.
+- Допущения шага (ждут ответа пользователя): `SendPlan` вместо `datetime`; сравнение `<=` с датой последнего
+  дайджеста; `T = max(T, now)`; причина — последнее правило, сдвинувшее `T`; конец тихих часов — в поясе на момент `T`.
