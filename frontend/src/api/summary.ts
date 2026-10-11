@@ -9,6 +9,15 @@ import { api } from "./client";
 
 export type DayStatus = "no_data" | "partial" | "complete";
 
+// Goals in a summary (SPEC F8, ADR-043): a day by the target in effect on it, a week as
+// «цель выполнена N из 7 дней». Sleep is counted on the wake day, in hours.
+export type GoalKind = "steps" | "sleep";
+
+// `percent` is rounded down (100 only when met) and may pass 100; null without a value.
+export type GoalProgress = { target: number; percent: number | null; achieved: boolean };
+
+export type WeekGoal = { achieved_days: number; of: number };
+
 // A date without data is no_data with nulls, never zeros (SPEC F6).
 export type Day = {
   date: string;
@@ -22,6 +31,7 @@ export type Day = {
   night_valid: boolean;
   resting_hr: number | null;
   peak_hr: number | null;
+  goals: Record<GoalKind, GoalProgress>;
 };
 
 export const METRICS = ["sleep_minutes", "steps", "active_minutes", "resting_hr", "peak_hr"] as const;
@@ -41,6 +51,7 @@ export type WeekTotals = {
   start: string;
   end: string;
   metrics: Record<Metric, WeekMetric>;
+  goals: Record<GoalKind, WeekGoal>;
 };
 
 export type WeekSummary = WeekTotals & { days: Day[]; previous: WeekTotals; delta: Deltas };

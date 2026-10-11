@@ -35,6 +35,10 @@ function noData(date: string): Day {
     night_valid: false,
     resting_hr: null,
     peak_hr: null,
+    goals: {
+      steps: { target: 8000, percent: null, achieved: false },
+      sleep: { target: 8, percent: null, achieved: false },
+    },
   };
 }
 
@@ -51,6 +55,10 @@ function complete(date: string, overrides: Partial<Day> = {}): Day {
     night_valid: true,
     resting_hr: 58,
     peak_hr: 150,
+    goals: {
+      steps: { target: 8000, percent: 100, achieved: true },
+      sleep: { target: 8, percent: 93, achieved: false },
+    },
     ...overrides,
   };
 }
@@ -155,6 +163,7 @@ test("week cards show base counts («сон: 6 из 7 ночей»)", async () =
       resting_hr: { value: null, days: 0, of: 7 },
       peak_hr: { value: 165, days: 4, of: 7 },
     },
+    goals: { steps: { achieved_days: 5, of: 7 }, sleep: { achieved_days: 0, of: 7 } },
     days: W41.map((date) => complete(date)),
     previous: {
       week: "2026-W40",
@@ -167,6 +176,7 @@ test("week cards show base counts («сон: 6 из 7 ночей»)", async () =
         resting_hr: { value: 60, days: 7, of: 7 },
         peak_hr: { value: 170, days: 7, of: 7 },
       },
+      goals: { steps: { achieved_days: 2, of: 7 }, sleep: { achieved_days: 1, of: 7 } },
     },
     delta: { ...NO_DELTA, steps: { abs: 3000, pct: 50 }, sleep_minutes: { abs: 30, pct: 7.1 } },
   };
