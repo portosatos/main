@@ -13,7 +13,6 @@ from app.services.rules.base import Day, Facts
 from app.services.rules.engine import plan_actions
 
 D = date(2026, 10, 10)
-NOT_IMPLEMENTED = "step 8.1: not implemented"
 
 
 def night(days_before: int, hours: float, *, valid: bool = True, status: str = "complete") -> Day:
@@ -30,7 +29,6 @@ def facts(*days: Day) -> Facts:
     return Facts(days, today=D)
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_fires_on_3_valid_nights_under_6h() -> None:
     verdict = r1.evaluate(facts(night(2, 5.5), night(1, 5), night(0, 5.98)), D)
 
@@ -44,7 +42,6 @@ def test_fires_on_3_valid_nights_under_6h() -> None:
     assert r1.evaluate(facts(night(1, 5), night(0, 5)), D).kind != "fire"
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_invalid_night_in_window_unknown() -> None:
     # The watch was off for a while in the middle night: its 3 h are not a short night.
     with_gap = facts(night(2, 5), night(1, 3, valid=False), night(0, 5))
@@ -57,7 +54,6 @@ def test_invalid_night_in_window_unknown() -> None:
     )
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_fires_on_valid_nights_of_partial_days() -> None:
     nights = facts(
         night(2, 5, status="partial"),
@@ -68,7 +64,6 @@ def test_fires_on_valid_nights_of_partial_days() -> None:
     assert r1.evaluate(nights, D).kind == "fire"
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 def test_closes_on_night_ge_7h() -> None:
     assert r1.evaluate(facts(night(2, 5), night(1, 5), night(0, 7)), D).kind == "close"
     # The earlier nights do not matter for closing: one valid long night is enough.
@@ -77,7 +72,6 @@ def test_closes_on_night_ge_7h() -> None:
     assert r1.evaluate(facts(night(0, 8, valid=False)), D).kind == "unknown"
 
 
-@pytest.mark.xfail(strict=True, reason=NOT_IMPLEMENTED)
 @pytest.mark.parametrize("hours", [6, 6.5, 6.98])
 def test_6_to_7h_keeps_open(hours: float) -> None:
     window = facts(night(2, 5), night(1, 5), night(0, hours))
