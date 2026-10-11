@@ -131,7 +131,6 @@ def w41_rows(user_id: uuid.UUID) -> list[DailySummary]:
     ]  # fmt: skip
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_day_summary_with_delta_vs_previous_day(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -163,7 +162,6 @@ async def test_day_summary_with_delta_vs_previous_day(
     }
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_day_delta_null_when_previous_no_data(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -219,7 +217,6 @@ async def test_day_delta_null_when_previous_no_data(
     }
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_week_sleep_avg_over_valid_nights_including_partial_days(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -232,7 +229,6 @@ async def test_week_sleep_avg_over_valid_nights_including_partial_days(
     assert body["metrics"]["sleep_minutes"] == base(450.0, 3)
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_week_steps_avg_over_complete_days_only(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -250,7 +246,6 @@ async def test_week_steps_avg_over_complete_days_only(
     assert by_date["2026-10-06"]["steps"] == 1500
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_week_returns_base_counts(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -297,7 +292,6 @@ async def test_week_returns_base_counts(
     }
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_week_empty_base_returns_null(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -322,7 +316,6 @@ async def test_week_empty_base_returns_null(
         assert_no_data(day, on)
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_range_returns_status_per_day_with_nulls(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -357,7 +350,6 @@ async def test_range_returns_status_per_day_with_nulls(
         assert response.status_code == 422, (query, response.text)
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_iso_week_param_edges_w01_w53(
     client_and_user: tuple[httpx.AsyncClient, uuid.UUID], test_sessionmaker: Sessionmaker
 ) -> None:
@@ -390,7 +382,6 @@ async def test_iso_week_param_edges_w01_w53(
         assert response.status_code == 422, (week, response.text)
 
 
-@pytest.mark.xfail(strict=True, reason="step 4.4: not implemented")
 async def test_summary_returns_only_own_data(
     migrated_database_url: str, test_sessionmaker: Sessionmaker
 ) -> None:

@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.models import DailySummary
+
 
 class DayOut(BaseModel):
     """One local date. A date without a daily_summaries row is `no_data`: wear 0, metrics null."""
@@ -20,6 +22,43 @@ class DayOut(BaseModel):
     night_valid: bool
     resting_hr: float | None
     peak_hr: float | None
+
+    @classmethod
+    def of(cls, summary: DailySummary) -> "DayOut":
+        """The row as shown: pulse (REAL in the table) rounded to 0.1."""
+        return cls(
+            date=summary.local_date,
+            status=summary.status,
+            wear_minutes=summary.wear_minutes,
+            steps=summary.steps,
+            active_minutes=summary.active_minutes,
+            sleep_minutes=summary.sleep_minutes,
+            sleep_start=summary.sleep_start,
+            sleep_end=summary.sleep_end,
+            night_valid=summary.night_valid,
+            resting_hr=_tenths(summary.resting_hr),
+            peak_hr=_tenths(summary.peak_hr),
+        )
+
+    @classmethod
+    def no_data(cls, day: date) -> "DayOut":
+        return cls(
+            date=day,
+            status="no_data",
+            wear_minutes=0,
+            steps=None,
+            active_minutes=None,
+            sleep_minutes=None,
+            sleep_start=None,
+            sleep_end=None,
+            night_valid=False,
+            resting_hr=None,
+            peak_hr=None,
+        )
+
+
+def _tenths(value: float | None) -> float | None:
+    return None if value is None else round(value, 1)
 
 
 class Delta(BaseModel):
