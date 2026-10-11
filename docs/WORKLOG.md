@@ -1305,3 +1305,12 @@
 ## 2026-10-11T15:31:01+06:00 — Шаг 8.2 закрыт
 - Шаг отмечен [x] в docs/plan.md с заметками для 8.3, 10.1, 11.1. Следующий шаг по плану: 8.3 (API и UI правил и
   рекомендаций, отзывы).
+
+## 2026-10-11T15:36:55+06:00 — Шаг 8.3 начат: API и UI правил и рекомендаций, отзывы
+- План: заглушки страниц «Правила» и «Рекомендации» (тесты падают на поведении, а не на импорте) → тесты до кода
+  (`integration/test_rules_api.py`, `integration/test_recommendations_api.py`, `pages/Rules.test.tsx`,
+  `pages/Recommendations.test.tsx`) → `GET/PATCH /api/rules` (отключение закрывает открытую как
+  `closed_rule_disabled`, включение оценивает правило) → `GET /api/recommendations`, `PUT/DELETE …/feedback` →
+  уведомления и события `recommendation.*` в `evaluate_user` → страницы, колокольчик, `handlers` → `docs/RULES.md`,
+  ADR, `docs/API.md`, CLAUDE.md §6.
+- Не делаем: письма и `email_outbox` (9.x), оценка при смене пояса (10.1), потоковый дебаунс (11.1).
