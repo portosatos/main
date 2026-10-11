@@ -288,7 +288,6 @@ async def test_quiet_end_in_skipped_hour_after_clocks_go_forward() -> None:
     assert result == SendPlan(utc(3, 8, 7, 0), "quiet_hours")
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 async def test_skipped_hour_swallows_all_free_time_quiet_ends_next_day() -> None:
     # Found by the property test below: Santiago, Sep 6 2026, 00:00 −04 becomes 01:00 −03 at
     # 04:00 UTC. Quiet hours 00:15–00:00 leave only 00:00–00:15 free, and that night it is
@@ -342,7 +341,6 @@ def in_quiet(moment: datetime, history: TzHistory, quiet: QuietHours) -> bool:
     return clock >= quiet.start or clock < quiet.end
 
 
-@pytest.mark.xfail(strict=True, reason="step 9.2: not implemented")
 @settings(max_examples=1000, deadline=None)
 @given(
     case=st.sampled_from(CHANGES),

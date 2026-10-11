@@ -110,16 +110,16 @@ def _quiet_end(at: datetime, quiet: QuietHours, tz_history: TzHistory) -> dateti
     end_day = local.date() + timedelta(days=1) if evening else local.date()
     # The end is the first instant after `at` that is not quiet. When the clocks go back, its wall
     # time happens twice (fold 0 and 1) and the first pass may be before `at`; when they go
-    # forward, it may never happen, and the quiet hours end when the clock jumps past it.
-    for fold in (0, 1):
-        end = datetime.combine(end_day, quiet.end, tzinfo=zone).replace(fold=fold).astimezone(UTC)
-        if end > at and not _is_quiet(end.astimezone(zone).time(), quiet):
-            break
-    else:
-        raise RuntimeError(f"no end of the quiet hours after {at.isoformat()}")
-    if end.astimezone(zone).time() == quiet.end:
-        return end
-    return _first_not_quiet(at, end, zone, quiet)
+    # forward, it may never happen, and the quiet hours end when the clock jumps past it — or,
+    # if the jump skips all the free time of that date, at the end on the next date.
+    for day in (end_day, end_day + timedelta(days=1)):
+        for fold in (0, 1):
+            end = datetime.combine(day, quiet.end, tzinfo=zone).replace(fold=fold).astimezone(UTC)
+            if end > at and not _is_quiet(end.astimezone(zone).time(), quiet):
+                if end.astimezone(zone).time() == quiet.end:
+                    return end
+                return _first_not_quiet(at, end, zone, quiet)
+    raise RuntimeError(f"no end of the quiet hours after {at.isoformat()}")
 
 
 def _is_quiet(clock: time, quiet: QuietHours) -> bool:
