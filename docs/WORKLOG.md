@@ -2003,3 +2003,9 @@
   JSONL как есть) и 2 сессии Codex (начало шага 7.1, ADR-042). Личные email автора заменены на `<author-email>`
   (71 вхождение); записи проверены на токены и ключи — их нет. Обновлён `docs/agent-session/README.md`: состав
   архива и что не приложено (сессии ТЗ, плана и консультанта — личные данные; их итоги — в SPEC, plan, PROMPTS, WORKLOG).
+
+## 2026-10-11T23:28:59+06:00 — Шаг 13.2: Done When выполнен, CI зелёный
+- `python scripts/check_process.py --step 13.2` и `--all` → OK; `python scripts/check_docs.py` → OK; push 111c21d.
+- CI 38158988595 (111c21d): backend, generator, frontend, process — success, e2e — cancelled (прогон вытеснен
+  следующим push). CI 38159266421 (8044460, экспорт сессий от пользователя) → success, все 5 job'ов, включая e2e.
+- Done When шага отмечен в `docs/plan.md`; ручная проверка (README с нуля в чистой папке) — за пользователем.
