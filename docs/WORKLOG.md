@@ -1555,3 +1555,40 @@
   переезд в прошлом действует до следующей записи истории; повтор момента или пояса — 409; пустая почта — `null`,
   тихие часы строго `HH:MM`, начало = конец — выключены; пересчёт — задачей `tz_changed` по отрезку
   [«действует с», следующая запись или конец данных) в старом и новом поясе, затем правила; `timezone` в `/api/auth/me`.
+
+## 2026-10-11T19:02:40+06:00 — Фичи шага 10.1 готовы
+- 89c802c `feat(settings)`: `GET/PATCH /api/settings` (почта, тихие часы `HH:MM`, частичный PATCH, `settings.changed {fields}`
+  только при изменении), `timezone` в `/api/auth/me`. Маркеры двух тестов сняты: `12 passed, 8 xfailed`.
+- 13da351 `feat(settings)`: `GET/POST /api/settings/timezones`, задача `tz_changed` (`services/timezones.py`: даты отрезка по
+  новой истории + существующие сводки окна −12/+14 ч, `summary.updated`, `evaluate_user`). Маркеры сняты: `24 passed`.
+- **Проблема / как решили:** два теста `test_tz_change.py` упали после первой версии кода — переезд раньше записи
+  регистрации делал новую запись первой, а первая запись по ADR-033 действует и до себя: дни до переезда молча уходили
+  в новый пояс, пересчитывались только даты после (итог шагов 27870 вместо 29064). По принятому допущению 2 время до
+  переезда не меняется: прежний первый пояс сохраняется записью с 1970-01-01 (`valid_from: null`, «с начала истории»).
+  Регрессионный тест `test_move_before_history_keeps_earlier_zone` добавлен после кода. ADR-051 п. 7.
+- 4f62e7b `feat(settings-ui)`: страница «Настройки» (предупреждение без почты, тихие часы, смена пояса с «действует с»,
+  история «с … по …» по часам своего пояса, ближайшее письмо в поясе пользователя), `settings.changed` в `useEvents`,
+  время устройств в поясе пользователя. `test.fails` сняты: vitest `51 passed`. Случайный `prettier --write` переформатировал
+  чужие файлы — откатил, правки внесены заново без переформатирования (prettier в проекте не используется).
+- be42fae `docs(settings)`: `docs/TIMEZONES.md`, раздел настроек и событие в `docs/API.md`, ADR-051, команды в CLAUDE.md.
+- Живая проверка (стек пересобран, `scripts/smoke.sh` — все OK): отдельный пользователь `live-101@example.com` (демо не
+  трогал), 7 дней `htgen --seed 101`; переезд в Нью-Йорк «2026-10-08T08:00» задним числом → задача `tz_changed` за 0,2 с,
+  сумма шагов 82875 → 82875, ношения 10080 → 10080 мин, изменились только 8–9 октября; страница показывает три записи
+  истории и «с начала истории». Устаревшие имена поясов из списка браузера (`Asia/Calcutta`, `Europe/Kiev`, …) сервер
+  принимает (сверено с `zoneinfo.available_timezones()` в контейнере api).
+- Dev clock не сдвигался: `GET /api/dev/clock` → `offset_seconds: 0`.
+
+## 2026-10-11T19:02:40+06:00 — Шаг 10.1 завершён
+- Итог: настройки (почта, тихие часы), история поясов с «действует с», пересчёт затронутых дат и правил задачей
+  `tz_changed`, `settings.changed`, страница «Настройки» с ближайшим дайджестом и предупреждением без почты, время в поясе
+  пользователя, `docs/TIMEZONES.md`, ADR-051. Критерий §9 #18 закрыт тестами `test_tz_change.py`.
+- Коммиты шага: 0cb9086, 0dde59c (chore), 1ed493a (test, red), e864459, 8ae69cb, 89c802c, 13da351, 4f62e7b (feat),
+  be42fae, эта запись.
+- Тесты: красный backend `23 xfailed` + vitest `4 expected fail` → зелёный: `scripts/test.sh` → backend `310 passed`,
+  generator `51 passed`, scripts `8 passed`, «OK: all tests passed»; `npm --prefix frontend run check` → `51 passed`, build ok.
+- Сверх плана: `test_timezone_history_and_past_move`, `useEvents.test.ts::settings.changed …`,
+  `Devices.test.tsx::shows last data in the user's time zone`, регрессионный `test_move_before_history_keeps_earlier_zone`.
+- Done When (общий DoD): ruff check → «All checks passed!», ruff format → «189 files already formatted»;
+  `git grep -n "step 10.1: not implemented" -- ":!docs"` → пусто. check_process, push и CI — после этой записи.
+- Проверить вручную: тихие часы, покрывающие текущее время, + срабатывание правила → в Mailpit пусто до конца тихих
+  часов (промотать dev-панелью, потом «Сброс»); смена пояса с датой в прошлом → сумма шагов за период не изменилась.
