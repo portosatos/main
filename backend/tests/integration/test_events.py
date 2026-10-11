@@ -200,7 +200,6 @@ def slow_batches(delay_s: float) -> Callable[[int], Awaitable[None]]:
     return hook
 
 
-@pytest.mark.xfail(strict=True, reason="step 5.1: not implemented")
 async def test_two_sse_clients_same_user_both_receive_within_2s(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:
@@ -286,7 +285,6 @@ async def test_summary_updated_contains_dates(
     assert {d for dates in updates for d in dates} == {"2026-10-01", "2026-10-02", "2026-10-03"}
 
 
-@pytest.mark.xfail(strict=True, reason="step 5.1: not implemented")
 async def test_large_date_set_split_into_payloads_under_8kb(
     clean: None, server: str, db_engine: AsyncEngine, migrated_database_url: str
 ) -> None:
@@ -318,7 +316,6 @@ async def test_large_date_set_split_into_payloads_under_8kb(
     assert [d for chunk in got for d in chunk] == [d.isoformat() for d in dates]
 
 
-@pytest.mark.xfail(strict=True, reason="step 5.1: not implemented")
 async def test_events_requires_auth_401(clean: None, server: str) -> None:
     async with http(server) as client:
         response = await client.get("/api/events")
@@ -337,7 +334,6 @@ async def listener_pids(engine: AsyncEngine) -> list[int]:
         return [row.pid for row in result]
 
 
-@pytest.mark.xfail(strict=True, reason="step 5.1: not implemented")
 async def test_listener_recovers_after_db_connection_drop(
     clean: None, server: str, db_engine: AsyncEngine
 ) -> None:

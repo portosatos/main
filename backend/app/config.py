@@ -27,3 +27,5 @@ class Settings(BaseSettings):
     ingest_max_bytes: int = 500 * 1024 * 1024
     # /api/health calls the worker stale when its last tick is older than this.
     worker_stale_after_s: float = 120.0
+    # SSE keep-alive: a comment line this often, in seconds, so proxies keep the stream open.
+    sse_ping_s: int = 15

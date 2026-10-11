@@ -12,6 +12,7 @@ from app.clock import create_clock
 from app.config import Settings
 from app.db import create_engine, create_sessionmaker
 from app.logging import configure_logging
+from app.services.events import EventHub
 
 
 def create_app(
@@ -28,9 +29,12 @@ def create_app(
         app.state.engine = create_engine(settings)
         app.state.sessionmaker = sessionmaker or create_sessionmaker(app.state.engine)
         app.state.clock = create_clock(settings, app.state.sessionmaker)
+        app.state.events = EventHub(settings.database_url)
+        await app.state.events.start()
         try:
             yield
         finally:
+            await app.state.events.stop()
             await app.state.engine.dispose()
 
     # /docs is served by app.api.docs: Swagger UI that sends the CSRF header.
