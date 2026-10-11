@@ -10,8 +10,6 @@ import { expect, test } from "./test";
 // SPEC §8 stage 12, scenario 7 (§9 #15, F10): a digest that falls into quiet hours waits for their
 // end — no letter while they last, the letter right after.
 
-test.fail();
-
 test("тихие часы: письма нет, после их окончания приходит", async ({ page, clock }) => {
   test.setTimeout(180_000);
   await clock.toLocal("12:00");
@@ -32,11 +30,18 @@ test("тихие часы: письма нет, после их окончани
   expect(await recommendations(page, { status: ["open"], rule: "R1" })).toHaveLength(1);
 
   // The window would send it at ~12:01; quiet hours move it to their end, 13:00 the same day.
-  const nextLetter = page.getByRole("region", { name: "Ближайшее письмо" });
-  await expect(nextLetter).toContainText("тихие часы", { timeout: 3 * DIGEST_TICK_MS });
+  // The dispatcher stores the plan on its tick, without an event; the page polls every 30 s
+  // (ADR-050), so it is read after a reload.
+  await expect
+    .poll(async () => (await digests(page)).items[0]?.plan_reason, { timeout: 3 * DIGEST_TICK_MS })
+    .toBe("quiet_hours");
   const [planned] = (await digests(page)).items;
-  expect(planned).toMatchObject({ status: "planned", plan_reason: "quiet_hours", local_date: user.today });
+  expect(planned).toMatchObject({ status: "planned", local_date: user.today });
   expect(localTime(planned.planned_at)).toBe("13:00");
+  await page.reload();
+  const nextLetter = page.getByRole("region", { name: "Ближайшее письмо" });
+  await expect(nextLetter).toContainText("13:00");
+  await expect(nextLetter).toContainText("(тихие часы), рекомендаций: 1");
 
   // Half an hour later the window is long over, but it is still quiet: no letter.
   await clock.advance(30 * 60);
